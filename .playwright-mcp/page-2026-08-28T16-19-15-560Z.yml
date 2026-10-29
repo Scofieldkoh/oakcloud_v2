@@ -1,0 +1,34 @@
+- generic [ref=e1]:
+  - generic [ref=e2]:
+    - generic [ref=e3]:
+      - generic [ref=e8]:
+        - img "Oakcloud" [ref=e9]
+        - generic [ref=e10]: Oakcloud
+      - generic [ref=e11]:
+        - heading "Practice Management, Simplified." [level=1] [ref=e12]: Practice Management,Simplified.
+        - paragraph [ref=e13]: A modular internal management system designed for accounting practices. Clean, efficient, and runs completely locally.
+        - generic [ref=e14]:
+          - generic [ref=e15]: Company Management
+          - generic [ref=e16]: BizFile Integration
+          - generic [ref=e17]: Audit Trails
+      - paragraph [ref=e19]: Oakcloud v0.1.0
+    - generic [ref=e21]:
+      - generic [ref=e22]:
+        - heading "Welcome back" [level=2] [ref=e23]
+        - paragraph [ref=e24]: Sign in to your account to continue
+      - generic [ref=e25]:
+        - generic [ref=e26]:
+          - generic [ref=e27]: Email
+          - textbox "Email" [active] [ref=e29]:
+            - /placeholder: Enter your email
+        - generic [ref=e30]:
+          - generic [ref=e31]:
+            - generic [ref=e32]: Password
+            - generic [ref=e33]:
+              - textbox "Password" [ref=e34]:
+                - /placeholder: Enter your password
+              - button "Show password" [ref=e35] [cursor=pointer]
+          - link "Forgot password?" [ref=e40] [cursor=pointer]:
+            - /url: /forgot-password
+        - button "Sign In" [ref=e41] [cursor=pointer]
+  - alert [ref=e46]

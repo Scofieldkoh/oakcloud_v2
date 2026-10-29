@@ -1,0 +1,4 @@
+ALTER TYPE "OfficerRole" ADD VALUE IF NOT EXISTS 'NOMINEE_DIRECTOR';
+
+ALTER TABLE "company_shareholders"
+ADD COLUMN "isNominee" BOOLEAN NOT NULL DEFAULT false;

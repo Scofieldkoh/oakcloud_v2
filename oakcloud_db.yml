@@ -1,0 +1,40 @@
+name: oakcloud-db
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: oakcloud-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: oakcloud
+      POSTGRES_PASSWORD: oakcloud_password
+      POSTGRES_DB: oakcloud
+    ports:
+      - "5433:5432"
+    volumes:
+      - ./docker-data/postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U oakcloud -d oakcloud"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  minio:
+    image: minio/minio:latest
+    container_name: oakcloud-minio
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: oakcloud
+      MINIO_ROOT_PASSWORD: "Preparefortrouble!"
+      MINIO_KMS_SECRET_KEY: "oakcloud-key:0PX2oMcGRDDe/UT66YHQGCyDRVYb6oHLASXHPGEwrl4="
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - ./docker-data/minio:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 10s
+      timeout: 5s
+      retries: 5

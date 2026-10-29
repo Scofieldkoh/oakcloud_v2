@@ -1,0 +1,698 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+
+  /* Password fields have their own show/hide button; hide Edge's built-in one so there aren't two. */
+  input[type='password']::-ms-reveal,
+  input[type='password']::-ms-clear {
+    display: none;
+  }
+
+  /* Light Mode (Default) */
+  :root {
+    --oak-primary: #294d44;
+    --oak-primary-rgb: 41 77 68;
+    --oak-hover: #23423a;
+    --oak-hover-rgb: 35 66 58;
+    --oak-light: #3a6b5f;
+    --oak-light-rgb: 58 107 95;
+    --oak-dark: #1f3a33;
+    --oak-dark-rgb: 31 58 51;
+    --oak-row-alt: #f7fbfa;
+    --oak-row-alt-rgb: 247 251 250;
+    --oak-row-alt-hover: #f0f7f5;
+    --oak-row-alt-hover-rgb: 240 247 245;
+    --oak-row-selected: #d4e8e2;
+    --oak-row-selected-rgb: 212 232 226;
+    --oak-row-selected-hover: #c5ded6;
+    --oak-row-selected-hover-rgb: 197 222 214;
+
+    --bg-primary: #f8f9fb;
+    --bg-primary-rgb: 248 249 251;
+    --bg-secondary: #ffffff;
+    --bg-secondary-rgb: 255 255 255;
+    --bg-tertiary: #f1f3f5;
+    --bg-tertiary-rgb: 241 243 245;
+    --bg-elevated: #ffffff;
+    --bg-elevated-rgb: 255 255 255;
+
+    --border-primary: #e2e4e9;
+    --border-primary-rgb: 226 228 233;
+    --border-secondary: #d0d3d9;
+    --border-secondary-rgb: 208 211 217;
+    --border-focus: #294d44;
+    --border-focus-rgb: 41 77 68;
+
+    --text-primary: #1a1d23;
+    --text-primary-rgb: 26 29 35;
+    --text-secondary: #5c6370;
+    --text-secondary-rgb: 92 99 112;
+    --text-tertiary: #7d838f;
+    --text-tertiary-rgb: 125 131 143;
+    --text-muted: #a0a5b0;
+    --text-muted-rgb: 160 165 176;
+
+    color-scheme: light;
+  }
+
+  /* Dark Mode */
+  .dark {
+    --oak-primary: #294d44;
+    --oak-primary-rgb: 41 77 68;
+    --oak-hover: #3a6b5f;
+    --oak-hover-rgb: 58 107 95;
+    --oak-light: #4a8b7f;
+    --oak-light-rgb: 74 139 127;
+    --oak-dark: #1f3a33;
+    --oak-dark-rgb: 31 58 51;
+    --oak-row-alt: #161a19;
+    --oak-row-alt-rgb: 22 26 25;
+    --oak-row-alt-hover: #1a2420;
+    --oak-row-alt-hover-rgb: 26 36 32;
+    --oak-row-selected: #1f3830;
+    --oak-row-selected-rgb: 31 56 48;
+    --oak-row-selected-hover: #264239;
+    --oak-row-selected-hover-rgb: 38 66 57;
+
+    --bg-primary: #0d0d0d;
+    --bg-primary-rgb: 13 13 13;
+    --bg-secondary: #141414;
+    --bg-secondary-rgb: 20 20 20;
+    --bg-tertiary: #1a1a1a;
+    --bg-tertiary-rgb: 26 26 26;
+    --bg-elevated: #212121;
+    --bg-elevated-rgb: 33 33 33;
+
+    --border-primary: #2a2a2a;
+    --border-primary-rgb: 42 42 42;
+    --border-secondary: #333333;
+    --border-secondary-rgb: 51 51 51;
+    --border-focus: #294d44;
+    --border-focus-rgb: 41 77 68;
+
+    --text-primary: #ffffff;
+    --text-primary-rgb: 255 255 255;
+    --text-secondary: #a1a1a1;
+    --text-secondary-rgb: 161 161 161;
+    --text-tertiary: #6b6b6b;
+    --text-tertiary-rgb: 107 107 107;
+    --text-muted: #525252;
+    --text-muted-rgb: 82 82 82;
+
+    color-scheme: dark;
+  }
+
+  * {
+    border-color: var(--border-primary);
+  }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    @apply bg-background-primary text-text-primary text-sm antialiased;
+    font-feature-settings: "rlig" 1, "calt" 1;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Scrollbar styling */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: var(--border-secondary);
+    border-radius: 9999px;
+    opacity: 0.6;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: var(--border-secondary);
+    opacity: 1;
+  }
+
+  /* Keep iOS form control text aligned with body copy on mobile.
+     Focus zoom-jump is handled by IOSViewportFix (viewport max-scale). */
+  @media (hover: none) and (pointer: coarse) {
+    @supports (-webkit-touch-callout: none) {
+      input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='file']):not([type='color']):not([type='hidden']):not([type='button']):not([type='submit']):not([type='reset']),
+      select,
+      textarea,
+      .input,
+      input[role='combobox'] {
+        font-size: 0.875rem !important;
+      }
+    }
+  }
+}
+
+@layer components {
+
+  /* ===== BUTTONS ===== */
+  .btn-base {
+    @apply inline-flex items-center justify-center gap-2 font-medium transition-all duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-1 focus-visible:ring-offset-background-primary disabled:opacity-50 disabled:cursor-not-allowed select-none;
+  }
+
+  .btn-primary {
+    @apply btn-base bg-oak-primary text-white hover:bg-oak-hover active:bg-oak-dark focus-visible:ring-oak-primary;
+  }
+
+  .btn-secondary {
+    @apply btn-base bg-background-elevated text-text-primary border border-border-primary hover:bg-background-tertiary hover:border-border-secondary active:bg-background-secondary focus-visible:ring-border-focus;
+  }
+
+  .btn-ghost {
+    @apply btn-base text-text-secondary hover:bg-background-tertiary hover:text-text-primary active:bg-background-elevated focus-visible:ring-border-focus;
+  }
+
+  .btn-danger {
+    @apply btn-base bg-status-error/10 text-status-error hover:bg-status-error/20 active:bg-status-error/30 focus-visible:ring-status-error;
+  }
+
+  /* Button sizes - improved padding and rounded corners */
+  .btn-xs {
+    @apply h-7 px-3 text-xs rounded-lg;
+  }
+
+  .btn-sm {
+    @apply h-8 px-4 text-sm rounded-lg;
+  }
+
+  .btn-md {
+    @apply h-9 px-5 text-sm rounded-lg;
+  }
+
+  .btn-lg {
+    @apply h-11 px-6 text-base rounded-xl;
+  }
+
+  /* Icon-only button */
+  .btn-icon {
+    @apply !px-0;
+  }
+
+  .btn-icon.btn-xs {
+    @apply w-7 rounded-lg;
+  }
+
+  .btn-icon.btn-sm {
+    @apply w-8 rounded-lg;
+  }
+
+  .btn-icon.btn-md {
+    @apply w-9 rounded-lg;
+  }
+
+  .btn-icon.btn-lg {
+    @apply w-11 rounded-xl;
+  }
+
+  /* ===== INPUTS ===== */
+  .input {
+    @apply w-full bg-background-primary border border-border-primary rounded-lg text-text-primary text-sm placeholder-text-muted focus:outline-none focus:border-oak-primary focus:ring-1 focus:ring-oak-primary disabled:opacity-50 disabled:cursor-not-allowed transition-colors duration-150;
+  }
+
+  /* Dark mode input background */
+  .dark .input {
+    @apply bg-background-secondary;
+  }
+
+  .input-xs {
+    @apply h-7 px-3 text-xs rounded-lg;
+  }
+
+  .input-sm {
+    @apply h-8 px-3 text-sm rounded-lg;
+  }
+
+  .input-md {
+    @apply h-9 px-3.5 text-sm rounded-lg;
+  }
+
+  .input-lg {
+    @apply h-10 px-4 text-base rounded-lg;
+  }
+
+  .input-error {
+    @apply border-status-error/50 focus:border-status-error focus:ring-status-error/50;
+  }
+
+  /* ===== LABELS ===== */
+  .label {
+    @apply block text-xs font-medium text-text-secondary mb-1.5;
+  }
+
+  .label-sm {
+    @apply text-2xs mb-1;
+  }
+
+  /* ===== CARDS ===== */
+  .card {
+    @apply bg-background-elevated border border-border-primary rounded-xl shadow-elevation-1 p-4;
+  }
+
+  .dark .card {
+    @apply bg-background-secondary shadow-none;
+  }
+
+  .card-compact {
+    @apply p-3;
+  }
+
+  .card-elevated {
+    @apply bg-background-elevated border border-border-secondary rounded-xl shadow-elevation-2;
+  }
+
+  .card-sm {
+    @apply rounded-lg;
+  }
+
+  .card-interactive {
+    @apply cursor-pointer transition-all duration-150;
+  }
+
+  .card-interactive:hover {
+    @apply border-border-secondary shadow-elevation-2;
+  }
+
+  .dark .card-interactive:hover {
+    @apply border-border-secondary;
+  }
+
+  /* ===== BADGES ===== */
+  .badge {
+    @apply inline-flex items-center justify-center px-2.5 py-1 rounded-md text-xs font-medium whitespace-nowrap;
+    line-height: 1;
+    vertical-align: middle;
+  }
+
+  .badge-sm {
+    @apply px-2 py-0.5 text-2xs;
+  }
+
+  .badge-lg {
+    @apply px-3 py-1.5 text-sm;
+  }
+
+  .badge-success {
+    @apply bg-status-success/15 text-status-success;
+  }
+
+  .badge-warning {
+    @apply bg-status-warning/15 text-status-warning;
+  }
+
+  .badge-error {
+    @apply bg-status-error/15 text-status-error;
+  }
+
+  .badge-info {
+    @apply bg-status-info/15 text-status-info;
+  }
+
+  .badge-neutral {
+    @apply bg-background-tertiary text-text-secondary;
+  }
+
+  .badge-primary {
+    @apply bg-oak-primary/15 text-oak-light;
+  }
+
+  .dark .badge-neutral {
+    @apply bg-background-elevated;
+  }
+
+  /* ===== TABLES ===== */
+  .table-container {
+    @apply overflow-x-auto rounded-xl border border-border-primary bg-background-elevated shadow-elevation-1;
+  }
+
+  .dark .table-container {
+    @apply bg-background-secondary shadow-none;
+  }
+
+  .table {
+    @apply w-full text-sm;
+  }
+
+  .table thead {
+    @apply bg-background-tertiary;
+  }
+
+  .table th {
+    @apply px-4 py-2.5 text-left text-xs font-medium text-text-secondary whitespace-nowrap;
+  }
+
+  .table tbody tr {
+    @apply border-t border-border-primary hover:bg-background-tertiary transition-colors;
+  }
+
+  .table td {
+    @apply px-4 py-3 text-sm text-text-primary;
+  }
+
+  /* Compact table for dense data (audit logs, processing) */
+  .table-compact th {
+    @apply px-3 py-2;
+  }
+
+  .table-compact td {
+    @apply px-3 py-2;
+  }
+
+  /* Extra dense table for very tight layouts */
+  .table-dense th {
+    @apply px-2 py-1.5;
+  }
+
+  .table-dense td {
+    @apply px-2 py-1.5;
+  }
+
+  /* ===== NAVIGATION ===== */
+  .nav-item {
+    @apply flex items-center gap-2.5 px-3 py-2 rounded text-sm text-text-secondary hover:bg-background-tertiary hover:text-text-primary transition-colors;
+  }
+
+  .nav-item-active {
+    @apply bg-oak-primary/10 text-oak-light;
+  }
+
+  /* ===== MODALS ===== */
+  .modal-overlay {
+    @apply fixed inset-0 bg-black/40 backdrop-blur-sm z-50;
+  }
+
+  .dark .modal-overlay {
+    @apply bg-black/60;
+  }
+
+  .modal-content {
+    @apply fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-background-elevated border border-border-primary rounded-2xl shadow-elevation-3 z-50 max-h-[85vh] overflow-auto;
+  }
+
+  /* ===== DROPDOWNS ===== */
+  .dropdown-menu {
+    @apply absolute right-0 mt-1.5 w-48 py-1.5 rounded-xl bg-background-elevated border border-border-primary shadow-elevation-2 z-50;
+  }
+
+  .dropdown-item {
+    @apply flex items-center gap-2.5 px-3 py-2 text-sm text-text-primary hover:bg-background-tertiary transition-colors cursor-pointer;
+  }
+
+  /* ===== TABS ===== */
+  .tab {
+    @apply px-4 py-2 text-sm font-medium text-text-secondary border-b-2 border-transparent hover:text-text-primary hover:border-border-secondary transition-colors;
+  }
+
+  .tab-active {
+    @apply text-oak-light border-oak-primary;
+  }
+
+  /* ===== UTILITIES ===== */
+  .skeleton {
+    @apply animate-pulse bg-background-tertiary rounded;
+  }
+
+  .dark .skeleton {
+    @apply bg-background-elevated;
+  }
+
+  .divider {
+    @apply border-t border-border-primary;
+  }
+
+  .section-title {
+    @apply text-xs font-semibold text-text-tertiary uppercase tracking-wider;
+  }
+}
+
+@layer utilities {
+
+  /* Screen reader only - visually hidden but accessible */
+  .sr-only {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border-width: 0;
+  }
+
+  /* Make sr-only content visible on focus (for skip links) */
+  .sr-only-focusable:focus,
+  .sr-only-focusable:focus-within {
+    position: static;
+    width: auto;
+    height: auto;
+    padding: inherit;
+    margin: inherit;
+    overflow: visible;
+    clip: auto;
+    white-space: normal;
+  }
+
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  .animate-fade-in {
+    animation: fadeIn 0.15s ease-out;
+  }
+
+  @keyframes fadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(-2px);
+    }
+
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .animate-slide-in-left {
+    animation: slideInLeft 0.2s ease-out;
+  }
+
+  @keyframes slideInLeft {
+    from {
+      opacity: 0;
+      transform: translateX(-100%);
+    }
+
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+
+  .animate-slide-in-right {
+    animation: slideInRight 0.2s ease-out;
+  }
+
+  @keyframes slideInRight {
+    from {
+      opacity: 0;
+      transform: translateX(100%);
+    }
+
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+
+  /* Smooth focus ring */
+  .focus-ring {
+    @apply focus:outline-none focus-visible:ring-2 focus-visible:ring-oak-primary/50 focus-visible:ring-offset-1 focus-visible:ring-offset-background-primary;
+  }
+
+  /* ===== RICH TEXT EDITOR ===== */
+  .rich-text-content ul,
+  .rich-text-content ol {
+    padding-left: 1.5rem;
+    margin: 0.5rem 0;
+    font: inherit;
+  }
+
+  .rich-text-content ul {
+    list-style-type: disc;
+  }
+
+  .rich-text-content ol {
+    list-style-type: decimal;
+  }
+
+  /* Alphabet list with a) b) c) format using CSS counters */
+  .rich-text-content ol.list-alpha {
+    /* Use CSS variable --list-start for offset (set by JS when start > 1) */
+    counter-reset: alpha-counter var(--list-start, 0);
+    list-style-type: none;
+    padding-left: 1.5rem;
+  }
+
+  .rich-text-content ol.list-alpha>li {
+    counter-increment: alpha-counter;
+    position: relative;
+  }
+
+  .rich-text-content ol.list-alpha>li::before {
+    content: counter(alpha-counter, lower-alpha) ") ";
+    position: absolute;
+    left: -1.5rem;
+    font-family: inherit;
+    font-size: inherit;
+  }
+
+  /* Ensure list markers inherit font */
+  .rich-text-content li::marker {
+    font-family: inherit;
+    font-size: inherit;
+  }
+
+  .rich-text-content li {
+    margin: 0.25rem 0;
+  }
+
+  /* Nested lists styling */
+  .rich-text-content li>ul,
+  .rich-text-content li>ol {
+    margin: 0.25rem 0;
+  }
+
+  .rich-text-content li p {
+    margin: 0;
+  }
+
+  .rich-text-content em {
+    font-style: italic;
+  }
+
+  .rich-text-content strong {
+    font-weight: 600;
+  }
+
+  .rich-text-content u {
+    text-decoration: underline;
+  }
+
+  .rich-text-content s {
+    text-decoration: line-through;
+  }
+
+  .rich-text-content a {
+    color: var(--oak-primary);
+    text-decoration: underline;
+  }
+
+  .rich-text-content p {
+    margin: 0.25rem 0;
+  }
+
+  .rich-text-content hr {
+    border: none;
+    border-top: 1px solid var(--border-primary);
+    margin: 1rem 0;
+  }
+
+  /* Rendered form rich text (outside editor) */
+  .form-rich-render p {
+    margin: 0;
+  }
+
+  .form-rich-render p + p {
+    margin-top: 0.75rem;
+  }
+
+  .form-rich-render p:empty::before {
+    content: '\00a0';
+  }
+
+  .faq-rich-header p {
+    margin: 0;
+  }
+
+  .form-rich-render ul,
+  .form-rich-render ol {
+    padding-left: 1.25rem;
+    margin: 0.75rem 0;
+  }
+
+  .form-rich-render ul {
+    list-style-type: disc;
+  }
+
+  .form-rich-render ol {
+    list-style-type: decimal;
+  }
+
+  .form-rich-render li + li {
+    margin-top: 0.2rem;
+  }
+
+  .form-rich-render a {
+    text-decoration: underline;
+  }
+}
+
+/* Page Break Visual Styles */
+.page-break {
+  /* Screen: Show visual indicator */
+  display: block;
+  width: 100%;
+  height: 0;
+  margin: 1rem 0;
+  border: none;
+  border-top: 2px dashed var(--oak-primary, #294d44);
+  position: relative;
+}
+
+.page-break::before {
+  content: 'Page Break';
+  position: absolute;
+  top: -10px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--bg-primary, white);
+  padding: 0 8px;
+  font-size: 10px;
+  color: var(--oak-primary, #294d44);
+  font-weight: 500;
+}
+
+/* Print: Apply actual page break */
+@media print {
+  .page-break {
+    page-break-before: always;
+    break-before: page;
+    border: none;
+    margin: 0;
+    padding: 0;
+    height: 0;
+  }
+
+  .page-break::before {
+    display: none;
+  }
+}
+
+/* Word editor: name each repeating section (Directors repeater, ...) while it
+   is hovered, as the editor already does for the control holding the caret. */
+.docx-content-control-chrome[data-tag^="repeat."][data-hover] .docx-content-control-label,
+.docx-content-control-chrome[data-alias$=" repeater"][data-hover] .docx-content-control-label {
+  display: block;
+}

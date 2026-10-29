@@ -1,0 +1,6 @@
+[mcp_servers.browsermcp]
+url = "http://127.0.0.1:3001/mcp"
+
+[mcp_servers.playwright]
+command = "npx"
+args = ["@playwright/mcp@latest"]

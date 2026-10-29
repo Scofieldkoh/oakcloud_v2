@@ -1,0 +1,13 @@
+node_modules
+.next
+.git
+*.log
+.env
+.env.*
+!.env.example
+docker-data
+tmp
+uploads
+tsconfig.tsbuildinfo
+tsc-*.txt
+forms-restore-backup

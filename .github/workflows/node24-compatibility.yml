@@ -1,0 +1,127 @@
+name: Node 24 compatibility
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: node24-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  node24:
+    name: Node 24 static and build checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      # Parse-only URL for Prisma/Next build steps; no database connection is made.
+      DATABASE_URL: postgresql://oakcloud:oakcloud_password@127.0.0.1:5432/oakcloud
+      # Build-only placeholders; production secrets are injected by Compose.
+      JWT_SECRET: ci-only-build-secret-that-is-not-used-at-runtime-and-is-long-enough
+      ENCRYPTION_KEY: ci-only-build-encryption-key
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node 24
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Guard P16 production gates
+        if: github.event_name == 'pull_request' && startsWith(github.head_ref, 'feat/p16-')
+        run: >-
+          node scripts/check-business-assistant-p16-production-gates.mjs
+          --base "${{ github.event.pull_request.base.sha }}"
+          --head "${{ github.event.pull_request.head.sha }}"
+
+      - name: Verify runtime major
+        run: node -e "if (Number(process.versions.node.split('.')[0]) !== 24) process.exit(1)"
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Check committed assistant registry freshness
+        run: npm run check:assistant-capabilities
+
+      - name: Generate Prisma client
+        run: npm run db:generate
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Test P16 evidence contract
+        run: npm run test:p16:evidence
+
+      - name: Test Chromium path resolution
+        run: npm run test:run -- __tests__/lib/chrome-executable.test.ts --reporter=dot
+
+      - name: Test document generation batch and field persistence contracts
+        run: npm run test:run -- __tests__/components/documents/generation-batch/batch-workflow-ack.test.ts tests/lib/field-definition-persistence.test.ts __tests__/services/document-export-oakdoc-dispatch.test.ts --reporter=dot
+
+      - name: Test business assistant and BizFile contracts
+        run: npm run test:run -- __tests__/services/business-assistant __tests__/api/business-assistant __tests__/services/bizfile __tests__/api/bizfile __tests__/lib/fresh-authorization.test.ts __tests__/middleware.test.ts --reporter=dot
+
+      - name: Build application
+        env:
+          # The production Next build is known to exceed Node's default ~4 GB heap during validation.
+          NODE_OPTIONS: --max-old-space-size=8192
+        run: npm run build
+
+  assistant-authorization:
+    name: Business Assistant PostgreSQL recovery and authorization
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: assistant_test
+          POSTGRES_PASSWORD: assistant-test-only
+          POSTGRES_DB: business_assistant_test
+        ports:
+          - 55439:5432
+        options: >-
+          --health-cmd "pg_isready -U assistant_test -d business_assistant_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://assistant_test:assistant-test-only@127.0.0.1:55439/business_assistant_test
+      BUSINESS_ASSISTANT_TEST_DATABASE_URL: postgresql://assistant_test:assistant-test-only@127.0.0.1:55439/business_assistant_test
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+      - name: Set up Node 24
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Check committed assistant registry freshness
+        run: npm run check:assistant-capabilities
+      - name: Generate Prisma client
+        run: npm run db:generate
+      - name: Verify isolated test database configuration
+        run: node scripts/require-business-assistant-test-env.mjs
+      - name: Apply migrations to the disposable test database
+        run: npx prisma migrate deploy
+      - name: Test durable worker and concurrent authorization changes
+        run: npm run test:business-assistant:postgres
+      - name: Test document generation batch persistence
+        env:
+          TEST_DATABASE_URL: postgresql://assistant_test:assistant-test-only@127.0.0.1:55439/business_assistant_test
+        run: npx vitest run __tests__/integration/document-generation-batch.postgres.test.ts --maxWorkers=1

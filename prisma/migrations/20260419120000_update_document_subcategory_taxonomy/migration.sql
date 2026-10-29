@@ -1,0 +1,69 @@
+-- Add per-category catch-all sub-categories and remove deprecated tax-specific values.
+-- Existing TAX_INVOICE / WITHHOLDING_TAX revisions are remapped into OTHERS_TAX_COMPLIANCE.
+
+ALTER TYPE "public"."DocumentSubCategory" RENAME TO "DocumentSubCategory_old";
+
+CREATE TYPE "public"."DocumentSubCategory" AS ENUM (
+  'VENDOR_INVOICE',
+  'VENDOR_CREDIT_NOTE',
+  'PURCHASE_ORDER',
+  'DELIVERY_NOTE',
+  'VENDOR_STATEMENT',
+  'VENDOR_QUOTATION',
+  'OTHERS_ACCOUNTS_PAYABLE',
+  'SALES_INVOICE',
+  'SALES_CREDIT_NOTE',
+  'SALES_ORDER',
+  'DELIVERY_ORDER',
+  'CUSTOMER_STATEMENT',
+  'OTHERS_ACCOUNTS_RECEIVABLE',
+  'BANK_STATEMENT',
+  'BANK_ADVICE',
+  'PAYMENT_VOUCHER',
+  'RECEIPT_VOUCHER',
+  'LOAN_DOCUMENT',
+  'OTHERS_TREASURY',
+  'GST_RETURN',
+  'INCOME_TAX',
+  'OTHERS_TAX_COMPLIANCE',
+  'PAYSLIP',
+  'CPF_SUBMISSION',
+  'IR8A',
+  'EXPENSE_CLAIM',
+  'OTHERS_PAYROLL',
+  'BIZFILE',
+  'RESOLUTION',
+  'REGISTER',
+  'INCORPORATION',
+  'ANNUAL_RETURN',
+  'MEETING_MINUTES',
+  'OTHERS_CORPORATE_SECRETARIAL',
+  'VENDOR_CONTRACT',
+  'CUSTOMER_CONTRACT',
+  'EMPLOYMENT_CONTRACT',
+  'LEASE_AGREEMENT',
+  'OTHERS_CONTRACTS',
+  'FINANCIAL_STATEMENT',
+  'MANAGEMENT_REPORT',
+  'AUDIT_REPORT',
+  'OTHERS_FINANCIAL_REPORTS',
+  'INSURANCE_POLICY',
+  'INSURANCE_CLAIM',
+  'OTHERS_INSURANCE',
+  'LETTER',
+  'EMAIL',
+  'OTHERS_CORRESPONDENCE',
+  'MISCELLANEOUS',
+  'SUPPORTING_DOCUMENT'
+);
+
+ALTER TABLE "public"."document_revisions"
+ALTER COLUMN "document_sub_category" TYPE "public"."DocumentSubCategory"
+USING (
+  CASE
+    WHEN "document_sub_category"::text IN ('WITHHOLDING_TAX', 'TAX_INVOICE') THEN 'OTHERS_TAX_COMPLIANCE'
+    ELSE "document_sub_category"::text
+  END
+)::"public"."DocumentSubCategory";
+
+DROP TYPE "public"."DocumentSubCategory_old";

@@ -1,0 +1,3959 @@
+{
+  "edition": "SSIC 2025",
+  "sourceFile": "SSIC-2025.csv",
+  "sourceUrl": "https://assets.app.optical.gov.sg/singstat/production/published/assets/603e56e4-d7b3-416e-91fa-24ec2e6ab54f.pdf",
+  "options": [
+    {
+      "value": "01111",
+      "label": "01111 - Growing of leafy and fruit vegetables (non-hydroponics)"
+    },
+    {
+      "value": "01112",
+      "label": "01112 - Growing of mushrooms (non-hydroponics)"
+    },
+    {
+      "value": "01119",
+      "label": "01119 - Growing of food crops (non-hydroponics) n.e.c."
+    },
+    {
+      "value": "01120",
+      "label": "01120 - Growing of leafy and fruit vegetables (hydroponics)"
+    },
+    {
+      "value": "01130",
+      "label": "01130 - Growing of fruits and nuts (except legumes)"
+    },
+    {
+      "value": "01141",
+      "label": "01141 - Growing of orchids"
+    },
+    {
+      "value": "01142",
+      "label": "01142 - Growing of ornamental plants"
+    },
+    {
+      "value": "01149",
+      "label": "01149 - Growing of nursery products n.e.c."
+    },
+    {
+      "value": "01190",
+      "label": "01190 - Growing of other crops"
+    },
+    {
+      "value": "01410",
+      "label": "01410 - Cattle and goat farms (for livestock and milk production)"
+    },
+    {
+      "value": "01421",
+      "label": "01421 - Rearing of poultry (except layer farms)"
+    },
+    {
+      "value": "01422",
+      "label": "01422 - Layer farms (chickens reared for eggs)"
+    },
+    {
+      "value": "01491",
+      "label": "01491 - Dog breeding"
+    },
+    {
+      "value": "01492",
+      "label": "01492 - Bird breeding"
+    },
+    {
+      "value": "01499",
+      "label": "01499 - Other animal production n.e.c."
+    },
+    {
+      "value": "01500",
+      "label": "01500 - Growing of crops combined with animal production (mixed farming)"
+    },
+    {
+      "value": "01600",
+      "label": "01600 - Agricultural and animal husbandry service activities (except veterinary activities)"
+    },
+    {
+      "value": "02000",
+      "label": "02000 - Forestry, logging and related service activities"
+    },
+    {
+      "value": "03101",
+      "label": "03101 - Ocean, coastal and kelong fishing"
+    },
+    {
+      "value": "03109",
+      "label": "03109 - Fishing n.e.c."
+    },
+    {
+      "value": "03201",
+      "label": "03201 - Food fish farms and food fish hatcheries"
+    },
+    {
+      "value": "03202",
+      "label": "03202 - Ornamental fish farms and ornamental fish hatcheries"
+    },
+    {
+      "value": "03209",
+      "label": "03209 - Aquaculture n.e.c."
+    },
+    {
+      "value": "08101",
+      "label": "08101 - Stone quarrying"
+    },
+    {
+      "value": "08102",
+      "label": "08102 - Quarrying of sand and clay"
+    },
+    {
+      "value": "08900",
+      "label": "08900 - Other mining and quarrying"
+    },
+    {
+      "value": "09001",
+      "label": "09001 - Crude petroleum and natural gas production"
+    },
+    {
+      "value": "09002",
+      "label": "09002 - Service activities incidental to oil and gas extraction (except surveying and engineering design and consultancy services supporting mining, oil and gas extraction and offshore exploration activities)"
+    },
+    {
+      "value": "10101",
+      "label": "10101 - Slaughtering of livestock and poultry"
+    },
+    {
+      "value": "10102",
+      "label": "10102 - Manufacture of sausage"
+    },
+    {
+      "value": "10103",
+      "label": "10103 - Preparing, canning and preserving of livestock and livestock products"
+    },
+    {
+      "value": "10104",
+      "label": "10104 - Preparing, canning and preserving of poultry and poultry products"
+    },
+    {
+      "value": "10109",
+      "label": "10109 - Processing and preserving of meat and meat products n.e.c."
+    },
+    {
+      "value": "10200",
+      "label": "10200 - Processing and preserving of seafood"
+    },
+    {
+      "value": "10301",
+      "label": "10301 - Manufacture of jams"
+    },
+    {
+      "value": "10302",
+      "label": "10302 - Other canning and preserving of fruits and fruit juices"
+    },
+    {
+      "value": "10303",
+      "label": "10303 - Other canning and preserving of vegetables and vegetable juices "
+    },
+    {
+      "value": "10401",
+      "label": "10401 - Manufacture of edible vegetable and animal oils and fats"
+    },
+    {
+      "value": "10402",
+      "label": "10402 - Manufacture of inedible vegetable and animal oils and fats"
+    },
+    {
+      "value": "10409",
+      "label": "10409 - Manufacture of vegetable and animal oils and fats n.e.c."
+    },
+    {
+      "value": "10501",
+      "label": "10501 - Manufacture of condensed and evaporated milk; pasteurising and bottling of fluid milk"
+    },
+    {
+      "value": "10502",
+      "label": "10502 - Manufacture of milk powder"
+    },
+    {
+      "value": "10503",
+      "label": "10503 - Manufacture of ice-cream"
+    },
+    {
+      "value": "10509",
+      "label": "10509 - Manufacture of dairy products n.e.c."
+    },
+    {
+      "value": "10611",
+      "label": "10611 - Rice milling"
+    },
+    {
+      "value": "10612",
+      "label": "10612 - Wheat milling"
+    },
+    {
+      "value": "10619",
+      "label": "10619 - Manufacture of grain mill products n.e.c."
+    },
+    {
+      "value": "10620",
+      "label": "10620 - Manufacture of starches and starch products"
+    },
+    {
+      "value": "10711",
+      "label": "10711 - Manufacture of biscuits"
+    },
+    {
+      "value": "10712",
+      "label": "10712 - Manufacture of bread, cakes and confectionery (except frozen bakery products)"
+    },
+    {
+      "value": "10719",
+      "label": "10719 - Manufacture of bakery products n.e.c."
+    },
+    {
+      "value": "10720",
+      "label": "10720 - Manufacture of sugar and sugar products"
+    },
+    {
+      "value": "10731",
+      "label": "10731 - Manufacture of cocoa and chocolate powder from beans"
+    },
+    {
+      "value": "10732",
+      "label": "10732 - Manufacture of chocolate and chocolate products"
+    },
+    {
+      "value": "10733",
+      "label": "10733 - Manufacture of non-chocolate confectionery"
+    },
+    {
+      "value": "10740",
+      "label": "10740 - Manufacture of macaroni, noodles, vermicelli and other related products"
+    },
+    {
+      "value": "10750",
+      "label": "10750 - Manufacture of prepared meals and dishes"
+    },
+    {
+      "value": "10761",
+      "label": "10761 - Manufacture of instant beverages"
+    },
+    {
+      "value": "10762",
+      "label": "10762 - Processing of coffee seeds"
+    },
+    {
+      "value": "10763",
+      "label": "10763 - Manufacture of coffee powder"
+    },
+    {
+      "value": "10764",
+      "label": "10764 - Manufacture of tea; processing of tea leaves"
+    },
+    {
+      "value": "10791",
+      "label": "10791 - Manufacture of sauces"
+    },
+    {
+      "value": "10792",
+      "label": "10792 - Manufacture of soya bean products (except soy-based meat alternatives, sauce and milk)"
+    },
+    {
+      "value": "10793",
+      "label": "10793 - Manufacture and processing of spices"
+    },
+    {
+      "value": "10794",
+      "label": "10794 - Manufacture of chips, crackers and other titbits (except biscuits and confectionery)"
+    },
+    {
+      "value": "10795",
+      "label": "10795 - Manufacture of plant-based/microbial-fermented/cell-cultivated food products"
+    },
+    {
+      "value": "10799",
+      "label": "10799 - Manufacture of other food products n.e.c. (except food chemicals and additives)"
+    },
+    {
+      "value": "10800",
+      "label": "10800 - Manufacture of prepared animal feeds"
+    },
+    {
+      "value": "11010",
+      "label": "11010 - Distilling, rectifying and blending of spirits; ethyl alcohol production from fermented materials"
+    },
+    {
+      "value": "11020",
+      "label": "11020 - Manufacture of wines"
+    },
+    {
+      "value": "11030",
+      "label": "11030 - Manufacture of malt liquors and malt"
+    },
+    {
+      "value": "11041",
+      "label": "11041 - Manufacture of soft drinks and mineral waters"
+    },
+    {
+      "value": "11042",
+      "label": "11042 - Manufacture of cordials, syrups and composite concentrates for beverages"
+    },
+    {
+      "value": "11043",
+      "label": "11043 - Manufacture of ice (except dry ice)"
+    },
+    {
+      "value": "12001",
+      "label": "12001 - Manufacture of cigarettes"
+    },
+    {
+      "value": "12009",
+      "label": "12009 - Manufacture of tobacco products n.e.c."
+    },
+    {
+      "value": "13100",
+      "label": "13100 - Spinning, weaving and finishing of textiles"
+    },
+    {
+      "value": "13910",
+      "label": "13910 - Manufacture of knitted and crocheted fabrics and laces"
+    },
+    {
+      "value": "13921",
+      "label": "13921 - Manufacture of made-up household textile articles "
+    },
+    {
+      "value": "13929",
+      "label": "13929 - Manufacture of made-up textile articles n.e.c  (except apparel) "
+    },
+    {
+      "value": "13930",
+      "label": "13930 - Manufacture of carpets and rugs"
+    },
+    {
+      "value": "13940",
+      "label": "13940 - Manufacture of cordage, rope, twine and netting"
+    },
+    {
+      "value": "13990",
+      "label": "13990 - Manufacture of other textiles n.e.c."
+    },
+    {
+      "value": "14101",
+      "label": "14101 - Manufacture of outer garments"
+    },
+    {
+      "value": "14102",
+      "label": "14102 - Manufacture of brassieres and other undergarments"
+    },
+    {
+      "value": "14103",
+      "label": "14103 - Tailoring and dressmaking to individual order"
+    },
+    {
+      "value": "14109",
+      "label": "14109 - Manufacture of wearing apparel n.e.c. (except fur apparel)"
+    },
+    {
+      "value": "14200",
+      "label": "14200 - Manufacture of fur apparel and articles of fur"
+    },
+    {
+      "value": "15110",
+      "label": "15110 - Tanning and dressing of leather; dressing and dyeing of fur"
+    },
+    {
+      "value": "15121",
+      "label": "15121 - Manufacture of luggage, bags, brief cases and the like"
+    },
+    {
+      "value": "15122",
+      "label": "15122 - Manufacture of handbags"
+    },
+    {
+      "value": "15129",
+      "label": "15129 - Manufacture of saddlery, harness and articles of leather n.e.c."
+    },
+    {
+      "value": "15200",
+      "label": "15200 - Manufacture of footwear"
+    },
+    {
+      "value": "16101",
+      "label": "16101 - Sawmilling"
+    },
+    {
+      "value": "16102",
+      "label": "16102 - Preservation of wood"
+    },
+    {
+      "value": "16109",
+      "label": "16109 - Sawmilling and planing of wood n.e.c."
+    },
+    {
+      "value": "16211",
+      "label": "16211 - Manufacture of plywood and veneer"
+    },
+    {
+      "value": "16219",
+      "label": "16219 - Manufacture of laminboard, particle board and other panels and boards n.e.c."
+    },
+    {
+      "value": "16291",
+      "label": "16291 - Manufacture of wooden window, door and other millwork (except prefabricated wooden building structures)"
+    },
+    {
+      "value": "16292",
+      "label": "16292 - Manufacture of household and kitchen wooden ware (except wooden footwear)"
+    },
+    {
+      "value": "16293",
+      "label": "16293 - Manufacture of wooden containers"
+    },
+    {
+      "value": "16294",
+      "label": "16294 - Rattan processing"
+    },
+    {
+      "value": "16299",
+      "label": "16299 - Manufacture of other products of wood and articles of cork, straw and plaiting materials n.e.c."
+    },
+    {
+      "value": "17010",
+      "label": "17010 - Manufacture of pulp, paper and paperboard"
+    },
+    {
+      "value": "17021",
+      "label": "17021 - Manufacture of corrugated paper and paperboard"
+    },
+    {
+      "value": "17022",
+      "label": "17022 - Manufacture of containers and boxes of paper and paperboard"
+    },
+    {
+      "value": "17091",
+      "label": "17091 - Manufacture of joss paper and other related ceremonial paper products"
+    },
+    {
+      "value": "17092",
+      "label": "17092 - Manufacture of sanitary towels, toilet paper, paper towels, disposable diapers and related paper products"
+    },
+    {
+      "value": "17093",
+      "label": "17093 - Manufacture of paper cups, plates and utensils"
+    },
+    {
+      "value": "17094",
+      "label": "17094 - Manufacture of unprinted cards, envelopes and stationery"
+    },
+    {
+      "value": "17099",
+      "label": "17099 - Manufacture of other articles of paper and paperboard n.e.c."
+    },
+    {
+      "value": "18111",
+      "label": "18111 - Printing of periodicals, books and magazines"
+    },
+    {
+      "value": "18112",
+      "label": "18112 - Commercial printing"
+    },
+    {
+      "value": "18113",
+      "label": "18113 - Silk screen/metal printing"
+    },
+    {
+      "value": "18121",
+      "label": "18121 - Bookbinding"
+    },
+    {
+      "value": "18122",
+      "label": "18122 - Colour separation"
+    },
+    {
+      "value": "18129",
+      "label": "18129 - Service activities related to printing n.e.c."
+    },
+    {
+      "value": "18200",
+      "label": "18200 - Reproduction of recorded media/phonograph records/magnetic tapes/compact discs/non-customised software"
+    },
+    {
+      "value": "19100",
+      "label": "19100 - Manufacture of coke oven products"
+    },
+    {
+      "value": "19201",
+      "label": "19201 - Petroleum refineries"
+    },
+    {
+      "value": "19202",
+      "label": "19202 - Manufacture of petroleum lubricating oil"
+    },
+    {
+      "value": "19209",
+      "label": "19209 - Manufacture of refined petroleum products n.e.c."
+    },
+    {
+      "value": "20111",
+      "label": "20111 - Manufacture of industrial gases and dry ice"
+    },
+    {
+      "value": "20112",
+      "label": "20112 - Manufacture of basic industrial acids and alkalis"
+    },
+    {
+      "value": "20113",
+      "label": "20113 - Manufacture of basic chemicals (except fertilisers and nitrogen)"
+    },
+    {
+      "value": "20114",
+      "label": "20114 - Manufacture of solvents"
+    },
+    {
+      "value": "20119",
+      "label": "20119 - Manufacture of basic chemicals n.e.c."
+    },
+    {
+      "value": "20120",
+      "label": "20120 - Manufacture of fertilisers and nitrogen compounds"
+    },
+    {
+      "value": "20131",
+      "label": "20131 - Manufacture of petrochemical primary products"
+    },
+    {
+      "value": "20132",
+      "label": "20132 - Manufacture of derivatives and intermediates produced from basic building blocks"
+    },
+    {
+      "value": "20133",
+      "label": "20133 - Manufacture of synthetic rubber"
+    },
+    {
+      "value": "20210",
+      "label": "20210 - Manufacture of pesticides and other agro-chemical products"
+    },
+    {
+      "value": "20221",
+      "label": "20221 - Manufacture of paints"
+    },
+    {
+      "value": "20222",
+      "label": "20222 - Manufacture of varnishes and lacquers"
+    },
+    {
+      "value": "20223",
+      "label": "20223 - Manufacture of printing ink, prepared pigments and dyes"
+    },
+    {
+      "value": "20229",
+      "label": "20229 - Manufacture of paints, varnishes and similar coatings, printing ink and mastics n.e.c."
+    },
+    {
+      "value": "20231",
+      "label": "20231 - Manufacture of soap, detergents, washing and other cleaning preparations"
+    },
+    {
+      "value": "20232",
+      "label": "20232 - Manufacture of perfumes and fragrances"
+    },
+    {
+      "value": "20233",
+      "label": "20233 - Manufacture of cosmetics and toiletries"
+    },
+    {
+      "value": "20234",
+      "label": "20234 - Manufacture of waxes and polishes and deodorising preparations"
+    },
+    {
+      "value": "20241",
+      "label": "20241 - Manufacture of food chemicals and additives"
+    },
+    {
+      "value": "20242",
+      "label": "20242 - Manufacture of additives for mineral oil"
+    },
+    {
+      "value": "20249",
+      "label": "20249 - Manufacture of additives n.e.c."
+    },
+    {
+      "value": "20291",
+      "label": "20291 - Manufacture of epoxy moulding compounds and phenolic moulding compounds"
+    },
+    {
+      "value": "20292",
+      "label": "20292 - Manufacture of ultrapure electronic chemicals, materials and laminates"
+    },
+    {
+      "value": "20293",
+      "label": "20293 - Manufacture of water treatment, waste treatment and oilfield chemicals"
+    },
+    {
+      "value": "20294",
+      "label": "20294 - Manufacture of writing and drawing inks"
+    },
+    {
+      "value": "20295",
+      "label": "20295 - Manufacture of photographic film, paper, plate and chemicals"
+    },
+    {
+      "value": "20296",
+      "label": "20296 - Manufacture of adhesives and sealants"
+    },
+    {
+      "value": "20297",
+      "label": "20297 - Manufacture of catalysts and catalyst regeneration"
+    },
+    {
+      "value": "20298",
+      "label": "20298 - Manufacture of biofuels"
+    },
+    {
+      "value": "20299",
+      "label": "20299 - Manufacture of other chemical products n.e.c."
+    },
+    {
+      "value": "20300",
+      "label": "20300 - Manufacture of man-made fibres (except glass)"
+    },
+    {
+      "value": "21011",
+      "label": "21011 - Manufacture of pharmaceutical intermediates and fine chemicals for human use"
+    },
+    {
+      "value": "21012",
+      "label": "21012 - Manufacture of pharmaceutical products and preparations for human use"
+    },
+    {
+      "value": "21013",
+      "label": "21013 - Manufacture of pharmaceutical products for veterinary use"
+    },
+    {
+      "value": "21021",
+      "label": "21021 - Manufacture of vaccines for human use"
+    },
+    {
+      "value": "21022",
+      "label": "21022 - Manufacture of other biological products and preparations for human use"
+    },
+    {
+      "value": "21023",
+      "label": "21023 - Manufacture of biological products and preparations for veterinary use"
+    },
+    {
+      "value": "21030",
+      "label": "21030 - Manufacture of Traditional Chinese Medicine"
+    },
+    {
+      "value": "22111",
+      "label": "22111 - Processing, grading and packing of rubber; processing of rubber latex"
+    },
+    {
+      "value": "22119",
+      "label": "22119 - Processing of natural gums n.e.c."
+    },
+    {
+      "value": "22121",
+      "label": "22121 - Manufacture of tyres and tubes"
+    },
+    {
+      "value": "22122",
+      "label": "22122 - Retreading and vulcanising of tyres"
+    },
+    {
+      "value": "22191",
+      "label": "22191 - Manufacture of foam rubber products (except foam rubber mattresses)"
+    },
+    {
+      "value": "22192",
+      "label": "22192 - Manufacture of rubber automotive parts"
+    },
+    {
+      "value": "22193",
+      "label": "22193 - Manufacture of industrial and mechanical rubber goods"
+    },
+    {
+      "value": "22194",
+      "label": "22194 - Manufacture of rubber floorings"
+    },
+    {
+      "value": "22199",
+      "label": "22199 - Manufacture of other rubber products n.e.c. (except rubber footwear and toys)"
+    },
+    {
+      "value": "22211",
+      "label": "22211 - Manufacture of plastic tableware, household and kitchen ware (except disposable utensils)"
+    },
+    {
+      "value": "22212",
+      "label": "22212 - Manufacture of styrofoam and plastic disposable utensils"
+    },
+    {
+      "value": "22213",
+      "label": "22213 - Manufacture of plastic sheet, film and articles thereof"
+    },
+    {
+      "value": "22214",
+      "label": "22214 - Manufacture of plastic bottles, boxes and containers (except for household use)"
+    },
+    {
+      "value": "22215",
+      "label": "22215 - Manufacture of plastic pipes and tubes"
+    },
+    {
+      "value": "22216",
+      "label": "22216 - Manufacture of plastic precision engineering parts"
+    },
+    {
+      "value": "22217",
+      "label": "22217 - Manufacture of PVC files, holders and albums"
+    },
+    {
+      "value": "22218",
+      "label": "22218 - Manufacture of plastic cable ties"
+    },
+    {
+      "value": "22219",
+      "label": "22219 - Manufacture of plastic products n.e.c. (except plastic footwear and toys)"
+    },
+    {
+      "value": "22220",
+      "label": "22220 - Plastic product services"
+    },
+    {
+      "value": "23100",
+      "label": "23100 - Manufacture of glass and glass products"
+    },
+    {
+      "value": "23910",
+      "label": "23910 - Manufacture of clay products"
+    },
+    {
+      "value": "23930",
+      "label": "23930 - Manufacture of other porcelain and ceramic products"
+    },
+    {
+      "value": "23940",
+      "label": "23940 - Manufacture of cement, lime and plaster"
+    },
+    {
+      "value": "23951",
+      "label": "23951 - Manufacture of ready-mix concrete"
+    },
+    {
+      "value": "23959",
+      "label": "23959 - Manufacture of articles of concrete, cement and plaster n.e.c. (except precast concrete components)"
+    },
+    {
+      "value": "23960",
+      "label": "23960 - Cutting, shaping and finishing of stone"
+    },
+    {
+      "value": "23991",
+      "label": "23991 - Manufacture of fibreglass and fibreglass products"
+    },
+    {
+      "value": "23992",
+      "label": "23992 - Manufacture of other insulation products"
+    },
+    {
+      "value": "23993",
+      "label": "23993 - Manufacture of non-structural pre-cast components"
+    },
+    {
+      "value": "23994",
+      "label": "23994 - Manufacture of asphalt premix"
+    },
+    {
+      "value": "23999",
+      "label": "23999 - Manufacture of other non-metallic mineral products n.e.c."
+    },
+    {
+      "value": "24101",
+      "label": "24101 - Iron and steel rolling mills"
+    },
+    {
+      "value": "24102",
+      "label": "24102 - Manufacture of ferrous metal alloys"
+    },
+    {
+      "value": "24109",
+      "label": "24109 - Manufacture of basic iron and steel n.e.c."
+    },
+    {
+      "value": "24201",
+      "label": "24201 - Manufacture of non-ferrous metal alloys"
+    },
+    {
+      "value": "24209",
+      "label": "24209 - Manufacture of basic precious and non-ferrous metals n.e.c."
+    },
+    {
+      "value": "24310",
+      "label": "24310 - Iron and steel foundries"
+    },
+    {
+      "value": "24320",
+      "label": "24320 - Non-ferrous metal foundries"
+    },
+    {
+      "value": "25111",
+      "label": "25111 - Manufacture of metal doors, window and door frames, grilles and gratings"
+    },
+    {
+      "value": "25112",
+      "label": "25112 - Manufacture of metal strips and slabs"
+    },
+    {
+      "value": "25113",
+      "label": "25113 - Manufacture of metal pipes and tubes"
+    },
+    {
+      "value": "25114",
+      "label": "25114 - Manufacture of steel structural component"
+    },
+    {
+      "value": "25119",
+      "label": "25119 - Manufacture of structural metal products n.e.c."
+    },
+    {
+      "value": "25120",
+      "label": "25120 - Manufacture/repair of tanks, reservoirs and containers of metal"
+    },
+    {
+      "value": "25131",
+      "label": "25131 - Manufacture/repair of heating boilers, radiators and correctors"
+    },
+    {
+      "value": "25139",
+      "label": "25139 - Manufacture/repair of steam generators n.e.c. (except central heating hot water boilers)"
+    },
+    {
+      "value": "25200",
+      "label": "25200 - Manufacture/repair of weapons and ammunition"
+    },
+    {
+      "value": "25911",
+      "label": "25911 - Iron and steel and non-ferrous forgings"
+    },
+    {
+      "value": "25912",
+      "label": "25912 - Manufacture of leadframe"
+    },
+    {
+      "value": "25913",
+      "label": "25913 - Metal stampings (except metal caps)"
+    },
+    {
+      "value": "25919",
+      "label": "25919 - Pressing and roll-forming of metal and powder metallurgy n.e.c."
+    },
+    {
+      "value": "25921",
+      "label": "25921 - Electroplating and plating of metals and formed products"
+    },
+    {
+      "value": "25922",
+      "label": "25922 - Polishing of metals and formed products"
+    },
+    {
+      "value": "25923",
+      "label": "25923 - Rustproofing of metals and formed products"
+    },
+    {
+      "value": "25924",
+      "label": "25924 - Heat treatment for metals"
+    },
+    {
+      "value": "25929",
+      "label": "25929 - Metal product services n.e.c."
+    },
+    {
+      "value": "25931",
+      "label": "25931 - Manufacture of table, kitchen and other cutlery"
+    },
+    {
+      "value": "25932",
+      "label": "25932 - Manufacture of hand and edge tools"
+    },
+    {
+      "value": "25939",
+      "label": "25939 - Manufacture of general hardware n.e.c."
+    },
+    {
+      "value": "25941",
+      "label": "25941 - Manufacture of uninsulated wire"
+    },
+    {
+      "value": "25949",
+      "label": "25949 - Manufacture of metal wire and cable products n.e.c."
+    },
+    {
+      "value": "25951",
+      "label": "25951 - Manufacture of tinplate cans"
+    },
+    {
+      "value": "25952",
+      "label": "25952 - Manufacture of other tinplate and zinc articles"
+    },
+    {
+      "value": "25959",
+      "label": "25959 - Manufacture of metal cans, containers and related products n.e.c."
+    },
+    {
+      "value": "25991",
+      "label": "25991 - Manufacture of sanitary ware of enamelled iron and metal and plumbers' ware of brass"
+    },
+    {
+      "value": "25992",
+      "label": "25992 - Manufacture of plumbing, heating and related products (except electric)"
+    },
+    {
+      "value": "25993",
+      "label": "25993 - Manufacture of bolts, nuts, rivets, fasteners and screw machine products"
+    },
+    {
+      "value": "25994",
+      "label": "25994 - Manufacture of pipe fittings"
+    },
+    {
+      "value": "25995",
+      "label": "25995 - Manufacture of springs"
+    },
+    {
+      "value": "25996",
+      "label": "25996 - Manufacture of kitchen and household utensils"
+    },
+    {
+      "value": "25997",
+      "label": "25997 - Manufacture of metal precision components"
+    },
+    {
+      "value": "25998",
+      "label": "25998 - Slitting, shearing and pasting of metal sheeting"
+    },
+    {
+      "value": "25999",
+      "label": "25999 - Manufacture of other fabricated metal products n.e.c."
+    },
+    {
+      "value": "26111",
+      "label": "26111 - Manufacture of discrete devices"
+    },
+    {
+      "value": "26112",
+      "label": "26112 - Semiconductor wafer fabrication"
+    },
+    {
+      "value": "26113",
+      "label": "26113 - Assembly and testing of semiconductors"
+    },
+    {
+      "value": "26114",
+      "label": "26114 - Manufacture of solar wafers"
+    },
+    {
+      "value": "26115",
+      "label": "26115 - Manufacture of solar cells"
+    },
+    {
+      "value": "26119",
+      "label": "26119 - Manufacture of semiconductor devices n.e.c."
+    },
+    {
+      "value": "26121",
+      "label": "26121 - Manufacture of capacitors"
+    },
+    {
+      "value": "26122",
+      "label": "26122 - Manufacture of printed circuit boards without electronic parts"
+    },
+    {
+      "value": "26123",
+      "label": "26123 - Manufacture of printed circuit boards with electronic parts"
+    },
+    {
+      "value": "26124",
+      "label": "26124 - Manufacture of piezo-electric devices"
+    },
+    {
+      "value": "26125",
+      "label": "26125 - Manufacture of electronic display devices (except light emitting diodes)"
+    },
+    {
+      "value": "26126",
+      "label": "26126 - Manufacture of electronic connectors"
+    },
+    {
+      "value": "26129",
+      "label": "26129 - Manufacture of other electronic components and boards n.e.c."
+    },
+    {
+      "value": "26201",
+      "label": "26201 - Manufacture of computers and data processing equipment (except computer peripheral equipment)"
+    },
+    {
+      "value": "26202",
+      "label": "26202 - Manufacture of disk drives"
+    },
+    {
+      "value": "26203",
+      "label": "26203 - Manufacture of printers"
+    },
+    {
+      "value": "26204",
+      "label": "26204 - Manufacture of smart cards and related products"
+    },
+    {
+      "value": "26209",
+      "label": "26209 - Manufacture of computers and peripheral equipment n.e.c."
+    },
+    {
+      "value": "26301",
+      "label": "26301 - Manufacture of telecommunications apparatus"
+    },
+    {
+      "value": "26302",
+      "label": "26302 - Manufacture of networking products"
+    },
+    {
+      "value": "26303",
+      "label": "26303 - Manufacture of wireless communications equipment"
+    },
+    {
+      "value": "26304",
+      "label": "26304 - Manufacture of electronic security systems"
+    },
+    {
+      "value": "26309",
+      "label": "26309 - Manufacture of communications equipment n.e.c."
+    },
+    {
+      "value": "26400",
+      "label": "26400 - Manufacture of consumer electronics"
+    },
+    {
+      "value": "26511",
+      "label": "26511 - Manufacture/repair of engineering and scientific instruments"
+    },
+    {
+      "value": "26512",
+      "label": "26512 - Manufacture/repair of measuring devices"
+    },
+    {
+      "value": "26513",
+      "label": "26513 - Manufacture/repair of process control equipment and related products"
+    },
+    {
+      "value": "26520",
+      "label": "26520 - Manufacture of watches and clocks"
+    },
+    {
+      "value": "26601",
+      "label": "26601 - Manufacture/repair of electrotherapeutic devices"
+    },
+    {
+      "value": "26602",
+      "label": "26602 - Manufacture/repair of irradiation and electromedical equipment and instruments"
+    },
+    {
+      "value": "26701",
+      "label": "26701 - Manufacture of photographic equipment and parts"
+    },
+    {
+      "value": "26709",
+      "label": "26709 - Manufacture of optical instruments and photographic equipment n.e.c."
+    },
+    {
+      "value": "26801",
+      "label": "26801 - Manufacture of disk media"
+    },
+    {
+      "value": "26802",
+      "label": "26802 - Manufacture of blank magnetic tapes, diskettes, Blu-ray technology discs, CDs, DVDs and VCDs"
+    },
+    {
+      "value": "27101",
+      "label": "27101 - Manufacture/repair of electric motors"
+    },
+    {
+      "value": "27102",
+      "label": "27102 - Manufacture/repair of electric generators"
+    },
+    {
+      "value": "27103",
+      "label": "27103 - Manufacture/repair of transformers"
+    },
+    {
+      "value": "27104",
+      "label": "27104 - Manufacture/repair of switchgear and switchboard apparatus"
+    },
+    {
+      "value": "27109",
+      "label": "27109 - Manufacture/repair of electric motors, generators, transformers and electricity distribution and control apparatus n.e.c."
+    },
+    {
+      "value": "27201",
+      "label": "27201 - Manufacture of primary batteries"
+    },
+    {
+      "value": "27202",
+      "label": "27202 - Manufacture of secondary batteries"
+    },
+    {
+      "value": "27321",
+      "label": "27321 - Manufacture of telecommunications cables and wires"
+    },
+    {
+      "value": "27322",
+      "label": "27322 - Manufacture of electric power cables and wires"
+    },
+    {
+      "value": "27323",
+      "label": "27323 - Manufacture of wire and cable assemblies and harnesses"
+    },
+    {
+      "value": "27329",
+      "label": "27329 - Manufacture of electronic and electric wires and cables n.e.c."
+    },
+    {
+      "value": "27330",
+      "label": "27330 - Manufacture/repair of wiring devices"
+    },
+    {
+      "value": "27400",
+      "label": "27400 - Manufacture/repair of electric lamps and lighting equipment"
+    },
+    {
+      "value": "27501",
+      "label": "27501 - Manufacture of electrical household appliances"
+    },
+    {
+      "value": "27509",
+      "label": "27509 - Manufacture of domestic appliances n.e.c."
+    },
+    {
+      "value": "27900",
+      "label": "27900 - Manufacture of other electrical equipment, apparatus, appliances and supplies "
+    },
+    {
+      "value": "28111",
+      "label": "28111 - Manufacture/repair of engines and turbines (except aircraft, vehicle, cycle and marine engines)"
+    },
+    {
+      "value": "28112",
+      "label": "28112 - Manufacture/repair of marine engine"
+    },
+    {
+      "value": "28121",
+      "label": "28121 - Manufacture/repair of pumps"
+    },
+    {
+      "value": "28122",
+      "label": "28122 - Manufacture/repair of taps, cocks and valves"
+    },
+    {
+      "value": "28129",
+      "label": "28129 - Manufacture/repair of pumps, compressors, taps and valves n.e.c."
+    },
+    {
+      "value": "28141",
+      "label": "28141 - Manufacture of bearings"
+    },
+    {
+      "value": "28142",
+      "label": "28142 - Manufacture/repair of gears, gearing and driving elements"
+    },
+    {
+      "value": "28150",
+      "label": "28150 - Manufacture/repair of ovens, furnaces and furnace burners"
+    },
+    {
+      "value": "28161",
+      "label": "28161 - Manufacture/repair of lifting and hoisting machinery (except electrical)"
+    },
+    {
+      "value": "28162",
+      "label": "28162 - Manufacture/repair of lifts and escalators"
+    },
+    {
+      "value": "28169",
+      "label": "28169 - Manufacture/repair of lifting and handling equipment n.e.c."
+    },
+    {
+      "value": "28171",
+      "label": "28171 - Manufacture of office machinery and equipment (except computers and peripheral equipment)"
+    },
+    {
+      "value": "28172",
+      "label": "28172 - Repair and maintenance of office machinery and equipment"
+    },
+    {
+      "value": "28181",
+      "label": "28181 - Manufacture/repair of industrial robots"
+    },
+    {
+      "value": "28182",
+      "label": "28182 - Manufacture/repair of service robots"
+    },
+    {
+      "value": "28189",
+      "label": "28189 - Manufacture/repair of robots n.e.c."
+    },
+    {
+      "value": "28191",
+      "label": "28191 - Manufacture/repair of refrigerating, air-conditioning and ventilating machinery and equipment (except household refrigerators)"
+    },
+    {
+      "value": "28192",
+      "label": "28192 - Manufacture/repair of separation/mixing equipment"
+    },
+    {
+      "value": "28193",
+      "label": "28193 - Manufacture/repair of solar modules and panels"
+    },
+    {
+      "value": "28194",
+      "label": "28194 - Manufacture/repair of welding and soldering equipment"
+    },
+    {
+      "value": "28195",
+      "label": "28195 - Manufacture/repair of packaging machinery"
+    },
+    {
+      "value": "28199",
+      "label": "28199 - Manufacture/repair of other general purpose machinery and equipment n.e.c. (except electrical and electronic)"
+    },
+    {
+      "value": "28210",
+      "label": "28210 - Manufacture/repair of agricultural and forestry machinery"
+    },
+    {
+      "value": "28221",
+      "label": "28221 - Manufacture/repair of machinery and machine-tools - metal cutting types"
+    },
+    {
+      "value": "28222",
+      "label": "28222 - Manufacture/repair of machinery and machine-tools - metal forming types"
+    },
+    {
+      "value": "28223",
+      "label": "28223 - Manufacture/repair of dies, moulds, tools, jigs and fixtures"
+    },
+    {
+      "value": "28224",
+      "label": "28224 - Manufacture/repair of machine tool accessories"
+    },
+    {
+      "value": "28229",
+      "label": "28229 - Manufacture/repair of metal-forming machinery and machine tools n.e.c."
+    },
+    {
+      "value": "28241",
+      "label": "28241 - Manufacture/repair of oil rigs"
+    },
+    {
+      "value": "28242",
+      "label": "28242 - Manufacture/repair of other oilfield and gasfield machinery and equipment"
+    },
+    {
+      "value": "28243",
+      "label": "28243 - Manufacture/repair of construction machinery and parts"
+    },
+    {
+      "value": "28249",
+      "label": "28249 - Manufacture/repair of machinery for mining, quarrying and construction n.e.c."
+    },
+    {
+      "value": "28251",
+      "label": "28251 - Manufacture/repair of machinery for food products processing"
+    },
+    {
+      "value": "28252",
+      "label": "28252 - Manufacture/repair of machinery for beverage production"
+    },
+    {
+      "value": "28253",
+      "label": "28253 - Manufacture/repair of machinery for tobacco processing"
+    },
+    {
+      "value": "28260",
+      "label": "28260 - Manufacture/repair of machinery for textile, apparel and leather production"
+    },
+    {
+      "value": "28271",
+      "label": "28271 - Manufacture of probe cards"
+    },
+    {
+      "value": "28272",
+      "label": "28272 - Manufacture of bonding tools"
+    },
+    {
+      "value": "28273",
+      "label": "28273 - Manufacture/repair of semiconductor assembly and testing equipment"
+    },
+    {
+      "value": "28274",
+      "label": "28274 - Manufacture/repair of semiconductor foundry equipment"
+    },
+    {
+      "value": "28291",
+      "label": "28291 - Manufacture/repair of water/waste water treatment equipment"
+    },
+    {
+      "value": "28292",
+      "label": "28292 - Manufacture/repair of plastic processing machinery"
+    },
+    {
+      "value": "28293",
+      "label": "28293 - Manufacture/repair of additive manufacturing (AM) equipment"
+    },
+    {
+      "value": "28299",
+      "label": "28299 - Manufacture/repair of other special purpose machinery n.e.c."
+    },
+    {
+      "value": "28300",
+      "label": "28300 - Installation of industrial machinery and equipment, mechanical engineering works"
+    },
+    {
+      "value": "29100",
+      "label": "29100 - Manufacture and assembly of motor vehicles (except motorcycles and scooters)"
+    },
+    {
+      "value": "29200",
+      "label": "29200 - Manufacture of motor vehicle bodies (coachwork), trailers and semi-trailers"
+    },
+    {
+      "value": "29300",
+      "label": "29300 - Manufacture of parts and accessories for motor vehicles"
+    },
+    {
+      "value": "30110",
+      "label": "30110 - Building and repairing of ships, tankers, off-shore structures and other ocean-going vessels"
+    },
+    {
+      "value": "30120",
+      "label": "30120 - Building and repair of pleasure crafts, lighters and boats"
+    },
+    {
+      "value": "30200",
+      "label": "30200 - Manufacture/repair of railway and tramway locomotives and rolling stock"
+    },
+    {
+      "value": "30301",
+      "label": "30301 - Manufacture and assembly of aircraft and spacecraft"
+    },
+    {
+      "value": "30302",
+      "label": "30302 - Repair and servicing of aircraft and spacecraft"
+    },
+    {
+      "value": "30400",
+      "label": "30400 - Manufacture/repair of military fighting vehicles"
+    },
+    {
+      "value": "30910",
+      "label": "30910 - Manufacture and assembly of motorcycles and scooters"
+    },
+    {
+      "value": "30920",
+      "label": "30920 - Manufacture and assembly of bicycles, tricycles, trishaws and invalid carriages"
+    },
+    {
+      "value": "30990",
+      "label": "30990 - Manufacture/repair of other transport equipment n.e.c."
+    },
+    {
+      "value": "31001",
+      "label": "31001 - Manufacture of furniture and fixtures of wood"
+    },
+    {
+      "value": "31002",
+      "label": "31002 - Manufacture of furniture of rattan and cane"
+    },
+    {
+      "value": "31003",
+      "label": "31003 - Manufacture of furniture and fixtures primarily of metal"
+    },
+    {
+      "value": "31004",
+      "label": "31004 - Manufacture of furniture of other materials (except primarily of stone, ceramic or concrete)"
+    },
+    {
+      "value": "31005",
+      "label": "31005 - Manufacture of window and door screens and shades"
+    },
+    {
+      "value": "31006",
+      "label": "31006 - Manufacture of mattresses"
+    },
+    {
+      "value": "31009",
+      "label": "31009 - Manufacture of furniture n.e.c."
+    },
+    {
+      "value": "32111",
+      "label": "32111 - Manufacture of jewellery (except costume jewellery)"
+    },
+    {
+      "value": "32119",
+      "label": "32119 - Manufacture of jewellery and related articles n.e.c. (except costume jewellery)"
+    },
+    {
+      "value": "32120",
+      "label": "32120 - Manufacture of costume jewellery and related articles"
+    },
+    {
+      "value": "32200",
+      "label": "32200 - Manufacture of musical instruments"
+    },
+    {
+      "value": "32300",
+      "label": "32300 - Manufacture of sporting and athletic goods"
+    },
+    {
+      "value": "32400",
+      "label": "32400 - Manufacture of games and toys"
+    },
+    {
+      "value": "32501",
+      "label": "32501 - Manufacture of medical research and clinical diagnostic instruments and supplies"
+    },
+    {
+      "value": "32502",
+      "label": "32502 - Manufacture of medical disposables and surgical supplies"
+    },
+    {
+      "value": "32503",
+      "label": "32503 - Manufacture of implantables and artificial limbs"
+    },
+    {
+      "value": "32504",
+      "label": "32504 - Manufacture of ophthalmic goods"
+    },
+    {
+      "value": "32509",
+      "label": "32509 - Manufacture of medical and dental instruments and supplies n.e.c."
+    },
+    {
+      "value": "32901",
+      "label": "32901 - Manufacture of signs and advertising displays"
+    },
+    {
+      "value": "32909",
+      "label": "32909 - Other manufacturing industries n.e.c."
+    },
+    {
+      "value": "35101",
+      "label": "35101 - Generation of electricity from non-renewable sources"
+    },
+    {
+      "value": "35102",
+      "label": "35102 - Generation of electricity from renewable sources"
+    },
+    {
+      "value": "35103",
+      "label": "35103 - Transmission, distribution and sale of electricity"
+    },
+    {
+      "value": "35200",
+      "label": "35200 - Manufacture of gas; distribution of gaseous fuels through mains; processing of natural gas"
+    },
+    {
+      "value": "35300",
+      "label": "35300 - Supply of air or water for cooling or heating purposes"
+    },
+    {
+      "value": "35400",
+      "label": "35400 - Activities of brokers and agents for electric power and natural gas"
+    },
+    {
+      "value": "36000",
+      "label": "36000 - Collection, purification and distribution of water"
+    },
+    {
+      "value": "37000",
+      "label": "37000 - Operation of sewer systems"
+    },
+    {
+      "value": "38100",
+      "label": "38100 - Collection of waste"
+    },
+    {
+      "value": "38200",
+      "label": "38200 - Treatment and disposal of waste"
+    },
+    {
+      "value": "38301",
+      "label": "38301 - Recycling of metal waste and scrap"
+    },
+    {
+      "value": "38309",
+      "label": "38309 - Recycling of non-metal waste n.e.c."
+    },
+    {
+      "value": "39000",
+      "label": "39000 - Carbon capture activities"
+    },
+    {
+      "value": "41001",
+      "label": "41001 - General contractors for building construction and major upgrading works"
+    },
+    {
+      "value": "41002",
+      "label": "41002 - Structural repair contractors"
+    },
+    {
+      "value": "41009",
+      "label": "41009 - Construction of buildings n.e.c."
+    },
+    {
+      "value": "42100",
+      "label": "42100 - Civil engineering general contractors"
+    },
+    {
+      "value": "42200",
+      "label": "42200 - Road, railway and associated viaduct, bridge and tunnel construction"
+    },
+    {
+      "value": "42301",
+      "label": "42301 - Water and gas pipe-line and sewer construction"
+    },
+    {
+      "value": "42302",
+      "label": "42302 - Communications and power line construction"
+    },
+    {
+      "value": "42901",
+      "label": "42901 - Land reclamation works"
+    },
+    {
+      "value": "42902",
+      "label": "42902 - Dam and drainage construction"
+    },
+    {
+      "value": "42903",
+      "label": "42903 - Marine construction"
+    },
+    {
+      "value": "42909",
+      "label": "42909 - Construction of other civil engineering projects n.e.c."
+    },
+    {
+      "value": "43110",
+      "label": "43110 - Wrecking and demolition works"
+    },
+    {
+      "value": "43121",
+      "label": "43121 - Soil investigation, treatment and stabilisation"
+    },
+    {
+      "value": "43122",
+      "label": "43122 - Excavation and earthmoving works"
+    },
+    {
+      "value": "43129",
+      "label": "43129 - Site preparation n.e.c."
+    },
+    {
+      "value": "43210",
+      "label": "43210 - Electrical works"
+    },
+    {
+      "value": "43220",
+      "label": "43220 - Installation of plumbing, heating (non-electric) and air-conditioning systems"
+    },
+    {
+      "value": "43291",
+      "label": "43291 - Installation and erection of building equipment"
+    },
+    {
+      "value": "43292",
+      "label": "43292 - Installation of building automated systems for remote monitoring"
+    },
+    {
+      "value": "43293",
+      "label": "43293 - Installation of awning and window shades"
+    },
+    {
+      "value": "43294",
+      "label": "43294 - Installation of thermal and sound insulation"
+    },
+    {
+      "value": "43295",
+      "label": "43295 - Signcraft installation"
+    },
+    {
+      "value": "43299",
+      "label": "43299 - Other construction installation n.e.c."
+    },
+    {
+      "value": "43301",
+      "label": "43301 - Renovation contractors"
+    },
+    {
+      "value": "43302",
+      "label": "43302 - Tile setting and plastering"
+    },
+    {
+      "value": "43303",
+      "label": "43303 - Joinery and other woodworks"
+    },
+    {
+      "value": "43304",
+      "label": "43304 - Painting and decorating"
+    },
+    {
+      "value": "43305",
+      "label": "43305 - Glass and glazing works; mirror and shower screen installation"
+    },
+    {
+      "value": "43306",
+      "label": "43306 - Curtain walling/cladding works"
+    },
+    {
+      "value": "43307",
+      "label": "43307 - Installation of doors, gates, grilles and windows"
+    },
+    {
+      "value": "43309",
+      "label": "43309 - Building completion and finishing n.e.c."
+    },
+    {
+      "value": "43901",
+      "label": "43901 - Foundation works; micropiling, conventional piling and underpinning"
+    },
+    {
+      "value": "43902",
+      "label": "43902 - Brick laying, stone setting and cement works"
+    },
+    {
+      "value": "43903",
+      "label": "43903 - Roofing works; timber carcassing"
+    },
+    {
+      "value": "43904",
+      "label": "43904 - Production of pre-cast components"
+    },
+    {
+      "value": "43905",
+      "label": "43905 - Scaffolding works"
+    },
+    {
+      "value": "43906",
+      "label": "43906 - Sandblasting/shotblasting works (except ships)"
+    },
+    {
+      "value": "43907",
+      "label": "43907 - Production of Prefabricated Prefinished Volumetric Construction (PPVC) modules"
+    },
+    {
+      "value": "43909",
+      "label": "43909 - Other specialised construction activities n.e.c. "
+    },
+    {
+      "value": "46100",
+      "label": "46100 - Wholesale on a fee or commission basis "
+    },
+    {
+      "value": "46211",
+      "label": "46211 - Wholesale of cut flowers and plants"
+    },
+    {
+      "value": "46212",
+      "label": "46212 - Wholesale of aquarium fishes and related accessories/products"
+    },
+    {
+      "value": "46213",
+      "label": "46213 - Wholesale of pet birds and animals and related accessories/products"
+    },
+    {
+      "value": "46219",
+      "label": "46219 - Wholesale of agricultural raw materials and live animals n.e.c. (except tropical produce)"
+    },
+    {
+      "value": "46221",
+      "label": "46221 - Wholesale of rubber"
+    },
+    {
+      "value": "46222",
+      "label": "46222 - Wholesale of pepper and other spices"
+    },
+    {
+      "value": "46223",
+      "label": "46223 - Wholesale of coffee, cocoa and tea"
+    },
+    {
+      "value": "46224",
+      "label": "46224 - Wholesale of coconut"
+    },
+    {
+      "value": "46225",
+      "label": "46225 - Wholesale of palm oil"
+    },
+    {
+      "value": "46229",
+      "label": "46229 - Wholesale of tropical produce n.e.c."
+    },
+    {
+      "value": "46301",
+      "label": "46301 - Wholesale of fruits and vegetables"
+    },
+    {
+      "value": "46302",
+      "label": "46302 - Wholesale of livestock, meat, poultry, eggs and seafood"
+    },
+    {
+      "value": "46303",
+      "label": "46303 - Wholesale of a general line of groceries"
+    },
+    {
+      "value": "46304",
+      "label": "46304 - Wholesale of confectionery and bakery products"
+    },
+    {
+      "value": "46305",
+      "label": "46305 - Wholesale of ice-cream"
+    },
+    {
+      "value": "46306",
+      "label": "46306 - Wholesale of health supplements"
+    },
+    {
+      "value": "46307",
+      "label": "46307 - Wholesale of liquor, soft drinks and beverages"
+    },
+    {
+      "value": "46308",
+      "label": "46308 - Wholesale of tobacco products"
+    },
+    {
+      "value": "46309",
+      "label": "46309 - Wholesale of food, beverages and tobacco n.e.c."
+    },
+    {
+      "value": "46411",
+      "label": "46411 - Wholesale of textiles and leathers"
+    },
+    {
+      "value": "46412",
+      "label": "46412 - Wholesale of adults' clothing"
+    },
+    {
+      "value": "46413",
+      "label": "46413 - Wholesale of children and infants' clothing"
+    },
+    {
+      "value": "46414",
+      "label": "46414 - Wholesale of footwear"
+    },
+    {
+      "value": "46415",
+      "label": "46415 - Wholesale of bags, luggage and travel accessories"
+    },
+    {
+      "value": "46416",
+      "label": "46416 - Wholesale of sewing and clothing accessories"
+    },
+    {
+      "value": "46421",
+      "label": "46421 - Wholesale of jewellery made from precious metals and stones"
+    },
+    {
+      "value": "46422",
+      "label": "46422 - Wholesale of costume jewellery"
+    },
+    {
+      "value": "46423",
+      "label": "46423 - Wholesale of watches and clocks"
+    },
+    {
+      "value": "46424",
+      "label": "46424 - Wholesale of personal care products "
+    },
+    {
+      "value": "46429",
+      "label": "46429 - Wholesale of personal effects n.e.c."
+    },
+    {
+      "value": "46431",
+      "label": "46431 - Wholesale of furniture"
+    },
+    {
+      "value": "46432",
+      "label": "46432 - Wholesale of furnishings"
+    },
+    {
+      "value": "46433",
+      "label": "46433 - Wholesale of lighting and lighting accessories"
+    },
+    {
+      "value": "46434",
+      "label": "46434 - Wholesale of crockery, cutlery and kitchen utensils"
+    },
+    {
+      "value": "46435",
+      "label": "46435 - Wholesale of household electrical appliances and equipment"
+    },
+    {
+      "value": "46436",
+      "label": "46436 - Wholesale of audio and video equipment (except electrical and electronic components)"
+    },
+    {
+      "value": "46439",
+      "label": "46439 - Wholesale of furniture, home furnishings and other household equipment n.e.c."
+    },
+    {
+      "value": "46441",
+      "label": "46441 - Wholesale of sporting goods and equipment"
+    },
+    {
+      "value": "46442",
+      "label": "46442 - Wholesale of music and video recordings"
+    },
+    {
+      "value": "46443",
+      "label": "46443 - Wholesale of toys and games"
+    },
+    {
+      "value": "46444",
+      "label": "46444 - Wholesale of computer games"
+    },
+    {
+      "value": "46445",
+      "label": "46445 - Wholesale of musical instruments and scores"
+    },
+    {
+      "value": "46449",
+      "label": "46449 - Wholesale of sporting and other recreational goods n.e.c."
+    },
+    {
+      "value": "46451",
+      "label": "46451 - Wholesale of antiques and works of art"
+    },
+    {
+      "value": "46452",
+      "label": "46452 - Wholesale of handicrafts and gifts"
+    },
+    {
+      "value": "46453",
+      "label": "46453 - Wholesale of artificial flowers and plants"
+    },
+    {
+      "value": "46459",
+      "label": "46459 - Wholesale of handicrafts and fancy goods n.e.c."
+    },
+    {
+      "value": "46461",
+      "label": "46461 - Wholesale of medicinal and pharmaceutical products (Western)"
+    },
+    {
+      "value": "46462",
+      "label": "46462 - Wholesale of medicine and herbs (except Western)"
+    },
+    {
+      "value": "46471",
+      "label": "46471 - Wholesale of paper and paper products"
+    },
+    {
+      "value": "46472",
+      "label": "46472 - Wholesale of packaging materials"
+    },
+    {
+      "value": "46473",
+      "label": "46473 - Wholesale of stationery"
+    },
+    {
+      "value": "46474",
+      "label": "46474 - Wholesale of books and magazines"
+    },
+    {
+      "value": "46479",
+      "label": "46479 - Wholesale of paper, paper-related products, stationery, cellophane products and packaging materials n.e.c."
+    },
+    {
+      "value": "46491",
+      "label": "46491 - Wholesale of optical equipment and supplies (except binoculars)"
+    },
+    {
+      "value": "46492",
+      "label": "46492 - Wholesale of photographic equipment and supplies"
+    },
+    {
+      "value": "46499",
+      "label": "46499 - Wholesale of other household goods n.e.c."
+    },
+    {
+      "value": "46511",
+      "label": "46511 - Wholesale of computer hardware and peripheral equipment (except cybersecurity related hardware and peripheral equipment)"
+    },
+    {
+      "value": "46512",
+      "label": "46512 - Wholesale of computer software (except games and cybersecurity software)"
+    },
+    {
+      "value": "46513",
+      "label": "46513 - Wholesale of computer accessories"
+    },
+    {
+      "value": "46514",
+      "label": "46514 - Wholesale of cybersecurity software, hardware and peripheral equipment"
+    },
+    {
+      "value": "46521",
+      "label": "46521 - Wholesale of telecommunications equipment (except handphones)"
+    },
+    {
+      "value": "46522",
+      "label": "46522 - Wholesale of electronic components"
+    },
+    {
+      "value": "46523",
+      "label": "46523 - Wholesale of handphones and related telecommunications and peripheral equipment "
+    },
+    {
+      "value": "46530",
+      "label": "46530 - Wholesale of agricultural machinery, equipment and supplies"
+    },
+    {
+      "value": "46541",
+      "label": "46541 - Wholesale of industrial machinery and equipment"
+    },
+    {
+      "value": "46542",
+      "label": "46542 - Wholesale of construction equipment"
+    },
+    {
+      "value": "46543",
+      "label": "46543 - Wholesale of lifts, escalators and industrial and office air-conditioning equipment"
+    },
+    {
+      "value": "46544",
+      "label": "46544 - Wholesale of electrical and wiring accessories"
+    },
+    {
+      "value": "46549",
+      "label": "46549 - Wholesale of industrial, construction and related machinery and equipment n.e.c."
+    },
+    {
+      "value": "46551",
+      "label": "46551 - Wholesale of marine equipment and accessories"
+    },
+    {
+      "value": "46552",
+      "label": "46552 - Wholesale of aircraft equipment and supplies"
+    },
+    {
+      "value": "46559",
+      "label": "46559 - Wholesale of transport equipment n.e.c. (except motor vehicles and motorcycles)"
+    },
+    {
+      "value": "46561",
+      "label": "46561 - Wholesale of motor vehicles (except motorcycles and scooters)"
+    },
+    {
+      "value": "46562",
+      "label": "46562 - Wholesale of motorcycles and scooters"
+    },
+    {
+      "value": "46563",
+      "label": "46563 - Wholesale of parts and accessories for motor vehicles"
+    },
+    {
+      "value": "46591",
+      "label": "46591 - Wholesale of office machines and equipment"
+    },
+    {
+      "value": "46592",
+      "label": "46592 - Wholesale of medical, professional, scientific and precision equipment"
+    },
+    {
+      "value": "46593",
+      "label": "46593 - Wholesale of commercial food service equipment"
+    },
+    {
+      "value": "46594",
+      "label": "46594 - Wholesale of service establishment equipment and supplies"
+    },
+    {
+      "value": "46595",
+      "label": "46595 - Wholesale of security and safety equipment"
+    },
+    {
+      "value": "46599",
+      "label": "46599 - Wholesale of other machinery and equipment n.e.c."
+    },
+    {
+      "value": "46610",
+      "label": "46610 - Wholesale of fuels and related products"
+    },
+    {
+      "value": "46620",
+      "label": "46620 - Wholesale of metals and metal ores (except general hardware)"
+    },
+    {
+      "value": "46631",
+      "label": "46631 - Wholesale of logs, sawn timber, plywood and related products"
+    },
+    {
+      "value": "46632",
+      "label": "46632 - Wholesale of general hardware"
+    },
+    {
+      "value": "46633",
+      "label": "46633 - Wholesale of structural clay and concrete products"
+    },
+    {
+      "value": "46634",
+      "label": "46634 - Wholesale of paints"
+    },
+    {
+      "value": "46635",
+      "label": "46635 - Wholesale of glass"
+    },
+    {
+      "value": "46639",
+      "label": "46639 - Wholesale of construction materials, hardware, plumbing and heating equipment and supplies n.e.c."
+    },
+    {
+      "value": "46641",
+      "label": "46641 - Wholesale of basic industrial chemicals (except fertilisers)"
+    },
+    {
+      "value": "46642",
+      "label": "46642 - Wholesale of chemical fertilisers"
+    },
+    {
+      "value": "46643",
+      "label": "46643 - Wholesale of petrochemical products"
+    },
+    {
+      "value": "46649",
+      "label": "46649 - Wholesale of chemicals and chemical products n.e.c."
+    },
+    {
+      "value": "46651",
+      "label": "46651 - Wholesale of scrap, junk and waste dealers"
+    },
+    {
+      "value": "46659",
+      "label": "46659 - Wholesale of other intermediate products, waste and scrap n.e.c."
+    },
+    {
+      "value": "46661",
+      "label": "46661 - Ship chandlers"
+    },
+    {
+      "value": "46662",
+      "label": "46662 - Ship bunkering"
+    },
+    {
+      "value": "46900",
+      "label": "46900 - Wholesale trade of a variety of goods without a dominant product"
+    },
+    {
+      "value": "47101",
+      "label": "47101 - Supermarkets and hypermarkets"
+    },
+    {
+      "value": "47102",
+      "label": "47102 - Mini-marts, convenience stores and provision shops"
+    },
+    {
+      "value": "47103",
+      "label": "47103 - Department stores"
+    },
+    {
+      "value": "47109",
+      "label": "47109 - Retail sale in non-specialised stores n.e.c."
+    },
+    {
+      "value": "47211",
+      "label": "47211 - Retail sale of fruits and vegetables"
+    },
+    {
+      "value": "47212",
+      "label": "47212 - Retail sale of meat, poultry, eggs and seafood"
+    },
+    {
+      "value": "47213",
+      "label": "47213 - Retail sale of confectionery and bakery products (not manufactured on site)"
+    },
+    {
+      "value": "47214",
+      "label": "47214 - Retail sale of health supplements"
+    },
+    {
+      "value": "47219",
+      "label": "47219 - Retail sale of food n.e.c."
+    },
+    {
+      "value": "47220",
+      "label": "47220 - Retail sale of beverages"
+    },
+    {
+      "value": "47230",
+      "label": "47230 - Retail sale of tobacco products"
+    },
+    {
+      "value": "47311",
+      "label": "47311 - Retail sale of motor vehicles (except motorcycles and scooters)"
+    },
+    {
+      "value": "47312",
+      "label": "47312 - Retail sale of motorcycles and scooters"
+    },
+    {
+      "value": "47313",
+      "label": "47313 - Retail sale of tyres and batteries for motor vehicles"
+    },
+    {
+      "value": "47314",
+      "label": "47314 - Retail sale of parts and accessories for motor vehicles"
+    },
+    {
+      "value": "47320",
+      "label": "47320 - Retail sale of automotive fuel"
+    },
+    {
+      "value": "47411",
+      "label": "47411 - Retail sale of handphones and related telecommunications and peripheral equipment"
+    },
+    {
+      "value": "47412",
+      "label": "47412 - Retail sale of computer hardware and peripheral equipment, and computer software (except games and cybersecurity hardware and software)"
+    },
+    {
+      "value": "47413",
+      "label": "47413 - Retail sale of computer games"
+    },
+    {
+      "value": "47414",
+      "label": "47414 - Retail sale of computer and office equipment consumables"
+    },
+    {
+      "value": "47415",
+      "label": "47415 - Retail sale of cybersecurity software, hardware and peripheral equipment"
+    },
+    {
+      "value": "47510",
+      "label": "47510 - Retail sale of textiles"
+    },
+    {
+      "value": "47521",
+      "label": "47521 - Retail sale of paints"
+    },
+    {
+      "value": "47522",
+      "label": "47522 - Retail sale of hardware"
+    },
+    {
+      "value": "47529",
+      "label": "47529 - Retail sale of hardware, paint and glass n.e.c."
+    },
+    {
+      "value": "47531",
+      "label": "47531 - Retail sale of furniture"
+    },
+    {
+      "value": "47532",
+      "label": "47532 - Retail sale of furnishings"
+    },
+    {
+      "value": "47533",
+      "label": "47533 - Retail sale of lighting and lighting accessories"
+    },
+    {
+      "value": "47534",
+      "label": "47534 - Retail sale of crockery, cutlery and kitchen utensils"
+    },
+    {
+      "value": "47535",
+      "label": "47535 - Retail sale of household electrical appliances and equipment"
+    },
+    {
+      "value": "47536",
+      "label": "47536 - Retail sale of security and safety equipment"
+    },
+    {
+      "value": "47539",
+      "label": "47539 - Retail sale of electrical household appliances, furniture, lighting equipment and other household articles n.e.c."
+    },
+    {
+      "value": "47610",
+      "label": "47610 - Retail sale of books, newspapers and stationery"
+    },
+    {
+      "value": "47620",
+      "label": "47620 - Retail sale of music and video recordings"
+    },
+    {
+      "value": "47630",
+      "label": "47630 - Retail sale of sports apparel and equipment"
+    },
+    {
+      "value": "47640",
+      "label": "47640 - Retail sale of games and toys"
+    },
+    {
+      "value": "47650",
+      "label": "47650 - Retail sale of musical instruments and scores"
+    },
+    {
+      "value": "47711",
+      "label": "47711 - Retail sale of clothing for adults"
+    },
+    {
+      "value": "47712",
+      "label": "47712 - Retail sale of children and infants' clothing"
+    },
+    {
+      "value": "47713",
+      "label": "47713 - Retail sale of footwear"
+    },
+    {
+      "value": "47714",
+      "label": "47714 - Retail sale of bags, luggage and travel accessories"
+    },
+    {
+      "value": "47715",
+      "label": "47715 - Retail sale of sewing and clothing accessories"
+    },
+    {
+      "value": "47719",
+      "label": "47719 - Retail sale of clothing, footwear and leather articles n.e.c."
+    },
+    {
+      "value": "47721",
+      "label": "47721 - Retail sale of personal care products "
+    },
+    {
+      "value": "47722",
+      "label": "47722 - Pharmacies and drug stores (Western)"
+    },
+    {
+      "value": "47723",
+      "label": "47723 - Chinese medicine shops"
+    },
+    {
+      "value": "47729",
+      "label": "47729 - Retail sale of pharmaceutical and medical goods n.e.c."
+    },
+    {
+      "value": "47731",
+      "label": "47731 - Retail sale of jewellery made from precious metals and stones"
+    },
+    {
+      "value": "47732",
+      "label": "47732 - Retail sale of costume jewellery"
+    },
+    {
+      "value": "47733",
+      "label": "47733 - Retail sale of watches and clocks"
+    },
+    {
+      "value": "47739",
+      "label": "47739 - Retail sale of personal effects n.e.c."
+    },
+    {
+      "value": "47741",
+      "label": "47741 - Retail sale of antiques and works of art"
+    },
+    {
+      "value": "47742",
+      "label": "47742 - Retail sale of handicrafts, collectibles and gifts"
+    },
+    {
+      "value": "47743",
+      "label": "47743 - Retail sale of cut flowers"
+    },
+    {
+      "value": "47744",
+      "label": "47744 - Retail sale of artificial flowers and plants"
+    },
+    {
+      "value": "47745",
+      "label": "47745 - Retail sale of aquarium fishes and related accessories/products"
+    },
+    {
+      "value": "47746",
+      "label": "47746 - Retail sale of pet birds and animals and related accessories/products"
+    },
+    {
+      "value": "47749",
+      "label": "47749 - Retail sale of handicrafts and fancy goods, flowers, plants and pet animals n.e.c."
+    },
+    {
+      "value": "47751",
+      "label": "47751 - Retail sale of spectacles and other optical goods"
+    },
+    {
+      "value": "47752",
+      "label": "47752 - Retail sale of cameras and other photographic goods"
+    },
+    {
+      "value": "47759",
+      "label": "47759 - Retail sale of optical and photographic goods n.e.c."
+    },
+    {
+      "value": "47761",
+      "label": "47761 - Retail sale of joss paper and other ceremonial products"
+    },
+    {
+      "value": "47762",
+      "label": "47762 - Retail sale of liquefied petroleum gas (LPG)"
+    },
+    {
+      "value": "47769",
+      "label": "47769 - Retail sale of other goods n.e.c."
+    },
+    {
+      "value": "47770",
+      "label": "47770 - Retail sale of second-hand goods in stores"
+    },
+    {
+      "value": "47801",
+      "label": "47801 - Stalls selling uncooked food"
+    },
+    {
+      "value": "47802",
+      "label": "47802 - Stalls selling other goods (except uncooked food)"
+    },
+    {
+      "value": "49101",
+      "label": "49101 - Railroad services"
+    },
+    {
+      "value": "49102",
+      "label": "49102 - Mass rapid transit systems"
+    },
+    {
+      "value": "49211",
+      "label": "49211 - Public bus services (scheduled services)"
+    },
+    {
+      "value": "49212",
+      "label": "49212 - Chartered bus services"
+    },
+    {
+      "value": "49213",
+      "label": "49213 - Inter-country bus services"
+    },
+    {
+      "value": "49214",
+      "label": "49214 - Street-hail and ride-hail service providers"
+    },
+    {
+      "value": "49215",
+      "label": "49215 - Rental and leasing of cars with driver (except street-hail and ride-hail service providers)"
+    },
+    {
+      "value": "49220",
+      "label": "49220 - Aerial cableways"
+    },
+    {
+      "value": "49231",
+      "label": "49231 - Freight transport by road"
+    },
+    {
+      "value": "49232",
+      "label": "49232 - Moving services"
+    },
+    {
+      "value": "49233",
+      "label": "49233 - Rental and leasing of freight land transport vehicle with driver"
+    },
+    {
+      "value": "49300",
+      "label": "49300 - Transport via pipelines"
+    },
+    {
+      "value": "50011",
+      "label": "50011 - International cruise services"
+    },
+    {
+      "value": "50012",
+      "label": "50012 - Other sight-seeing cruise services"
+    },
+    {
+      "value": "50013",
+      "label": "50013 - Passenger ferry services"
+    },
+    {
+      "value": "50014",
+      "label": "50014 - Chartering of ships and boats with crew (passenger)"
+    },
+    {
+      "value": "50021",
+      "label": "50021 - Shipping companies and chartering of ships/boats with crew (freight)"
+    },
+    {
+      "value": "50022",
+      "label": "50022 - Operators and charterers of barges, tugboats and bumboats (freight)"
+    },
+    {
+      "value": "50023",
+      "label": "50023 - Branches of foreign shipping lines"
+    },
+    {
+      "value": "51001",
+      "label": "51001 - Airlines (passenger)"
+    },
+    {
+      "value": "51002",
+      "label": "51002 - Airlines (freight)"
+    },
+    {
+      "value": "51003",
+      "label": "51003 - Branches of foreign airlines (passenger)"
+    },
+    {
+      "value": "51004",
+      "label": "51004 - Branches of foreign airlines (freight)"
+    },
+    {
+      "value": "51005",
+      "label": "51005 - Aircraft chartering with operator"
+    },
+    {
+      "value": "52101",
+      "label": "52101 - General warehousing"
+    },
+    {
+      "value": "52102",
+      "label": "52102 - Refrigerated warehousing and storage"
+    },
+    {
+      "value": "52103",
+      "label": "52103 - Storage for dangerous goods"
+    },
+    {
+      "value": "52109",
+      "label": "52109 - Specialised storage n.e.c."
+    },
+    {
+      "value": "52211",
+      "label": "52211 - Carpark management and operation services"
+    },
+    {
+      "value": "52212",
+      "label": "52212 - Motor vehicle towing services"
+    },
+    {
+      "value": "52219",
+      "label": "52219 - Supporting services to land transport n.e.c."
+    },
+    {
+      "value": "52221",
+      "label": "52221 - Representative offices of foreign shipping lines"
+    },
+    {
+      "value": "52222",
+      "label": "52222 - Shipping agencies (freight)"
+    },
+    {
+      "value": "52223",
+      "label": "52223 - Port operators"
+    },
+    {
+      "value": "52224",
+      "label": "52224 - Lighterage services"
+    },
+    {
+      "value": "52225",
+      "label": "52225 - Salvaging of distressed vessels and cargos"
+    },
+    {
+      "value": "52226",
+      "label": "52226 - Ship management services"
+    },
+    {
+      "value": "52227",
+      "label": "52227 - Ship brokering services"
+    },
+    {
+      "value": "52229",
+      "label": "52229 - Supporting services to water transport n.e.c."
+    },
+    {
+      "value": "52231",
+      "label": "52231 - Representative offices of foreign airlines"
+    },
+    {
+      "value": "52232",
+      "label": "52232 - Airline agencies (freight)"
+    },
+    {
+      "value": "52233",
+      "label": "52233 - Airport operation services"
+    },
+    {
+      "value": "52234",
+      "label": "52234 - Airport terminal services"
+    },
+    {
+      "value": "52239",
+      "label": "52239 - Supporting services to air transport n.e.c."
+    },
+    {
+      "value": "52241",
+      "label": "52241 - Container depot services"
+    },
+    {
+      "value": "52242",
+      "label": "52242 - Industrial cargo lifting and moving services (except for use in construction industry)"
+    },
+    {
+      "value": "52243",
+      "label": "52243 - Stevedoring services"
+    },
+    {
+      "value": "52251",
+      "label": "52251 - Classification societies"
+    },
+    {
+      "value": "52252",
+      "label": "52252 - Marine surveying services (except classification societies)"
+    },
+    {
+      "value": "52291",
+      "label": "52291 - Cargo surveying services"
+    },
+    {
+      "value": "52292",
+      "label": "52292 - Freight transport arrangement"
+    },
+    {
+      "value": "53100",
+      "label": "53100 - National post activities"
+    },
+    {
+      "value": "53200",
+      "label": "53200 - Courier activities (except national post activities)"
+    },
+    {
+      "value": "55101",
+      "label": "55101 - Hotels"
+    },
+    {
+      "value": "55109",
+      "label": "55109 - Short term accommodation activities n.e.c."
+    },
+    {
+      "value": "55900",
+      "label": "55900 - Hostels and dormitories for students, workers and other individuals"
+    },
+    {
+      "value": "56111",
+      "label": "56111 - Restaurants"
+    },
+    {
+      "value": "56112",
+      "label": "56112 - Cafes"
+    },
+    {
+      "value": "56121",
+      "label": "56121 - Fast food outlets"
+    },
+    {
+      "value": "56122",
+      "label": "56122 - Operators of food courts, hawker centres, coffee shops and canteens (with mainly food and beverage income)"
+    },
+    {
+      "value": "56123",
+      "label": "56123 - Food and drinks kiosks mainly for takeaway and delivery "
+    },
+    {
+      "value": "56130",
+      "label": "56130 - Pubs"
+    },
+    {
+      "value": "56140",
+      "label": "56140 - Stalls selling cooked food and prepared drinks"
+    },
+    {
+      "value": "56200",
+      "label": "56200 - Food caterers"
+    },
+    {
+      "value": "58110",
+      "label": "58110 - Publishing of books, brochures, musical books and other publications"
+    },
+    {
+      "value": "58120",
+      "label": "58120 - Publishing of directories and mailing lists"
+    },
+    {
+      "value": "58131",
+      "label": "58131 - Publishing of news"
+    },
+    {
+      "value": "58132",
+      "label": "58132 - Publishing of journals, periodicals and magazines"
+    },
+    {
+      "value": "58190",
+      "label": "58190 - Other publishing activities "
+    },
+    {
+      "value": "58201",
+      "label": "58201 - Publishing of games software/applications"
+    },
+    {
+      "value": "58202",
+      "label": "58202 - Publishing of software/applications (non-games)"
+    },
+    {
+      "value": "59111",
+      "label": "59111 - Movie production"
+    },
+    {
+      "value": "59112",
+      "label": "59112 - Production of advertisements, corporate videos and event videos"
+    },
+    {
+      "value": "59113",
+      "label": "59113 - Production of dramas, variety shows and documentaries"
+    },
+    {
+      "value": "59114",
+      "label": "59114 - Animation production"
+    },
+    {
+      "value": "59119",
+      "label": "59119 - Movie, video, television and other programme production activities n.e.c."
+    },
+    {
+      "value": "59120",
+      "label": "59120 - Movie, video, television and other programme post-production activities"
+    },
+    {
+      "value": "59131",
+      "label": "59131 - Movie distribution"
+    },
+    {
+      "value": "59132",
+      "label": "59132 - Distribution of television programmes"
+    },
+    {
+      "value": "59139",
+      "label": "59139 - Movie, video, television and other programme distribution activities n.e.c."
+    },
+    {
+      "value": "59140",
+      "label": "59140 - Movie projection activities"
+    },
+    {
+      "value": "59201",
+      "label": "59201 - Sound recording production"
+    },
+    {
+      "value": "59202",
+      "label": "59202 - Music publishing and distribution activities"
+    },
+    {
+      "value": "60100",
+      "label": "60100 - Radio programme production and broadcasting"
+    },
+    {
+      "value": "60200",
+      "label": "60200 - Television programming and broadcasting"
+    },
+    {
+      "value": "60301",
+      "label": "60301 - News agency activities"
+    },
+    {
+      "value": "60302",
+      "label": "60302 - Operation of social network sites and other content distribution activities (except publishing)"
+    },
+    {
+      "value": "61010",
+      "label": "61010 - Telecommunications network operation"
+    },
+    {
+      "value": "61020",
+      "label": "61020 - Telecommunications resellers/third party telecommunications providers"
+    },
+    {
+      "value": "61090",
+      "label": "61090 - Other telecommunication services"
+    },
+    {
+      "value": "62011",
+      "label": "62011 - Development of software and applications (except games and cybersecurity)"
+    },
+    {
+      "value": "62012",
+      "label": "62012 - Development of computer games"
+    },
+    {
+      "value": "62013",
+      "label": "62013 - Development of software for cybersecurity"
+    },
+    {
+      "value": "62021",
+      "label": "62021 - Information technology consultancy (except cybersecurity)"
+    },
+    {
+      "value": "62022",
+      "label": "62022 - Information technology cybersecurity consultancy"
+    },
+    {
+      "value": "62023",
+      "label": "62023 - Computer facilities management activities"
+    },
+    {
+      "value": "62090",
+      "label": "62090 - Other information technology and computer service activities"
+    },
+    {
+      "value": "63111",
+      "label": "63111 - Data centres"
+    },
+    {
+      "value": "63112",
+      "label": "63112 - Hosting services by non-data centres"
+    },
+    {
+      "value": "63119",
+      "label": "63119 - Data analytics, processing, hosting and related activities n.e.c."
+    },
+    {
+      "value": "63201",
+      "label": "63201 - Online marketplaces operating on a fee or commission basis for goods and food sold by third-party; Online marketplaces operating on a fee or commission basis for food delivery services"
+    },
+    {
+      "value": "63202",
+      "label": "63202 - Online marketplaces operating on a fee or commission basis for health services provided by third-party"
+    },
+    {
+      "value": "63203",
+      "label": "63203 - Online marketplaces operating on a fee or commission basis for education services provided by third-party"
+    },
+    {
+      "value": "63204",
+      "label": "63204 - Online marketplaces operating on a fee or commission basis for travel and accommodation services provided by third-party"
+    },
+    {
+      "value": "63205",
+      "label": "63205 - Online marketplaces operating on a fee or commission basis for real estate services provided by third-party"
+    },
+    {
+      "value": "63209",
+      "label": "63209 - Online marketplaces operating on a fee or commission basis for other services provided by third-party"
+    },
+    {
+      "value": "63901",
+      "label": "63901 - Internet search engines"
+    },
+    {
+      "value": "63909",
+      "label": "63909 - Other information service activities n.e.c."
+    },
+    {
+      "value": "64110",
+      "label": "64110 - Central bank"
+    },
+    {
+      "value": "64120",
+      "label": "64120 - Full banks"
+    },
+    {
+      "value": "64130",
+      "label": "64130 - Wholesale banks"
+    },
+    {
+      "value": "64140",
+      "label": "64140 - Merchant banks"
+    },
+    {
+      "value": "64150",
+      "label": "64150 - Finance companies (with deposit taking functions)"
+    },
+    {
+      "value": "64201",
+      "label": "64201 - Holding companies of firms engaged in financial and insurance activities"
+    },
+    {
+      "value": "64202",
+      "label": "64202 - Holding companies of firms engaged in non-financial and insurance activities "
+    },
+    {
+      "value": "64300",
+      "label": "64300 - Trusts, funds and similar financial entities (except those with rental income)"
+    },
+    {
+      "value": "64910",
+      "label": "64910 - Financial leasing companies"
+    },
+    {
+      "value": "64921",
+      "label": "64921 - Thrift and loan societies and credit associations"
+    },
+    {
+      "value": "64922",
+      "label": "64922 - Credit card services"
+    },
+    {
+      "value": "64923",
+      "label": "64923 - Mutual benefits organisations"
+    },
+    {
+      "value": "64924",
+      "label": "64924 - Money-lending"
+    },
+    {
+      "value": "64925",
+      "label": "64925 - Pawnbrokerage"
+    },
+    {
+      "value": "64929",
+      "label": "64929 - Other credit granting n.e.c."
+    },
+    {
+      "value": "64991",
+      "label": "64991 - Factoring companies"
+    },
+    {
+      "value": "64992",
+      "label": "64992 - Representative offices of foreign banks"
+    },
+    {
+      "value": "64993",
+      "label": "64993 - Remittance services"
+    },
+    {
+      "value": "64994",
+      "label": "64994 - Treasury centres"
+    },
+    {
+      "value": "64999",
+      "label": "64999 - Other financial service activities n.e.c. (except insurance and pension funding activities)"
+    },
+    {
+      "value": "65110",
+      "label": "65110 - Life insurance"
+    },
+    {
+      "value": "65121",
+      "label": "65121 - Marine insurance"
+    },
+    {
+      "value": "65122",
+      "label": "65122 - Captive insurance"
+    },
+    {
+      "value": "65123",
+      "label": "65123 - Import, export and credit insurance"
+    },
+    {
+      "value": "65124",
+      "label": "65124 - General insurance (except marine and import, export and credit insurance)"
+    },
+    {
+      "value": "65201",
+      "label": "65201 - Life reinsurance"
+    },
+    {
+      "value": "65202",
+      "label": "65202 - General reinsurance"
+    },
+    {
+      "value": "65300",
+      "label": "65300 - Provident funding and pension funding"
+    },
+    {
+      "value": "66110",
+      "label": "66110 - Securities and commodities exchange"
+    },
+    {
+      "value": "66121",
+      "label": "66121 - Stock, share and bond brokers and dealers"
+    },
+    {
+      "value": "66122",
+      "label": "66122 - Foreign exchange brokers and dealers"
+    },
+    {
+      "value": "66123",
+      "label": "66123 - Gold bullion brokers and dealers"
+    },
+    {
+      "value": "66124",
+      "label": "66124 - Commodity and futures brokers and dealers (except gold) "
+    },
+    {
+      "value": "66125",
+      "label": "66125 - Carbon credit brokers/traders"
+    },
+    {
+      "value": "66126",
+      "label": "66126 - Money-changing services"
+    },
+    {
+      "value": "66129",
+      "label": "66129 - Security dealings and commodity contracts brokerage activities n.e.c."
+    },
+    {
+      "value": "66191",
+      "label": "66191 - Trustee, fiduciary and custody services"
+    },
+    {
+      "value": "66192",
+      "label": "66192 - Corporate finance advisory services"
+    },
+    {
+      "value": "66193",
+      "label": "66193 - Clearing and settlement of financial instruments"
+    },
+    {
+      "value": "66194",
+      "label": "66194 - Activities auxiliary to fund management activities"
+    },
+    {
+      "value": "66195",
+      "label": "66195 - Transaction/payment processing services"
+    },
+    {
+      "value": "66199",
+      "label": "66199 - Other activities auxiliary to financial service activities n.e.c."
+    },
+    {
+      "value": "66210",
+      "label": "66210 - Risk and damage evaluation"
+    },
+    {
+      "value": "66221",
+      "label": "66221 - Insurance agencies and agents"
+    },
+    {
+      "value": "66222",
+      "label": "66222 - Insurance brokers"
+    },
+    {
+      "value": "66291",
+      "label": "66291 - Representative offices of foreign insurers and professional reinsurers"
+    },
+    {
+      "value": "66292",
+      "label": "66292 - Captive managers"
+    },
+    {
+      "value": "66299",
+      "label": "66299 - Other activities auxiliary to insurance and pension funding n.e.c."
+    },
+    {
+      "value": "66301",
+      "label": "66301 - Traditional/long-only asset/portfolio management"
+    },
+    {
+      "value": "66302",
+      "label": "66302 - Hedge fund management"
+    },
+    {
+      "value": "66303",
+      "label": "66303 - Property fund/REIT management"
+    },
+    {
+      "value": "66304",
+      "label": "66304 - Private equity firms"
+    },
+    {
+      "value": "66305",
+      "label": "66305 - Venture capital activities"
+    },
+    {
+      "value": "66306",
+      "label": "66306 - Single/multiple family offices activities"
+    },
+    {
+      "value": "66307",
+      "label": "66307 - Private debt funds"
+    },
+    {
+      "value": "66309",
+      "label": "66309 - Fund management activities n.e.c."
+    },
+    {
+      "value": "68101",
+      "label": "68101 - Real estate developers"
+    },
+    {
+      "value": "68102",
+      "label": "68102 - Operating of serviced apartments"
+    },
+    {
+      "value": "68103",
+      "label": "68103 - Letting and operating of self-owned or leased real estate property (except food courts, hawker centres, coffee shops and canteens)"
+    },
+    {
+      "value": "68104",
+      "label": "68104 - Letting and operating of self-owned or leased food courts, hawker centres, coffee shops and canteens (with mainly rental income)"
+    },
+    {
+      "value": "68105",
+      "label": "68105 - Collective portfolio investment funds with rental income"
+    },
+    {
+      "value": "68106",
+      "label": "68106 - Management of self-owned strata titled property"
+    },
+    {
+      "value": "68201",
+      "label": "68201 - Real estate agencies and valuation services"
+    },
+    {
+      "value": "68202",
+      "label": "68202 - Town councils"
+    },
+    {
+      "value": "68203",
+      "label": "68203 - Residential, commercial and industrial real estate management (except town councils)"
+    },
+    {
+      "value": "68209",
+      "label": "68209 - Real estate activities on a fee or commission basis n.e.c. "
+    },
+    {
+      "value": "69101",
+      "label": "69101 - Legal activities "
+    },
+    {
+      "value": "69102",
+      "label": "69102 - Arbitration and mediation services "
+    },
+    {
+      "value": "69201",
+      "label": "69201 - Accounting, auditing and tax consultancy services "
+    },
+    {
+      "value": "69202",
+      "label": "69202 - Book-keeping services "
+    },
+    {
+      "value": "70101",
+      "label": "70101 - Activities of head and regional head offices; Centralised administrative offices and subsidiary management offices"
+    },
+    {
+      "value": "70102",
+      "label": "70102 - Business representative offices"
+    },
+    {
+      "value": "70201",
+      "label": "70201 - Management consultancy services"
+    },
+    {
+      "value": "70202",
+      "label": "70202 - Management consultancy services for healthcare organisations"
+    },
+    {
+      "value": "70203",
+      "label": "70203 - Management consultancy services for hotels"
+    },
+    {
+      "value": "70204",
+      "label": "70204 - Human resource consultancy services"
+    },
+    {
+      "value": "70205",
+      "label": "70205 - Public relations, marketing and brand consultancy services"
+    },
+    {
+      "value": "70206",
+      "label": "70206 - Port, shipping and maritime-related consultancy services"
+    },
+    {
+      "value": "70209",
+      "label": "70209 - Management consultancy services n.e.c."
+    },
+    {
+      "value": "71111",
+      "label": "71111 - Architectural services"
+    },
+    {
+      "value": "71112",
+      "label": "71112 - Landscape design and landscape architecture"
+    },
+    {
+      "value": "71113",
+      "label": "71113 - Quantity surveying services"
+    },
+    {
+      "value": "71114",
+      "label": "71114 - Land surveying services"
+    },
+    {
+      "value": "71119",
+      "label": "71119 - Other surveying services n.e.c."
+    },
+    {
+      "value": "71121",
+      "label": "71121 - General building engineering design and consultancy services"
+    },
+    {
+      "value": "71122",
+      "label": "71122 - Process and industrial plant engineering design and consultancy services"
+    },
+    {
+      "value": "71123",
+      "label": "71123 - Engineering design and consultancy services in energy management and clean energy systems"
+    },
+    {
+      "value": "71124",
+      "label": "71124 - Environmental engineering design and consultancy services (except clean energy)"
+    },
+    {
+      "value": "71125",
+      "label": "71125 - Infrastructure engineering design and consultancy services"
+    },
+    {
+      "value": "71126",
+      "label": "71126 - Engineering design and consultancy services supporting mining, oil and gas extraction and offshore exploration activities"
+    },
+    {
+      "value": "71129",
+      "label": "71129 - Engineering design and consultancy activities n.e.c."
+    },
+    {
+      "value": "71200",
+      "label": "71200 - Technical testing and analysis services; certification of products and services"
+    },
+    {
+      "value": "72101",
+      "label": "72101 - Research and experimental development on biotechnology (except medical and veterinary science)"
+    },
+    {
+      "value": "72102",
+      "label": "72102 - Research and experimental development on electronics (except medical and veterinary science)"
+    },
+    {
+      "value": "72103",
+      "label": "72103 - Research and experimental development on chemicals (except medical and veterinary science)"
+    },
+    {
+      "value": "72104",
+      "label": "72104 - Research and experimental development on engineering"
+    },
+    {
+      "value": "72105",
+      "label": "72105 - Research and experimental development on environment and clean technologies (except biotechnology)"
+    },
+    {
+      "value": "72106",
+      "label": "72106 - Research and experimental development on medical and veterinary sciences"
+    },
+    {
+      "value": "72109",
+      "label": "72109 - Research and experimental development on natural sciences n.e.c."
+    },
+    {
+      "value": "72200",
+      "label": "72200 - Research and experimental development on social sciences and humanities"
+    },
+    {
+      "value": "73100",
+      "label": "73100 - Advertising activities"
+    },
+    {
+      "value": "73200",
+      "label": "73200 - Market research and public opinion polling"
+    },
+    {
+      "value": "74111",
+      "label": "74111 - Electronics-related industrial design services"
+    },
+    {
+      "value": "74112",
+      "label": "74112 - Transport-related industrial design services"
+    },
+    {
+      "value": "74113",
+      "label": "74113 - Furniture design services"
+    },
+    {
+      "value": "74119",
+      "label": "74119 - Industrial design activities n.e.c."
+    },
+    {
+      "value": "74191",
+      "label": "74191 - Interior design services"
+    },
+    {
+      "value": "74192",
+      "label": "74192 - Art and graphic design services"
+    },
+    {
+      "value": "74193",
+      "label": "74193 - Fashion and accessories design services"
+    },
+    {
+      "value": "74194",
+      "label": "74194 - Exhibition stand design services"
+    },
+    {
+      "value": "74199",
+      "label": "74199 - Other specialised design activities n.e.c."
+    },
+    {
+      "value": "74200",
+      "label": "74200 - Photographic activities"
+    },
+    {
+      "value": "74901",
+      "label": "74901 - Translation services"
+    },
+    {
+      "value": "74902",
+      "label": "74902 - Brokerage and consultancy services of intellectual property assets"
+    },
+    {
+      "value": "74903",
+      "label": "74903 - Agrotechnology consultancy services"
+    },
+    {
+      "value": "74904",
+      "label": "74904 - Sustainability consultancy services"
+    },
+    {
+      "value": "74905",
+      "label": "74905 - Agents for artistes, athletes, models and other performers"
+    },
+    {
+      "value": "74909",
+      "label": "74909 - Other professional, scientific and technical activities n.e.c."
+    },
+    {
+      "value": "75000",
+      "label": "75000 - Veterinary activities"
+    },
+    {
+      "value": "77101",
+      "label": "77101 - Renting and leasing of private cars without driver "
+    },
+    {
+      "value": "77102",
+      "label": "77102 - Renting and leasing of bicycles and inline/roller skates"
+    },
+    {
+      "value": "77109",
+      "label": "77109 - Renting and leasing of land transport equipment without driver n.e.c. (except cars)"
+    },
+    {
+      "value": "77210",
+      "label": "77210 - Renting and leasing of recreational and sports goods"
+    },
+    {
+      "value": "77291",
+      "label": "77291 - Renting and leasing of furniture, utensils and electronic equipment for household use"
+    },
+    {
+      "value": "77292",
+      "label": "77292 - Renting of costumes and other attire"
+    },
+    {
+      "value": "77299",
+      "label": "77299 - Renting and leasing of other personal and household goods n.e.c. "
+    },
+    {
+      "value": "77310",
+      "label": "77310 - Renting of water transport equipment and floating structures without operator "
+    },
+    {
+      "value": "77320",
+      "label": "77320 - Renting of air transport equipment without operator"
+    },
+    {
+      "value": "77330",
+      "label": "77330 - Renting of construction and civil engineering machinery and equipment without operator"
+    },
+    {
+      "value": "77341",
+      "label": "77341 - Renting of computers and peripheral equipment without operator"
+    },
+    {
+      "value": "77342",
+      "label": "77342 - Renting of office machinery and equipment without operator"
+    },
+    {
+      "value": "77391",
+      "label": "77391 - Renting and leasing of professional radio and television sets and sound reproducing and recording equipment without operator"
+    },
+    {
+      "value": "77392",
+      "label": "77392 - Renting of industrial machinery and equipment without operator"
+    },
+    {
+      "value": "77399",
+      "label": "77399 - Renting of other machinery, equipment and tangible goods without operator n.e.c. "
+    },
+    {
+      "value": "77400",
+      "label": "77400 - Leasing of non-financial intangible assets"
+    },
+    {
+      "value": "78101",
+      "label": "78101 - IT manpower contracting services"
+    },
+    {
+      "value": "78102",
+      "label": "78102 - Manpower contracting services (except IT manpower)"
+    },
+    {
+      "value": "78103",
+      "label": "78103 - Domestic worker employment placement agencies "
+    },
+    {
+      "value": "78104",
+      "label": "78104 - Employment agencies (except domestic worker employment placement agencies)"
+    },
+    {
+      "value": "78300",
+      "label": "78300 - Management of human resource functions"
+    },
+    {
+      "value": "79101",
+      "label": "79101 - Travel agencies and tour operators (mainly inbound)"
+    },
+    {
+      "value": "79102",
+      "label": "79102 - Travel agencies and tour operators (mainly outbound)"
+    },
+    {
+      "value": "80100",
+      "label": "80100 - Private security activities"
+    },
+    {
+      "value": "80200",
+      "label": "80200 - Detective and investigation activities"
+    },
+    {
+      "value": "81211",
+      "label": "81211 - General cleaning services (except household cleaning)"
+    },
+    {
+      "value": "81212",
+      "label": "81212 - Domestic/household cleaning services "
+    },
+    {
+      "value": "81291",
+      "label": "81291 - Pest control services not in connection with agriculture"
+    },
+    {
+      "value": "81292",
+      "label": "81292 - Cleaning, maintenance and/or treatment of swimming pools, spa pools, water playgrounds and fountains"
+    },
+    {
+      "value": "81299",
+      "label": "81299 - Other cleaning services n.e.c. "
+    },
+    {
+      "value": "81300",
+      "label": "81300 - Landscape service activities (except landscape design and architecture)"
+    },
+    {
+      "value": "82110",
+      "label": "82110 - Office administrative services on a fee or contract basis"
+    },
+    {
+      "value": "82191",
+      "label": "82191 - Stenographic and secretarial services"
+    },
+    {
+      "value": "82192",
+      "label": "82192 - Duplicating and photo-copying services"
+    },
+    {
+      "value": "82199",
+      "label": "82199 - Other specialised office support activities n.e.c."
+    },
+    {
+      "value": "82200",
+      "label": "82200 - Call centres"
+    },
+    {
+      "value": "82301",
+      "label": "82301 - Exhibition organisers"
+    },
+    {
+      "value": "82302",
+      "label": "82302 - Convention/conference/corporate meeting organisers"
+    },
+    {
+      "value": "82303",
+      "label": "82303 - Event organisers (except concerts, sports/fitness event organisers and wedding planners)"
+    },
+    {
+      "value": "82304",
+      "label": "82304 - Exhibition stand contractors"
+    },
+    {
+      "value": "82305",
+      "label": "82305 - Concert organisers"
+    },
+    {
+      "value": "82911",
+      "label": "82911 - Debt collection services"
+    },
+    {
+      "value": "82912",
+      "label": "82912 - Credit rating agencies"
+    },
+    {
+      "value": "82920",
+      "label": "82920 - Packaging activities"
+    },
+    {
+      "value": "82991",
+      "label": "82991 - Activities of auction houses"
+    },
+    {
+      "value": "82999",
+      "label": "82999 - Other business support service activities"
+    },
+    {
+      "value": "84110",
+      "label": "84110 - Executive, legislative and other general public administration"
+    },
+    {
+      "value": "84120",
+      "label": "84120 - Public administration of economic, social and environmental programmes"
+    },
+    {
+      "value": "84210",
+      "label": "84210 - Foreign affairs"
+    },
+    {
+      "value": "84221",
+      "label": "84221 - Armed forces"
+    },
+    {
+      "value": "84229",
+      "label": "84229 - Defence activities n.e.c."
+    },
+    {
+      "value": "84231",
+      "label": "84231 - Judiciary and related services"
+    },
+    {
+      "value": "84232",
+      "label": "84232 - Police"
+    },
+    {
+      "value": "84233",
+      "label": "84233 - Prisons"
+    },
+    {
+      "value": "84234",
+      "label": "84234 - Other places of detention, correction and rehabilitation"
+    },
+    {
+      "value": "84235",
+      "label": "84235 - Civil defence"
+    },
+    {
+      "value": "84239",
+      "label": "84239 - Public order and safety activities n.e.c."
+    },
+    {
+      "value": "85100",
+      "label": "85100 - Pre-primary education; child care with pre-primary education services"
+    },
+    {
+      "value": "85200",
+      "label": "85200 - Primary education "
+    },
+    {
+      "value": "85310",
+      "label": "85310 - Secondary schools; combined primary and secondary schools"
+    },
+    {
+      "value": "85320",
+      "label": "85320 - Technical and vocational (secondary and post-secondary non-tertiary) education"
+    },
+    {
+      "value": "85331",
+      "label": "85331 - Junior colleges and centralised pre-university institutes (post-secondary non-tertiary); combined secondary schools and post-secondary non-tertiary schools"
+    },
+    {
+      "value": "85332",
+      "label": "85332 - Commercial schools offering general secondary and post-secondary non-tertiary education programmes"
+    },
+    {
+      "value": "85340",
+      "label": "85340 - International and foreign system schools"
+    },
+    {
+      "value": "85350",
+      "label": "85350 - Schools for special needs"
+    },
+    {
+      "value": "85360",
+      "label": "85360 - Specialised education schools"
+    },
+    {
+      "value": "85401",
+      "label": "85401 - Polytechnics"
+    },
+    {
+      "value": "85402",
+      "label": "85402 - Universities"
+    },
+    {
+      "value": "85403",
+      "label": "85403 - Teachers' training institute"
+    },
+    {
+      "value": "85404",
+      "label": "85404 - Commercial schools offering tertiary education programmes"
+    },
+    {
+      "value": "85501",
+      "label": "85501 - Training courses for construction, real estate, security and investigation services, cleaning, landscaping, waste management and pest management"
+    },
+    {
+      "value": "85502",
+      "label": "85502 - Training courses for healthcare, education, community and social services"
+    },
+    {
+      "value": "85503",
+      "label": "85503 - Training courses for food and beverage, retail and accommodation, tour operators, travel agencies and travel-related reservation services"
+    },
+    {
+      "value": "85504",
+      "label": "85504 - Training courses for manufacturing"
+    },
+    {
+      "value": "85505",
+      "label": "85505 - Training courses for information and communications, finance and professional services"
+    },
+    {
+      "value": "85506",
+      "label": "85506 - Training courses for wholesale trade, logistics and transport"
+    },
+    {
+      "value": "85507",
+      "label": "85507 - Training courses for sports and games"
+    },
+    {
+      "value": "85508",
+      "label": "85508 - Training courses for music, dancing, art, speech and drama"
+    },
+    {
+      "value": "85509",
+      "label": "85509 - Training courses n.e.c."
+    },
+    {
+      "value": "85601",
+      "label": "85601 - Student recruitment agencies"
+    },
+    {
+      "value": "85602",
+      "label": "85602 - Examination and accreditation agencies for education services"
+    },
+    {
+      "value": "85609",
+      "label": "85609 - Educational support services n.e.c. "
+    },
+    {
+      "value": "86101",
+      "label": "86101 - Acute hospitals"
+    },
+    {
+      "value": "86102",
+      "label": "86102 - Community hospitals"
+    },
+    {
+      "value": "86109",
+      "label": "86109 - Hospital activities n.e.c."
+    },
+    {
+      "value": "86201",
+      "label": "86201 - Clinics and other general medical services (Western)"
+    },
+    {
+      "value": "86202",
+      "label": "86202 - Clinics and other general medical services (Non-Western)"
+    },
+    {
+      "value": "86203",
+      "label": "86203 - Specialised medical services"
+    },
+    {
+      "value": "86204",
+      "label": "86204 - Dental services"
+    },
+    {
+      "value": "86901",
+      "label": "86901 - Medical laboratories"
+    },
+    {
+      "value": "86902",
+      "label": "86902 - Medical diagnostic imaging centres"
+    },
+    {
+      "value": "86903",
+      "label": "86903 - Ambulance and medical evacuation services"
+    },
+    {
+      "value": "86904",
+      "label": "86904 - Home healthcare services"
+    },
+    {
+      "value": "86905",
+      "label": "86905 - Dialysis services"
+    },
+    {
+      "value": "86909",
+      "label": "86909 - Other health services n.e.c. "
+    },
+    {
+      "value": "87010",
+      "label": "87010 - Nursing and personal care facilities"
+    },
+    {
+      "value": "87021",
+      "label": "87021 - Residential care services for the elderly"
+    },
+    {
+      "value": "87022",
+      "label": "87022 - Residential care services for children"
+    },
+    {
+      "value": "87029",
+      "label": "87029 - Other residential care services n.e.c."
+    },
+    {
+      "value": "88101",
+      "label": "88101 - Social services for the elderly"
+    },
+    {
+      "value": "88102",
+      "label": "88102 - Social services for persons with disabilities"
+    },
+    {
+      "value": "88911",
+      "label": "88911 - Infant care services; child minding services for pre-school children"
+    },
+    {
+      "value": "88912",
+      "label": "88912 - Student care services; child minding services for school-going children"
+    },
+    {
+      "value": "88913",
+      "label": "88913 - Social services for children and youths"
+    },
+    {
+      "value": "88919",
+      "label": "88919 - Social services without accommodation for children, youth and families n.e.c."
+    },
+    {
+      "value": "88920",
+      "label": "88920 - Community development councils "
+    },
+    {
+      "value": "88991",
+      "label": "88991 - Job training and vocational rehabilitation services"
+    },
+    {
+      "value": "88992",
+      "label": "88992 - Charitable and other supporting activities aimed at humanitarian work"
+    },
+    {
+      "value": "88999",
+      "label": "88999 - Other social services without accommodation n.e.c."
+    },
+    {
+      "value": "90110",
+      "label": "90110 - Literary creation and musical composition activities"
+    },
+    {
+      "value": "90120",
+      "label": "90120 - Visual arts creation activities"
+    },
+    {
+      "value": "90190",
+      "label": "90190 - Other arts creation activities "
+    },
+    {
+      "value": "90201",
+      "label": "90201 - Production of live theatrical presentations"
+    },
+    {
+      "value": "90202",
+      "label": "90202 - Orchestras, musical bands, choirs and dance performance activities "
+    },
+    {
+      "value": "90209",
+      "label": "90209 - Activities of performing arts n.e.c."
+    },
+    {
+      "value": "90310",
+      "label": "90310 - Arts facilities/venue operation"
+    },
+    {
+      "value": "90390",
+      "label": "90390 - Other support activities to arts and performing arts"
+    },
+    {
+      "value": "91100",
+      "label": "91100 - Libraries and archives activities"
+    },
+    {
+      "value": "91201",
+      "label": "91201 - Museums"
+    },
+    {
+      "value": "91209",
+      "label": "91209 - Operation of historical sites and buildings n.e.c."
+    },
+    {
+      "value": "91300",
+      "label": "91300 - Conservation, restoration and other support activities for cultural heritage"
+    },
+    {
+      "value": "91400",
+      "label": "91400 - Botanical and zoological gardens and nature reserves activities (except landscaping and nature tours)"
+    },
+    {
+      "value": "92001",
+      "label": "92001 - Horse-racing and other betting activities"
+    },
+    {
+      "value": "92002",
+      "label": "92002 - Casinos"
+    },
+    {
+      "value": "93111",
+      "label": "93111 - Fitness centres and gymnasiums"
+    },
+    {
+      "value": "93112",
+      "label": "93112 - Sports/fitness event organisers"
+    },
+    {
+      "value": "93119",
+      "label": "93119 - Operation of sports facilities n.e.c."
+    },
+    {
+      "value": "93120",
+      "label": "93120 - Activities of sports clubs/associations and related activities"
+    },
+    {
+      "value": "93201",
+      "label": "93201 - Amusement theme parks, adventure and family attractions"
+    },
+    {
+      "value": "93202",
+      "label": "93202 - Game arcade, online game aggregator, LAN game operators and gaming centres"
+    },
+    {
+      "value": "93203",
+      "label": "93203 - Night clubs, discotheques, dance clubs and karaoke lounges"
+    },
+    {
+      "value": "93204",
+      "label": "93204 - Recreation clubs"
+    },
+    {
+      "value": "93209",
+      "label": "93209 - Other amusement and recreation activities n.e.c."
+    },
+    {
+      "value": "94110",
+      "label": "94110 - Activities of business and employers' membership organisations"
+    },
+    {
+      "value": "94120",
+      "label": "94120 - Activities of professional membership organisations"
+    },
+    {
+      "value": "94200",
+      "label": "94200 - Activities of trade unions and platform work associations "
+    },
+    {
+      "value": "94911",
+      "label": "94911 - Churches"
+    },
+    {
+      "value": "94912",
+      "label": "94912 - Mosques"
+    },
+    {
+      "value": "94913",
+      "label": "94913 - Buddhist/Taoist temples"
+    },
+    {
+      "value": "94914",
+      "label": "94914 - Hindu/Sikh temples"
+    },
+    {
+      "value": "94919",
+      "label": "94919 - Activities of religious organisations n.e.c."
+    },
+    {
+      "value": "94920",
+      "label": "94920 - Activities of political organisations"
+    },
+    {
+      "value": "94991",
+      "label": "94991 - Philanthropic trusts, foundations and related activities"
+    },
+    {
+      "value": "94992",
+      "label": "94992 - Ethnic associations"
+    },
+    {
+      "value": "94993",
+      "label": "94993 - Associations for hobbies, recreational, cultural and extra-curricular activities"
+    },
+    {
+      "value": "94994",
+      "label": "94994 - Student/alumni bodies and related associations"
+    },
+    {
+      "value": "94995",
+      "label": "94995 - Organisations for the protection of the environment and animals"
+    },
+    {
+      "value": "94996",
+      "label": "94996 - Community and grassroots organisations"
+    },
+    {
+      "value": "94999",
+      "label": "94999 - Activities of other membership organisations n.e.c."
+    },
+    {
+      "value": "95110",
+      "label": "95110 - Repair and maintenance of computer hardware, data processing equipment and computer peripherals"
+    },
+    {
+      "value": "95120",
+      "label": "95120 - Repair of communications equipment"
+    },
+    {
+      "value": "95210",
+      "label": "95210 - Repair of audio and video equipment"
+    },
+    {
+      "value": "95220",
+      "label": "95220 - Repair of domestic electrical/electronic appliances (except audio and video equipment)"
+    },
+    {
+      "value": "95230",
+      "label": "95230 - Repair of footwear and leather goods"
+    },
+    {
+      "value": "95240",
+      "label": "95240 - Repair and restoration of cabinets, furniture, upholstery, window shades and other fixtures"
+    },
+    {
+      "value": "95291",
+      "label": "95291 - Repair of bicycles and tricycles"
+    },
+    {
+      "value": "95292",
+      "label": "95292 - Repair of watches and clocks"
+    },
+    {
+      "value": "95293",
+      "label": "95293 - Repair of jewellery"
+    },
+    {
+      "value": "95299",
+      "label": "95299 - Repair of other personal and household goods n.e.c. "
+    },
+    {
+      "value": "95301",
+      "label": "95301 - Repair and maintenance of motor vehicles"
+    },
+    {
+      "value": "95302",
+      "label": "95302 - Car washing and related services"
+    },
+    {
+      "value": "95303",
+      "label": "95303 - Motor vehicles inspection and valuation services"
+    },
+    {
+      "value": "96011",
+      "label": "96011 - Laundry and dry cleaning services (except self-operated laundries)"
+    },
+    {
+      "value": "96012",
+      "label": "96012 - Self-operated laundries"
+    },
+    {
+      "value": "96021",
+      "label": "96021 - Hairdressing salons/shops"
+    },
+    {
+      "value": "96022",
+      "label": "96022 - Beauty salons and spas"
+    },
+    {
+      "value": "96023",
+      "label": "96023 - Manicure and pedicure services"
+    },
+    {
+      "value": "96024",
+      "label": "96024 - Massage parlours and foot reflexology"
+    },
+    {
+      "value": "96029",
+      "label": "96029 - Beauty and other personal care services n.e.c. "
+    },
+    {
+      "value": "96030",
+      "label": "96030 - Funeral and related activities"
+    },
+    {
+      "value": "96040",
+      "label": "96040 - Wedding and related activities"
+    },
+    {
+      "value": "96091",
+      "label": "96091 - Friendship, match-making and dating services"
+    },
+    {
+      "value": "96092",
+      "label": "96092 - Social escort services"
+    },
+    {
+      "value": "96093",
+      "label": "96093 - Astrology, palmistry and other fortune telling services"
+    },
+    {
+      "value": "96094",
+      "label": "96094 - Training of pets"
+    },
+    {
+      "value": "96095",
+      "label": "96095 - Care services for pets and animals"
+    },
+    {
+      "value": "96099",
+      "label": "96099 - Other personal service activities n.e.c. "
+    },
+    {
+      "value": "97001",
+      "label": "97001 - Activities of households as employers of domestic workers"
+    },
+    {
+      "value": "97002",
+      "label": "97002 - Activities of households as employers of other domestic personnel"
+    },
+    {
+      "value": "99010",
+      "label": "99010 - Foreign embassies and trade representative offices"
+    },
+    {
+      "value": "99020",
+      "label": "99020 - Foreign armed forces"
+    },
+    {
+      "value": "99090",
+      "label": "99090 - Other extra-territorial organisations and bodies"
+    }
+  ]
+}

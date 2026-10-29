@@ -1,0 +1,78 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: oakcloud-app
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env
+    environment:
+      - NODE_ENV=production
+      - NEXT_TELEMETRY_DISABLED=1
+      - DATABASE_URL=postgresql://oakcloud:oakcloud_password@host.docker.internal:5433/oakcloud
+      - DATABASE_SSL=false
+      - REDIS_URL=redis://redis:6379
+      - S3_ENDPOINT=http://host.docker.internal:9000
+    depends_on:
+      redis:
+        condition: service_healthy
+    dns:
+      - 1.1.1.1
+      - 8.8.8.8
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  business-assistant-worker:
+    profiles: [business-assistant]
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    command: ["npm", "run", "business-assistant:worker"]
+    stop_grace_period: 30s
+    env_file:
+      - .env
+    environment:
+      - NODE_ENV=production
+      - DATABASE_URL=postgresql://oakcloud:oakcloud_password@host.docker.internal:5433/oakcloud
+      - DATABASE_SSL=false
+      - REDIS_URL=redis://redis:6379
+      - S3_ENDPOINT=http://host.docker.internal:9000
+      - BUSINESS_ASSISTANT_ENABLED=${BUSINESS_ASSISTANT_ENABLED:-false}
+      - BUSINESS_ASSISTANT_PROVIDER_ENABLED=${BUSINESS_ASSISTANT_PROVIDER_ENABLED:-false}
+      - BUSINESS_ASSISTANT_MUTATIONS_ENABLED=${BUSINESS_ASSISTANT_MUTATIONS_ENABLED:-false}
+    depends_on:
+      redis:
+        condition: service_healthy
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    container_name: oakcloud-tunnel
+    restart: unless-stopped
+    command: tunnel --protocol http2 run
+    environment:
+      - TUNNEL_TOKEN=${CLOUDFLARE_TUNNEL_TOKEN}
+    depends_on:
+      - app
+
+  redis:
+    image: redis:7-alpine
+    container_name: oakcloud-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  redis_data:

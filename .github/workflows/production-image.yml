@@ -1,0 +1,59 @@
+name: Production image
+
+# The Node 24 workflow already builds the app on every PR. The image build
+# repeats that inside Docker, so PRs run it only when a file that shapes the
+# image changes; every push to main still builds it.
+on:
+  pull_request:
+    paths:
+      - Dockerfile
+      - .dockerignore
+      - package.json
+      - package-lock.json
+      - next.config.js
+      - prisma/**
+      - scripts/smoke-chromium.ts
+      - src/lib/chrome-executable.ts
+      - .github/workflows/production-image.yml
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production-image-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  docker:
+    name: Production image compatibility
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Build production image
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          pull: true
+          push: false
+          load: true
+          tags: oakcloud:node24-ci
+
+      - name: Verify final runtime and Chromium
+        run: |
+          docker run --rm --entrypoint sh oakcloud:node24-ci -lc '
+            node --version | grep -E "^v24\\." &&
+            test "$CHROME_PATH" = "/usr/local/bin/oakcloud-chromium" &&
+            test -x "$CHROME_PATH" &&
+            "$CHROME_PATH" --version &&
+            npm run test:chromium
+          '
