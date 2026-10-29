@@ -209,6 +209,8 @@ export function buildFieldHighlights(
       width: field.widthPercent,
       height: field.heightPercent,
       label: field.label ?? ESIGNING_FIELD_TYPE_LABELS[field.type],
-      color: field.id === activeFieldId ? '#f97316' : recipientColorMap.get(field.recipientId) ?? '#1d4ed8',
+      // Keep the signer's colour so the box matches the signer card; mark the active field by weight, not colour.
+      color: recipientColorMap.get(field.recipientId) ?? '#1d4ed8',
+      active: field.id === activeFieldId,
     }));
 }

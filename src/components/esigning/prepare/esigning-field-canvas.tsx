@@ -435,7 +435,7 @@ export function EsigningFieldCanvas({
       width: field.widthPercent,
       height: field.heightPercent,
       color:
-        field.localId === selectedFieldId
+        canEdit && field.localId === selectedFieldId
           ? '#f97316'
           : recipientColorMap.get(field.recipientId) ?? '#294d44',
     }));

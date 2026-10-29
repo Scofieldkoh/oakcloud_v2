@@ -56,6 +56,8 @@ export interface BoundingBox {
   height: number; // 0-1 normalized
   label?: string;
   color?: string;
+  /** Draw with a heavier outline and fill, keeping `color` (e.g. the field being reviewed). */
+  active?: boolean;
 }
 
 export interface TextLayerItem {
@@ -450,9 +452,9 @@ function DocumentHighlightOverlay({
               y={y}
               width={width}
               height={height}
-              fill={`${color}30`}
+              fill={`${color}${highlight.active ? '55' : '30'}`}
               stroke={color}
-              strokeWidth="1.5"
+              strokeWidth={highlight.active ? 3 : 1.5}
               rx="4"
               {...(onHighlightClick
                 ? {
