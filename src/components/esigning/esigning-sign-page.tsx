@@ -1345,7 +1345,7 @@ export function EsigningSignPage() {
             Access code required
           </h1>
           <p className="mt-2 text-center text-sm text-text-secondary">
-            Check your email for a one-time access code and enter it below to continue.
+            Enter the access code the sender gave you to continue.
           </p>
           {accessCodeError ? (
             <Alert variant="error" className="mt-4">
@@ -1357,7 +1357,7 @@ export function EsigningSignPage() {
               label="Access code"
               value={accessCode}
               onChange={(event) => setAccessCode(event.target.value)}
-              placeholder="Enter code from your email"
+              placeholder="Enter access code"
               required
             />
             <Button type="submit" className="w-full">

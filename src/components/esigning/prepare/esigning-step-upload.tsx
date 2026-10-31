@@ -1122,6 +1122,7 @@ async function applyMixedGroupChange(
                 label="Access code"
                 inputSize="lg"
                 placeholder={`Min ${ESIGNING_LIMITS.MIN_ACCESS_CODE_LENGTH} characters`}
+                hint="Share this code by phone or SMS. It can't be shown again."
                 value={newRecipient.accessCode}
                 onChange={(e) => setNewRecipient((prev) => ({ ...prev, accessCode: e.target.value }))}
                 className={EDITABLE_CONTROL_CLASS_NAME}

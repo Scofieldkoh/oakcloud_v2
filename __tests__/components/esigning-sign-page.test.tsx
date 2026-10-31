@@ -1243,3 +1243,32 @@ describe('EsigningSignPage completion polling', () => {
     expect(reloadCount).toBe(2);
   });
 });
+
+describe('EsigningSignPage access code prompt', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+  });
+
+  it('tells the signer to enter the code the sender gave them instead of checking email', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (input: RequestInfo | URL) => {
+        if (String(input).endsWith('/api/esigning/sign/token-1')) {
+          return jsonResponse({ requiresAccessCode: true });
+        }
+        throw new Error(`Unexpected fetch in test: ${String(input)}`);
+      })
+    );
+
+    render(<EsigningSignPage />);
+
+    const prompt = await screen.findByText('Enter the access code the sender gave you to continue.');
+    // No session exists before the code is verified, so the prompt must not name anyone.
+    expect(prompt.textContent).toBe('Enter the access code the sender gave you to continue.');
+    expect(screen.getByRole('heading', { name: 'Access code required' })).toBeInTheDocument();
+    expect(screen.queryByText(/check your email/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/one-time/i)).not.toBeInTheDocument();
+    expect(screen.queryByPlaceholderText(/from your email/i)).not.toBeInTheDocument();
+  });
+});

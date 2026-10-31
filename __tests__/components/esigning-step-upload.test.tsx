@@ -469,6 +469,18 @@ describe('EsigningStepUpload', () => {
     expect(screen.getByRole('combobox', { name: 'Access method' })).toHaveValue('MANUAL_LINK');
   });
 
+  it('tells the sender to share the access code by phone or SMS', async () => {
+    const user = userEvent.setup();
+    renderUpload({ recipients: [], recipientCount: 0, signerCount: 0 });
+
+    await user.click(screen.getByRole('button', { name: 'Add recipient' }));
+    expect(screen.queryByText(/Share this code by phone or SMS/)).not.toBeInTheDocument();
+
+    await user.selectOptions(screen.getByRole('combobox', { name: 'Access method' }), 'EMAIL_WITH_CODE');
+
+    expect(screen.getByText("Share this code by phone or SMS. It can't be shown again.")).toBeInTheDocument();
+  });
+
   it('allows a manual-link signer without an email address', async () => {
     const user = userEvent.setup();
     const onAddRecipient = vi.fn().mockResolvedValue(undefined);
