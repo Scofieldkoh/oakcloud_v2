@@ -48,6 +48,7 @@ export const esigningPreparationTask: TaskRegistration = {
   id: 'esigning-preparation',
   name: 'E-Signing Preparation Queue',
   description: 'Prepares draft task envelopes and managed documents before users open the stage',
+  enabledEnvVar: 'SCHEDULER_ENABLED',
   defaultCronPattern: '*/1 * * * *',
   execute: executeEsigningPreparationTask,
 };

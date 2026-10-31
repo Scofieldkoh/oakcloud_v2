@@ -40,6 +40,7 @@ export const esigningExpiryCheckTask: TaskRegistration = {
   id: 'esigning-expiry-check',
   name: 'E-Signing Expiry Check',
   description: 'Expires sent and in-progress envelopes that have passed their deadline',
+  enabledEnvVar: 'SCHEDULER_ENABLED',
   defaultCronPattern: '0 * * * *',
   execute: executeEsigningExpiryCheckTask,
 };

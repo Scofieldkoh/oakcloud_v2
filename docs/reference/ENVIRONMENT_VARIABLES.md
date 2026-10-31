@@ -216,15 +216,35 @@ The in-process scheduler is started by the app and can be configured per task.
 | `SCHEDULER_CLEANUP_ENABLED` | `true` | Enable cleanup processing |
 | `SCHEDULER_CLEANUP_CRON` | `0 2 * * *` | Cleanup schedule |
 | `SCHEDULER_ESIGNING_PDF_GENERATION_CRON` | `* * * * *` | E-signing completion recovery cadence; signed PDFs are generated on demand and this task inherits the master scheduler switch |
+| `SCHEDULER_ESIGNING_SHAREPOINT_FILING_CRON` | `* * * * *` | Signed-document SharePoint filing cadence; task inherits the master scheduler switch |
+| `SCHEDULER_ESIGNING_PREPARATION_CRON` | `* * * * *` | E-signing preparation queue cadence (lease recovery and durable fallback for task envelopes); task inherits the master scheduler switch |
+| `SCHEDULER_ESIGNING_EXPIRY_CHECK_CRON` | `0 * * * *` | E-signing expiry check cadence (hourly). Envelopes past their deadline become `EXPIRED` and expiry emails go out only while this task runs; it inherits the master scheduler switch |
+| `SCHEDULER_ESIGNING_REMINDERS_CRON` | `0 0 * * *` | E-signing reminder and expiry-warning cadence (daily at 00:00 in the server time zone); task inherits the master scheduler switch |
 | `SCHEDULER_SERVICE_AGREEMENT_ACTIVATION_CRON` | `* * * * *` | Service Agreement activation retry polling cadence; task inherits the master scheduler switch |
+| `SCHEDULER_SERVICE_SCHEDULE_RECONCILIATION_CRON` | `* * * * *` | Service cycle and deadline reconciliation cadence; task inherits the master scheduler switch |
 | `SCHEDULER_FORM_AI_REVIEW_ENABLED` | `true` | Enable queued form AI review processing |
 | `SCHEDULER_FORM_AI_REVIEW_CRON` | `*/2 * * * *` | Form AI review polling interval |
 | `SCHEDULER_FORM_COUNT_RECONCILIATION_ENABLED` | `false` unless set | Enable form submission count reconciliation |
 | `SCHEDULER_FORM_COUNT_RECONCILIATION_CRON` | `0 3 * * 0` | Reconciliation schedule |
 | `SCHEDULER_FORM_URL_HEALTH_ENABLED` | `true` | Enable periodic checks for URL information fields |
 | `SCHEDULER_FORM_URL_HEALTH_CRON` | `0 2 * * *` | URL health check schedule (daily at 02:00 by default) |
+| `SCHEDULER_EXCHANGE_RATE_SYNC_ENABLED` | off unless set | Enable the MAS exchange rate sync |
+| `SCHEDULER_EXCHANGE_RATE_SYNC_CRON` | `0 6 * * *` | Exchange rate sync schedule |
+| `SCHEDULER_EXCHANGE_RATE_MAS_DAILY_ENABLED` | `true` | Include the MAS daily source in the exchange rate sync |
+| `SCHEDULER_EXCHANGE_RATE_MAS_MONTHLY_ENABLED` | `true` | Include the MAS monthly source in the exchange rate sync |
+| `SCHEDULER_PROCESSING_REVISION_BACKFILL_ENABLED` | off unless set | Enable the processing-document revision pointer repair |
+| `SCHEDULER_PROCESSING_REVISION_BACKFILL_CRON` | `15 3 * * *` | Revision pointer repair schedule |
+| `SCHEDULER_SUMMARY_COUNT_REFRESH_ENABLED` | off unless set | Enable the company counter and summary view refresh |
+| `SCHEDULER_SUMMARY_COUNT_REFRESH_CRON` | `30 3 * * *` | Summary refresh schedule |
 
 Form URL health scheduling also obeys the master `SCHEDULER_ENABLED` switch. Each run is bounded to 500 URLs and five concurrent checks; warnings remain visible only on authenticated Forms surfaces.
+
+How the scheduler variables combine:
+
+- Nothing runs unless `SCHEDULER_ENABLED=true`.
+- Master-switch tasks run whenever `SCHEDULER_ENABLED=true` and have no `*_ENABLED` variable of their own: `esigning-pdf-generation`, `esigning-sharepoint-filing`, `esigning-preparation`, `esigning-expiry-check`, `esigning-reminders`, `service-agreement-activation` and `service-schedule-reconciliation`. Only their `SCHEDULER_<TASK>_CRON` can be changed. Before this was fixed, the e-signing expiry, reminder and preparation tasks required `SCHEDULER_ESIGNING_EXPIRY_CHECK_ENABLED`, `SCHEDULER_ESIGNING_REMINDERS_ENABLED` and `SCHEDULER_ESIGNING_PREPARATION_ENABLED`, which were undocumented, so they stayed off on installs that only set the master switch.
+- Every other task (backup, cleanup, ACRA sync, public holiday sync, exchange rate sync, form tasks, revision backfill, summary refresh) also needs its own `SCHEDULER_<TASK_ID>_ENABLED=true`, with the task id upper-cased and `-` replaced by `_`. A task whose `*_ENABLED` variable is unset stays off, whatever "Default" shows above for the recommended value.
+- `SCHEDULER_<TASK_ID>_CRON` overrides any task's schedule.
 
 Backup-related settings:
 
