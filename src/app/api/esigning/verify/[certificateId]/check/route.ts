@@ -1,9 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createErrorResponse } from '@/lib/api-helpers';
-import { hashBlake3 } from '@/lib/encryption';
 import { RATE_LIMIT_CONFIGS } from '@/lib/rate-limit';
 import { enforceEsigningRateLimit, requireEsigningSameOrigin } from '@/lib/esigning-public-route';
-import { getEsigningVerificationData } from '@/services/esigning-certificate.service';
+import {
+  findIssuedArtifactMatch,
+  getEsigningVerificationData,
+} from '@/services/esigning-certificate.service';
 
 interface RouteParams {
   params: Promise<{ certificateId: string }>;
@@ -36,13 +38,18 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 
     const verification = await getEsigningVerificationData(certificateId);
     const buffer = Buffer.from(await file.arrayBuffer());
-    const fileHash = hashBlake3(buffer);
-    const matchedDocument = verification.documents.find((document) => document.hash === fileHash);
+    // Matches any file issued for this certificate: the signed document, the certificate, or the
+    // document with its certificate (the emailed and filed copy), in any version.
+    const match = await findIssuedArtifactMatch(certificateId, buffer);
+    const matchedDocument = match.documentId
+      ? verification.documents.find((document) => document.id === match.documentId)
+      : undefined;
 
     return NextResponse.json({
-      matched: Boolean(matchedDocument),
-      fileHash,
+      matched: match.matched,
+      fileHash: match.fileHash,
       document: matchedDocument ?? null,
+      artifact: match.artifact,
     });
   } catch (error) {
     return createErrorResponse(error);

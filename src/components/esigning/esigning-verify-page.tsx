@@ -142,6 +142,8 @@ interface VerificationResponse {
     hash: string;
     hasSignedCopy: boolean;
   }>;
+  /** False when the envelope completed before issued copies were fingerprinted. */
+  emailedCopiesVerifiable?: boolean;
   recipients: Array<{
     id: string;
     name: string;
@@ -166,6 +168,33 @@ interface VerificationMatchResponse {
   matched: boolean;
   fileHash: string;
   document: VerificationResponse['documents'][number] | null;
+  artifact?: {
+    kind: 'SIGNED_DOCUMENT' | 'CERTIFICATE' | 'DOCUMENT_WITH_CERTIFICATE' | null;
+    version: number | null;
+    issuedAt: string;
+    isCurrent: boolean;
+    source: 'ISSUED_ARTIFACT' | 'SHAREPOINT_FILING_RECORD';
+  } | null;
+}
+
+const ARTIFACT_KIND_LABELS = {
+  SIGNED_DOCUMENT: 'signed document',
+  CERTIFICATE: 'certificate of completion',
+  DOCUMENT_WITH_CERTIFICATE: 'signed document with its certificate',
+} as const;
+
+function describeMatchedArtifact(match: VerificationMatchResponse): string {
+  const artifact = match.artifact;
+  const kind = artifact?.kind ? ARTIFACT_KIND_LABELS[artifact.kind] : 'issued file';
+  const subject = match.document ? `the ${kind} of ${match.document.fileName}` : `the ${kind}`;
+  if (!artifact) return `This file matches ${subject}.`;
+  const issued = new Date(artifact.issuedAt).toLocaleDateString(undefined, { dateStyle: 'medium' });
+  if (artifact.source === 'SHAREPOINT_FILING_RECORD') {
+    return `This file matches ${subject} as filed to SharePoint on ${issued}, before issued copies were fingerprinted. It is not the version currently offered for download.`;
+  }
+  return artifact.isCurrent
+    ? `This file matches ${subject}, issued ${issued}.`
+    : `This file matches ${subject}, issued ${issued}. It is an earlier issue (version ${artifact.version}), not the version currently offered for download.`;
 }
 
 interface TimelineEvent {
@@ -601,7 +630,7 @@ export function EsigningVerifyPage() {
                       </span>
                     </div>
                     <div className="mt-2.5 flex items-start gap-1.5 rounded-lg bg-background-tertiary px-3 py-2">
-                      <span className="mt-0.5 text-[10px] font-semibold uppercase tracking-wider text-text-muted">SHA-256</span>
+                      <span className="mt-0.5 text-[10px] font-semibold uppercase tracking-wider text-text-muted">BLAKE3</span>
                       <code className="flex-1 break-all text-[11px] text-text-secondary">{document.hash}</code>
                       <CopyHashButton hash={document.hash} />
                     </div>
@@ -615,8 +644,15 @@ export function EsigningVerifyPage() {
           <section className="rounded-2xl border border-border-primary bg-background-secondary p-4 shadow-sm sm:rounded-3xl sm:p-6">
             <SectionHeader icon={ShieldCheck} title="Verify a File" />
             <p className="mt-3 text-sm text-text-secondary">
-              Upload a PDF to compare its SHA-256 hash against the documents registered under this certificate.
+              Upload a PDF to compare its BLAKE3 fingerprint with the files issued under this certificate: the signed
+              document, the certificate, and the signed document with its certificate as emailed or filed.
             </p>
+            {data.emailedCopiesVerifiable === false ? (
+              <p className="mt-2 text-xs text-text-muted">
+                This envelope was completed before issued copies were fingerprinted. Copies that were emailed then
+                cannot be verified here; the signed documents and certificate downloaded from OakCloud can.
+              </p>
+            ) : null}
             <div className="mt-4">
               <DropZone isChecking={isChecking} onFile={checkFile} />
             </div>
@@ -630,7 +666,7 @@ export function EsigningVerifyPage() {
                       <span className="text-sm font-semibold">Hash matched</span>
                     </div>
                     <p className="mt-2 text-sm text-emerald-700 dark:text-emerald-400">
-                      This file matches <strong>{matchResult.document?.fileName}</strong>.
+                      {describeMatchedArtifact(matchResult)}
                     </p>
                     <code className="mt-2 block break-all rounded bg-emerald-100 px-2 py-1.5 text-[11px] text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">
                       {matchResult.fileHash}
@@ -643,7 +679,7 @@ export function EsigningVerifyPage() {
                       <span className="text-sm font-semibold">Hash mismatch</span>
                     </div>
                     <p className="mt-2 text-sm text-rose-700 dark:text-rose-400">
-                      The uploaded file does not match any document registered under this certificate.
+                      The uploaded file does not match any file recorded as issued under this certificate.
                     </p>
                     <code className="mt-2 block break-all rounded bg-rose-100 px-2 py-1.5 text-[11px] text-rose-600 dark:bg-rose-900/30 dark:text-rose-400">
                       {matchResult.fileHash}
