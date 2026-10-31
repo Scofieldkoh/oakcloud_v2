@@ -2,10 +2,10 @@ import 'dotenv/config';
 import { Prisma, PrismaClient } from '@/generated/prisma';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { Pool } from 'pg';
-import bcrypt from 'bcryptjs';
 import { v5 as uuidv5 } from 'uuid';
 import { isOakDocTemplate } from '@/lib/document-editor/oakdoc-template';
 import { ensureWorkspaceSeedFoundation } from './seed-workspace-foundation';
+import { ensureSuperAdminUser, SEED_ADMIN_PASSWORD_ENV } from './seed-super-admin';
 import {
   CLIENT_ONBOARDING_DOCUMENT_TEMPLATES,
   ensureSeededDocumentTemplate,
@@ -285,40 +285,18 @@ async function main() {
   // =========================================================================
   console.log('Step 1: Creating SUPER_ADMIN user...');
 
-  const superAdminEmail = 'admin@oaktreesolutions.com.sg';
-  const legacySuperAdminEmail = 'admin@oakcloud.local';
-  const superAdminPassword = 'Preparefortrouble!';
-  const passwordHash = await bcrypt.hash(superAdminPassword, 10);
-
-  // Super Admin (no tenant - system-wide admin)
-  const existingSuperAdmin = await prisma.user.findFirst({
-    where: {
-      OR: [
-        { email: superAdminEmail },
-        { email: legacySuperAdminEmail },
-      ],
-    },
-  });
-
-  const superAdmin = existingSuperAdmin
-    ? await prisma.user.update({
-      where: { id: existingSuperAdmin.id },
-      data: {
-        email: superAdminEmail,
-        passwordHash,
-        isActive: true,
-      },
-    })
-    : await prisma.user.create({
-      data: {
-        email: superAdminEmail,
-        passwordHash,
-        firstName: 'Super',
-        lastName: 'Admin',
-        isActive: true,
-      },
-    });
-  console.log(`  Created/updated SUPER_ADMIN: ${superAdmin.email}\n`);
+  // Super Admin (no tenant - system-wide admin). An existing administrator is
+  // never modified, so re-seeding cannot undo a password rotation or deactivation.
+  const {
+    user: superAdmin,
+    created: superAdminCreated,
+    generatedPassword,
+  } = await ensureSuperAdminUser(prisma);
+  console.log(
+    superAdminCreated
+      ? `  Created SUPER_ADMIN: ${superAdmin.email}\n`
+      : `  SUPER_ADMIN already exists (${superAdmin.email}); left unchanged\n`,
+  );
 
   // =========================================================================
   // STEP 2: Seed permissions
@@ -517,16 +495,9 @@ async function main() {
   // =========================================================================
   console.log('Step 4: Assigning SUPER_ADMIN role...');
 
-  // Check if assignment already exists
-  const existingSuperAdminAssignment = await prisma.userRoleAssignment.findFirst({
-    where: {
-      userId: superAdmin.id,
-      roleId: superAdminRole.id,
-      companyId: null,
-    },
-  });
-
-  if (!existingSuperAdminAssignment) {
+  // Only a newly created administrator gets the role; an existing one keeps
+  // whatever role assignments it has.
+  if (superAdminCreated) {
     await prisma.userRoleAssignment.create({
       data: {
         userId: superAdmin.id,
@@ -534,8 +505,10 @@ async function main() {
         companyId: null,
       },
     });
+    console.log(`  Assigned Super Admin role to: ${superAdmin.email}\n`);
+  } else {
+    console.log('  Existing SUPER_ADMIN role assignments left unchanged\n');
   }
-  console.log(`  Assigned Super Admin role to: ${superAdmin.email}\n`);
 
   // =========================================================================
   // STEP 5: Ensure workspace foundations
@@ -822,11 +795,20 @@ async function main() {
   console.log('========================================');
   console.log('Database seeded successfully!');
   console.log('========================================');
-  console.log('\nDefault credentials:');
-  console.log('  Super Admin:');
-  console.log('    Email: admin@oaktreesolutions.com.sg');
-  console.log('    Password: Preparefortrouble!');
-  console.log('\nNote: Change this password in production!');
+  if (superAdminCreated) {
+    console.log('\nSuper Admin created:');
+    console.log(`  Email: ${superAdmin.email}`);
+    if (generatedPassword) {
+      console.log('  Generated password (shown once, store it now):');
+      console.log(`    ${generatedPassword}`);
+    } else {
+      console.log(`  Password: taken from ${SEED_ADMIN_PASSWORD_ENV}`);
+    }
+    console.log('  Change it after first sign-in.');
+  } else {
+    console.log('\nSuper Admin already existed and was not modified.');
+    console.log('Lost the password? See docs/GETTING_STARTED.md (Recovering admin access).');
+  }
   console.log('\nDefault workspace: Oakcloud');
   console.log('Use the Super Admin account to create users, companies, and reviewed service catalog entries.\n');
 }

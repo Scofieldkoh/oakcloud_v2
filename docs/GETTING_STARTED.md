@@ -53,9 +53,9 @@ S3_BUCKET="oakcloud"
 - MinIO API: `http://localhost:9000`
 - MinIO Console: `http://localhost:9001`
 
-**Default Login**
+**First Login**
 
-- Super Admin: `admin@oaktreesolutions.com.sg` / `Preparefortrouble!`
+`npm run db:seed` creates the Super Admin `admin@oaktreesolutions.com.sg` only if it does not exist yet. Its password is `SEED_ADMIN_PASSWORD` when you set it (at least 12 characters), for example `SEED_ADMIN_PASSWORD='<choose one>' npm run db:seed`. If you leave it unset, a random password is generated and printed once at the end of that first run. Re-running the seed never prints it again and never changes an existing administrator. If the password is lost, see [Recovering admin access](#recovering-admin-access).
 
 ## Local Data Services
 
@@ -116,7 +116,9 @@ npm run docker:down
 | `npm run db:seed` | Bootstrap the default workspace and required system foundations |
 | `npm run db:studio` | Open Prisma Studio |
 
-The seed script is idempotent and can be run multiple times safely. On an empty
+The seed script is idempotent and can be run multiple times safely. It creates
+the bootstrap Super Admin only when none exists; an existing administrator's
+password, active flag, email and roles are never changed. On an empty
 database it creates an active `Oakcloud` workspace with the Services workspace
 and deadline/billing materialization enabled. For every non-deleted workspace it
 ensures system roles, default custom roles, the Singapore business calendar,
@@ -127,6 +129,27 @@ The seed deliberately does not create companies, tasks, client services,
 billing occurrences, deadline occurrences, uploads, or other business records.
 Existing workspace status and settings are preserved. Service catalog entries
 remain subject to administrator review and activation.
+
+### Recovering admin access
+
+Use this if the Super Admin password is lost. Run it on the server with the
+real `DATABASE_URL` in the environment (or `.env`):
+
+```bash
+ADMIN_NEW_PASSWORD='<new password, 12+ characters>' npx tsx scripts/reset-admin-password.ts
+# in Docker: docker compose exec -e ADMIN_NEW_PASSWORD='<new password>' app npx tsx scripts/reset-admin-password.ts
+```
+
+- Leave `ADMIN_NEW_PASSWORD` unset to get a random password printed once.
+- `--email <login>` resets another user instead of the default Super Admin.
+- `--reactivate` also sets a deactivated account active again. Without it, the
+  account's active flag is left as it is.
+- The script replaces only the password, requires a password change at next
+  sign-in and clears any pending reset token. It never changes roles, and it
+  does nothing if no matching non-deleted user exists.
+
+Do not use `npm run db:seed` for recovery: it deliberately leaves an existing
+administrator alone.
 
 ## Development Commands
 
@@ -244,7 +267,7 @@ npm run db:push
 ## Moving Oakcloud To Another Machine
 
 1. On the old machine, open Administration > Backup > Full backups, set a backup password (keep it in your password manager), click Back up now, and download the `.oakbackup` file when it completes. Also copy your `.env` file.
-2. On the new machine, clone the repository, put the `.env` in place (a new `ENCRYPTION_KEY` also works; connectors are re-locked during the restore), start the stack, then run `docker compose exec app npx prisma migrate deploy` and `docker compose exec app npx tsx prisma/seed.ts` so you can sign in with the default admin.
+2. On the new machine, clone the repository, put the `.env` in place (a new `ENCRYPTION_KEY` also works; connectors are re-locked during the restore), start the stack, then run `docker compose exec app npx prisma migrate deploy` and `docker compose exec app npx tsx prisma/seed.ts` so you can sign in with the default admin (set `SEED_ADMIN_PASSWORD` for that run, or note the password the seed prints; the backup restore also brings your own accounts back).
 3. Open Administration > Backup > Full backups, click Upload backup file, then Restore. Enter the backup password, read the check, and type `RESTORE`.
 4. When the restore finishes, sign in with your own account from the backup and run `docker compose restart app`. Backups leave out the ACRA register, so open Administration > ACRA Records and click Sync now to download it again.
 
