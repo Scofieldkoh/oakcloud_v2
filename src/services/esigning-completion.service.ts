@@ -15,6 +15,7 @@ import type {
 } from '@/types/esigning';
 import type { EsigningPdfGenerationStatus } from '@/generated/prisma';
 import { sendEsigningCompletionEmail } from '@/services/esigning-notification.service';
+import { getCurrentIssuedVersion, readIssuedArtifact } from '@/services/esigning-issued-artifacts';
 import {
   buildDeliveryDocumentLinks,
   buildEmailAttachments,
@@ -954,35 +955,29 @@ export async function processEsigningCompletionDelivery(
       throw new Error('No documents are visible to this completion recipient');
     }
     await ensureEsigningEnvelopeArtifacts({
+      tenantId: delivery.envelope.tenantId,
       envelopeId: delivery.envelope.id,
       requireCertificates: true,
     });
 
-    if (deliveryDocuments.some((document) => !document.signedStoragePath)) {
-      throw new Error('Signed artifacts are not ready for delivery');
-    }
-
-    const [certificateBuffer, signedBuffers] = await Promise.all([
-      storage.download(
-        StorageKeys.esigningEnvelopeCertificate(
-          delivery.envelope.tenantId,
-          delivery.envelope.id,
-        ),
-      ),
-      Promise.all(
-        deliveryDocuments.map(async (document) => ({
+    // The attachment is the stored document+certificate file, byte for byte (merged and hashed once
+    // when the artifacts were generated), so every send is identical and verifies on the public check.
+    const issuedVersion = await getCurrentIssuedVersion(delivery.envelope.tenantId, delivery.envelope.id);
+    const attachmentDocuments = await Promise.all(
+      deliveryDocuments.map(async (document) => {
+        const issued = issuedVersion?.withCertificateByDocumentId.get(document.id);
+        if (!issued) {
+          throw new Error('Signed artifacts are not ready for delivery');
+        }
+        return {
           id: document.id,
           fileName: document.fileName,
           originalFileName: document.originalFileName,
-          signedBuffer: await storage.download(document.signedStoragePath as string),
-        })),
-      ),
-    ]);
-    const documentsWithCertificate = signedBuffers.map((document) => ({
-      ...document,
-      certificateBuffer,
-    }));
-    const attachments = await buildEmailAttachments({ documents: documentsWithCertificate });
+          content: await readIssuedArtifact(issued),
+        };
+      }),
+    );
+    const attachments = await buildEmailAttachments({ documents: attachmentDocuments });
     const actorType = isRecipientDelivery ? 'recipient' : 'sender';
     const documentLinks = await buildDeliveryDocumentLinks({
       envelopeId: delivery.envelope.id,
@@ -1092,14 +1087,17 @@ export async function processQueuedEsigningCompletionWork(input?: {
     },
     orderBy: { updatedAt: 'asc' },
     take: limit,
-    select: { id: true },
+    select: { id: true, tenantId: true },
   });
 
   for (let index = 0; index < artifactCandidates.length; index += concurrency) {
     const batch = artifactCandidates.slice(index, index + concurrency);
     const results = await Promise.allSettled(
       batch.map(async (candidate) => {
-        const outcome = await generateEsigningEnvelopeArtifactsNow({ envelopeId: candidate.id });
+        const outcome = await generateEsigningEnvelopeArtifactsNow({
+          tenantId: candidate.tenantId,
+          envelopeId: candidate.id,
+        });
         return outcome;
       })
     );

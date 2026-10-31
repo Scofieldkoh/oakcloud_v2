@@ -377,6 +377,16 @@ export type EsigningEnvelope = Prisma.EsigningEnvelopeModel
  */
 export type EsigningEnvelopeDocument = Prisma.EsigningEnvelopeDocumentModel
 /**
+ * Model EsigningIssuedArtifact
+ * Immutable record of every PDF issued for a completed envelope (signed document,
+ * certificate, and the document+certificate file that is emailed and filed), with the
+ * BLAKE3 fingerprint recorded at issue time. Rows are only ever inserted. A regeneration
+ * appends a new `version`; earlier rows and files stay as they were so a file issued earlier
+ * can still be recognised. A unique index on (envelopeId, version, kind, COALESCE(documentId, ''))
+ * is created in the migration SQL because Prisma cannot express it.
+ */
+export type EsigningIssuedArtifact = Prisma.EsigningIssuedArtifactModel
+/**
  * Model EsigningSharePointFiling
  *
  */

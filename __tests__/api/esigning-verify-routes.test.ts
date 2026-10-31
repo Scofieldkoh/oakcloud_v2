@@ -7,6 +7,7 @@ import { NotFoundError } from '@/lib/errors';
 const mocks = vi.hoisted(() => ({
   checkRateLimit: vi.fn(),
   getEsigningVerificationData: vi.fn(),
+  findIssuedArtifactMatch: vi.fn(),
 }));
 
 vi.mock('@/lib/rate-limit', async (importOriginal) => ({
@@ -15,6 +16,7 @@ vi.mock('@/lib/rate-limit', async (importOriginal) => ({
 }));
 vi.mock('@/services/esigning-certificate.service', () => ({
   getEsigningVerificationData: mocks.getEsigningVerificationData,
+  findIssuedArtifactMatch: mocks.findIssuedArtifactMatch,
 }));
 
 const IP = '198.51.100.7';
@@ -48,6 +50,12 @@ beforeEach(() => {
   vi.clearAllMocks();
   mocks.checkRateLimit.mockReturnValue(allowed);
   mocks.getEsigningVerificationData.mockResolvedValue(verification);
+  mocks.findIssuedArtifactMatch.mockResolvedValue({
+    matched: false,
+    fileHash: 'unmatched-hash',
+    documentId: null,
+    artifact: null,
+  });
 });
 
 describe('GET /api/esigning/verify/[certificateId]', () => {
@@ -95,25 +103,61 @@ describe('POST /api/esigning/verify/[certificateId]/check', () => {
 
   const pdf = () => new File([PDF_BYTES], 'upload.pdf', { type: 'application/pdf' });
 
-  it('matches an uploaded file against the certificate document hashes', async () => {
+  it('matches an uploaded file against everything issued for the certificate', async () => {
+    const artifact = {
+      kind: 'DOCUMENT_WITH_CERTIFICATE',
+      version: 2,
+      issuedAt: '2026-10-31T00:00:00.000Z',
+      isCurrent: true,
+      source: 'ISSUED_ARTIFACT',
+    };
+    mocks.findIssuedArtifactMatch.mockResolvedValue({
+      matched: true,
+      fileHash: 'file-hash',
+      documentId: 'doc-1',
+      artifact,
+    });
     const response = await check(pdf(), { origin: 'http://localhost' });
 
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual({
       matched: true,
-      fileHash: verification.documents[0].hash,
+      fileHash: 'file-hash',
       document: verification.documents[0],
+      artifact,
     });
+    const [certificateId, uploaded] = mocks.findIssuedArtifactMatch.mock.calls[0];
+    expect(certificateId).toBe(CERTIFICATE_ID);
+    expect(Buffer.from(uploaded).toString()).toBe(PDF_BYTES);
     expect(mocks.checkRateLimit).toHaveBeenCalledWith(`esigning_verify:${IP}:${CERTIFICATE_ID}`, expect.any(Object));
   });
 
+  it('reports a match for a certificate-only file with no document', async () => {
+    mocks.findIssuedArtifactMatch.mockResolvedValue({
+      matched: true,
+      fileHash: 'cert-hash',
+      documentId: null,
+      artifact: { kind: 'CERTIFICATE', version: 1, issuedAt: '2026-10-31T00:00:00.000Z', isCurrent: false, source: 'ISSUED_ARTIFACT' },
+    });
+    const body = await (await check(pdf())).json();
+
+    expect(body).toMatchObject({ matched: true, document: null, artifact: { kind: 'CERTIFICATE', isCurrent: false } });
+  });
+
   it('reports no match for a different file', async () => {
+    mocks.findIssuedArtifactMatch.mockResolvedValue({
+      matched: false,
+      fileHash: hashBlake3(Buffer.from('tampered')),
+      documentId: null,
+      artifact: null,
+    });
     const response = await check(new File(['tampered'], 'upload.pdf'));
 
     expect(await response.json()).toEqual({
       matched: false,
       fileHash: hashBlake3(Buffer.from('tampered')),
       document: null,
+      artifact: null,
     });
   });
 

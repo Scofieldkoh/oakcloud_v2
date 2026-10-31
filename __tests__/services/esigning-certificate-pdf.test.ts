@@ -12,13 +12,7 @@ vi.mock('@/services/esigning-email-delivery.service', () => ({
   withEsigningDeliveryTarget: vi.fn(),
 }));
 
-const {
-  buildCertificatePdf,
-  buildEmailAttachments,
-  composeEsigningDocumentPackage,
-  composeEsigningEnvelopePackage,
-  mergePdfBuffers,
-} = await import('@/services/esigning-pdf.service');
+const { buildCertificatePdf, buildEmailAttachments } = await import('@/services/esigning-pdf.service');
 
 function at(iso: string) {
   return new Date(iso);
@@ -158,119 +152,12 @@ describe('buildCertificatePdf', () => {
   });
 });
 
-describe('mergePdfBuffers', () => {
-  it('keeps the signed document before its certificate', async () => {
-    const signedDocument = await PDFDocument.create();
-    signedDocument.addPage([400, 500]);
-    const certificate = await PDFDocument.create();
-    certificate.addPage([600, 700]);
-    certificate.addPage([600, 700]);
-
-    const merged = await mergePdfBuffers([
-      new Uint8Array(await signedDocument.save()),
-      new Uint8Array(await certificate.save()),
-    ]);
-    const mergedPdf = await PDFDocument.load(new Uint8Array(merged));
-
-    expect(mergedPdf.getPageCount()).toBe(3);
-    expect(mergedPdf.getPage(0).getSize()).toMatchObject({ width: 400, height: 500 });
-    expect(mergedPdf.getPage(1).getSize()).toMatchObject({ width: 600, height: 700 });
-  });
-});
-
-describe('composeEsigningDocumentPackage', () => {
-  it('places exactly one envelope certificate after the selected signed document', async () => {
-    const signedDocument = await PDFDocument.create();
-    signedDocument.addPage([401, 500]);
-    const certificate = await PDFDocument.create();
-    certificate.addPage([601, 700]);
-
-    const buffer = await composeEsigningDocumentPackage({
-      signedBuffer: Buffer.from(await signedDocument.save()),
-      certificateBuffer: Buffer.from(await certificate.save()),
-    });
-    const pdf = await PDFDocument.load(new Uint8Array(buffer));
-
-    expect(pdf.getPageCount()).toBe(2);
-    expect(pdf.getPage(0).getSize().width).toBe(401);
-    expect(pdf.getPage(1).getSize().width).toBe(601);
-  });
-});
-
-describe('composeEsigningEnvelopePackage', () => {
-  async function onePage(width: number): Promise<Buffer> {
-    const pdf = await PDFDocument.create();
-    pdf.addPage([width, 500]);
-    return Buffer.from(await pdf.save());
-  }
-
-  it('appends one envelope certificate after all signed documents', async () => {
-    const signedA = await onePage(401);
-    const signedB = await onePage(402);
-    const certificate = await onePage(601);
-
-    const buffer = await composeEsigningEnvelopePackage({
-      variant: 'documents_with_certificates',
-      signedBuffers: [signedA, signedB],
-      certificateBuffer: certificate,
-    });
-    const pdf = await PDFDocument.load(new Uint8Array(buffer));
-
-    expect(pdf.getPageCount()).toBe(3);
-    expect(pdf.getPage(0).getSize().width).toBe(401);
-    expect(pdf.getPage(1).getSize().width).toBe(402);
-    expect(pdf.getPage(2).getSize().width).toBe(601);
-  });
-
-  it('returns exactly one certificate regardless of document count', async () => {
-    const signedBuffers = await Promise.all(
-      Array.from({ length: 10 }, (_, index) => onePage(400 + index))
-    );
-    const certificate = await onePage(601);
-
-    const buffer = await composeEsigningEnvelopePackage({
-      variant: 'certificates',
-      signedBuffers,
-      certificateBuffer: certificate,
-    });
-    const pdf = await PDFDocument.load(new Uint8Array(buffer));
-
-    expect(pdf.getPageCount()).toBe(1);
-    expect(pdf.getPage(0).getSize().width).toBe(601);
-  });
-
-  it('returns all signed documents without a certificate for document-only', async () => {
-    const signedA = await onePage(401);
-    const signedB = await onePage(402);
-    const certificate = await onePage(601);
-
-    const buffer = await composeEsigningEnvelopePackage({
-      variant: 'documents',
-      signedBuffers: [signedA, signedB],
-      certificateBuffer: certificate,
-    });
-    const pdf = await PDFDocument.load(new Uint8Array(buffer));
-
-    expect(pdf.getPageCount()).toBe(2);
-    expect(pdf.getPage(0).getSize().width).toBe(401);
-    expect(pdf.getPage(1).getSize().width).toBe(402);
-  });
-});
-
 describe('buildEmailAttachments', () => {
-  it('attaches each signed PDF with its certificate appended', async () => {
-    const signedDocument = await PDFDocument.create();
-    signedDocument.addPage([400, 500]);
-    const certificate = await PDFDocument.create();
-    certificate.addPage([600, 700]);
-    certificate.addPage([600, 700]);
+  it('attaches the stored document+certificate bytes without merging or re-saving them', async () => {
+    const stored = Buffer.from('%PDF-stored-document-with-certificate');
 
     const attachments = await buildEmailAttachments({
-      documents: [{
-        fileName: 'agreement.pdf',
-        signedBuffer: Buffer.from(await signedDocument.save()),
-        certificateBuffer: Buffer.from(await certificate.save()),
-      }],
+      documents: [{ fileName: 'agreement.pdf', content: stored }],
     });
 
     expect(attachments).toHaveLength(1);
@@ -278,9 +165,14 @@ describe('buildEmailAttachments', () => {
       filename: 'agreement-signed.pdf',
       contentType: 'application/pdf',
     });
-    const attachedPdf = await PDFDocument.load(new Uint8Array(attachments[0].content));
-    expect(attachedPdf.getPageCount()).toBe(3);
-    expect(attachedPdf.getPage(0).getSize()).toMatchObject({ width: 400, height: 500 });
-    expect(attachedPdf.getPage(1).getSize()).toMatchObject({ width: 600, height: 700 });
+    expect(attachments[0].content).toBe(stored);
+  });
+
+  it('attaches nothing when the files together exceed the email size limit (links are used instead)', async () => {
+    const attachments = await buildEmailAttachments({
+      documents: [{ fileName: 'big.pdf', content: Buffer.alloc(21 * 1024 * 1024) }],
+    });
+
+    expect(attachments).toEqual([]);
   });
 });

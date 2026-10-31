@@ -122,6 +122,7 @@ export const ModelName = {
   AiConversation: 'AiConversation',
   EsigningEnvelope: 'EsigningEnvelope',
   EsigningEnvelopeDocument: 'EsigningEnvelopeDocument',
+  EsigningIssuedArtifact: 'EsigningIssuedArtifact',
   EsigningSharePointFiling: 'EsigningSharePointFiling',
   EsigningEnvelopeRecipient: 'EsigningEnvelopeRecipient',
   EsigningDocumentFieldDefinition: 'EsigningDocumentFieldDefinition',
@@ -1671,7 +1672,9 @@ export const EsigningEnvelopeScalarFieldEnum = {
   pdfGenerationStatus: 'pdfGenerationStatus',
   pdfGenerationAttempts: 'pdfGenerationAttempts',
   pdfGenerationClaimedAt: 'pdfGenerationClaimedAt',
+  pdfGenerationClaimId: 'pdfGenerationClaimId',
   pdfGenerationError: 'pdfGenerationError',
+  currentArtifactVersion: 'currentArtifactVersion',
   autoFilingStatus: 'autoFilingStatus',
   autoFilingAttempts: 'autoFilingAttempts',
   autoFilingAvailableAt: 'autoFilingAvailableAt',
@@ -1709,6 +1712,24 @@ export const EsigningEnvelopeDocumentScalarFieldEnum = {
 } as const
 
 export type EsigningEnvelopeDocumentScalarFieldEnum = (typeof EsigningEnvelopeDocumentScalarFieldEnum)[keyof typeof EsigningEnvelopeDocumentScalarFieldEnum]
+
+
+export const EsigningIssuedArtifactScalarFieldEnum = {
+  id: 'id',
+  tenantId: 'tenantId',
+  envelopeId: 'envelopeId',
+  documentId: 'documentId',
+  version: 'version',
+  kind: 'kind',
+  storagePath: 'storagePath',
+  blake3: 'blake3',
+  byteSize: 'byteSize',
+  rendererVersion: 'rendererVersion',
+  sourceDigests: 'sourceDigests',
+  createdAt: 'createdAt'
+} as const
+
+export type EsigningIssuedArtifactScalarFieldEnum = (typeof EsigningIssuedArtifactScalarFieldEnum)[keyof typeof EsigningIssuedArtifactScalarFieldEnum]
 
 
 export const EsigningSharePointFilingScalarFieldEnum = {

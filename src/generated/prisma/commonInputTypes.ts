@@ -1378,6 +1378,23 @@ export type EnumEsigningPostCompletionStatusWithAggregatesFilter<$PrismaModel = 
   _max?: Prisma.NestedEnumEsigningPostCompletionStatusFilter<$PrismaModel>
 }
 
+export type EnumEsigningIssuedArtifactKindFilter<$PrismaModel = never> = {
+  equals?: $Enums.EsigningIssuedArtifactKind | Prisma.EnumEsigningIssuedArtifactKindFieldRefInput<$PrismaModel>
+  in?: $Enums.EsigningIssuedArtifactKind[] | Prisma.ListEnumEsigningIssuedArtifactKindFieldRefInput<$PrismaModel>
+  notIn?: $Enums.EsigningIssuedArtifactKind[] | Prisma.ListEnumEsigningIssuedArtifactKindFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumEsigningIssuedArtifactKindFilter<$PrismaModel> | $Enums.EsigningIssuedArtifactKind
+}
+
+export type EnumEsigningIssuedArtifactKindWithAggregatesFilter<$PrismaModel = never> = {
+  equals?: $Enums.EsigningIssuedArtifactKind | Prisma.EnumEsigningIssuedArtifactKindFieldRefInput<$PrismaModel>
+  in?: $Enums.EsigningIssuedArtifactKind[] | Prisma.ListEnumEsigningIssuedArtifactKindFieldRefInput<$PrismaModel>
+  notIn?: $Enums.EsigningIssuedArtifactKind[] | Prisma.ListEnumEsigningIssuedArtifactKindFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumEsigningIssuedArtifactKindWithAggregatesFilter<$PrismaModel> | $Enums.EsigningIssuedArtifactKind
+  _count?: Prisma.NestedIntFilter<$PrismaModel>
+  _min?: Prisma.NestedEnumEsigningIssuedArtifactKindFilter<$PrismaModel>
+  _max?: Prisma.NestedEnumEsigningIssuedArtifactKindFilter<$PrismaModel>
+}
+
 export type EnumEsigningSharePointDestinationKindFilter<$PrismaModel = never> = {
   equals?: $Enums.EsigningSharePointDestinationKind | Prisma.EnumEsigningSharePointDestinationKindFieldRefInput<$PrismaModel>
   in?: $Enums.EsigningSharePointDestinationKind[] | Prisma.ListEnumEsigningSharePointDestinationKindFieldRefInput<$PrismaModel>
@@ -4344,6 +4361,23 @@ export type NestedEnumEsigningPostCompletionStatusWithAggregatesFilter<$PrismaMo
   _count?: Prisma.NestedIntFilter<$PrismaModel>
   _min?: Prisma.NestedEnumEsigningPostCompletionStatusFilter<$PrismaModel>
   _max?: Prisma.NestedEnumEsigningPostCompletionStatusFilter<$PrismaModel>
+}
+
+export type NestedEnumEsigningIssuedArtifactKindFilter<$PrismaModel = never> = {
+  equals?: $Enums.EsigningIssuedArtifactKind | Prisma.EnumEsigningIssuedArtifactKindFieldRefInput<$PrismaModel>
+  in?: $Enums.EsigningIssuedArtifactKind[] | Prisma.ListEnumEsigningIssuedArtifactKindFieldRefInput<$PrismaModel>
+  notIn?: $Enums.EsigningIssuedArtifactKind[] | Prisma.ListEnumEsigningIssuedArtifactKindFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumEsigningIssuedArtifactKindFilter<$PrismaModel> | $Enums.EsigningIssuedArtifactKind
+}
+
+export type NestedEnumEsigningIssuedArtifactKindWithAggregatesFilter<$PrismaModel = never> = {
+  equals?: $Enums.EsigningIssuedArtifactKind | Prisma.EnumEsigningIssuedArtifactKindFieldRefInput<$PrismaModel>
+  in?: $Enums.EsigningIssuedArtifactKind[] | Prisma.ListEnumEsigningIssuedArtifactKindFieldRefInput<$PrismaModel>
+  notIn?: $Enums.EsigningIssuedArtifactKind[] | Prisma.ListEnumEsigningIssuedArtifactKindFieldRefInput<$PrismaModel>
+  not?: Prisma.NestedEnumEsigningIssuedArtifactKindWithAggregatesFilter<$PrismaModel> | $Enums.EsigningIssuedArtifactKind
+  _count?: Prisma.NestedIntFilter<$PrismaModel>
+  _min?: Prisma.NestedEnumEsigningIssuedArtifactKindFilter<$PrismaModel>
+  _max?: Prisma.NestedEnumEsigningIssuedArtifactKindFilter<$PrismaModel>
 }
 
 export type NestedEnumEsigningSharePointDestinationKindFilter<$PrismaModel = never> = {

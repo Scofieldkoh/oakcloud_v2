@@ -724,6 +724,7 @@ export async function retryEsigningEnvelopeCompletionProcessing(
       data: {
         pdfGenerationStatus: 'PENDING',
         pdfGenerationClaimedAt: null,
+        pdfGenerationClaimId: null,
         pdfGenerationError: null,
       },
     });

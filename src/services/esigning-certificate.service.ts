@@ -1,6 +1,8 @@
 import { randomUUID } from 'crypto';
 import { prisma } from '@/lib/prisma';
-import { hashSha256 } from '@/lib/encryption';
+import { hashBlake3, hashSha256 } from '@/lib/encryption';
+import { NotFoundError } from '@/lib/errors';
+import type { EsigningIssuedArtifactKind as IssuedArtifactKind } from '@/generated/prisma';
 import {
   buildEsigningEventLabel,
   formatEsigningAccessModeLabel,
@@ -119,6 +121,7 @@ export async function getEsigningVerificationData(certificateId: string) {
     completedAt: envelope.completedAt?.toISOString() ?? null,
     tenantName: envelope.tenant.name,
     companyName: envelope.company?.name ?? null,
+    // The public list shows only the current hash of each document, never earlier versions.
     documents: envelope.documents.map((document) => ({
       id: document.id,
       fileName: document.fileName,
@@ -172,4 +175,88 @@ function maskEmailAddress(email: string | null): string | null {
     : `${localPart[0]}${'*'.repeat(Math.max(1, localPart.length - 1))}`;
 
   return `${visibleLocal}@${domainPart}`;
+}
+
+export interface IssuedArtifactMatch {
+  matched: boolean;
+  /** BLAKE3 of the uploaded file. */
+  fileHash: string;
+  documentId: string | null;
+  artifact: {
+    kind: IssuedArtifactKind | null;
+    version: number | null;
+    issuedAt: string;
+    isCurrent: boolean;
+    /** `SHAREPOINT_FILING_RECORD`: a file filed before issued artifacts were recorded, matched by SHA-256. */
+    source: 'ISSUED_ARTIFACT' | 'SHAREPOINT_FILING_RECORD';
+  } | null;
+}
+
+/**
+ * Compare an uploaded file with everything issued for the certificate: every version and kind of
+ * issued artifact (by BLAKE3), and then, for files filed to SharePoint before artifacts were
+ * recorded, the SHA-256 kept on the completed filing. It reports a match for an earlier version too;
+ * `isCurrent` says whether it is the version currently served.
+ */
+export async function findIssuedArtifactMatch(
+  certificateId: string,
+  buffer: Buffer,
+): Promise<IssuedArtifactMatch> {
+  // The certificate id is the one global key (the public page has no tenant); the tenant is discovered
+  // from it here, and every later query is scoped to that tenant.
+  const envelope = await prisma.esigningEnvelope.findUnique({
+    where: { certificateId },
+    select: { id: true, tenantId: true, currentArtifactVersion: true },
+  });
+  if (!envelope) {
+    throw new NotFoundError('Certificate not found');
+  }
+
+  const fileHash = hashBlake3(buffer);
+  const rows = await prisma.esigningIssuedArtifact.findMany({
+    where: { tenantId: envelope.tenantId, envelopeId: envelope.id, blake3: fileHash },
+    orderBy: [{ version: 'desc' }, { createdAt: 'asc' }],
+  });
+  const match =
+    rows.find((row) => row.version === envelope.currentArtifactVersion) ?? rows[0] ?? null;
+  if (match) {
+    return {
+      matched: true,
+      fileHash,
+      documentId: match.documentId,
+      artifact: {
+        kind: match.kind,
+        version: match.version,
+        issuedAt: match.createdAt.toISOString(),
+        isCurrent: match.version === envelope.currentArtifactVersion,
+        source: 'ISSUED_ARTIFACT',
+      },
+    };
+  }
+
+  const filing = await prisma.esigningSharePointFiling.findFirst({
+    where: {
+      tenantId: envelope.tenantId,
+      envelopeId: envelope.id,
+      status: 'COMPLETED',
+      sourceSignedHash: hashSha256(buffer),
+    },
+    select: { envelopeDocumentId: true, filedAt: true, updatedAt: true },
+  });
+  if (filing) {
+    return {
+      matched: true,
+      fileHash,
+      documentId: filing.envelopeDocumentId,
+      artifact: {
+        kind: 'DOCUMENT_WITH_CERTIFICATE',
+        version: null,
+        issuedAt: (filing.filedAt ?? filing.updatedAt).toISOString(),
+        isCurrent: false,
+        source: 'SHAREPOINT_FILING_RECORD',
+      },
+    };
+  }
+
+  return { matched: false, fileHash, documentId: null, artifact: null };
 }
