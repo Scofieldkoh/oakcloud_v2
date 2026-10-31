@@ -5,6 +5,7 @@ import type { EsigningFieldDefinitionDto } from '@/types/esigning';
 import { Button } from '@/components/ui/button';
 import { FormInput } from '@/components/ui/form-input';
 import { Modal, ModalBody, ModalFooter } from '@/components/ui/modal';
+import { getUnsupportedEsigningPdfTextMessage } from '@/lib/esigning-pdf-text';
 
 interface EsigningFieldInputModalProps {
   field: EsigningFieldDefinitionDto | null;
@@ -75,7 +76,12 @@ export function EsigningFieldInputModal({
 
   const trimmedValue = useMemo(() => value.trim(), [value]);
   const normalizedValue = isDateField ? (value || null) : (trimmedValue || null);
-  const canSave = field ? (!field.required || Boolean(normalizedValue)) : false;
+  // The signed PDF can only draw some characters. Say so while typing, not after signing is finished.
+  const unsupportedTextMessage = useMemo(
+    () => (isDateField ? null : getUnsupportedEsigningPdfTextMessage(value, 'This field')),
+    [isDateField, value]
+  );
+  const canSave = field ? (!field.required || Boolean(normalizedValue)) && !unsupportedTextMessage : false;
 
   return (
     <Modal
@@ -105,6 +111,7 @@ export function EsigningFieldInputModal({
               onChange={(event) => setValue(event.target.value)}
               placeholder={placeholder}
               rows={4}
+              aria-invalid={unsupportedTextMessage ? 'true' : 'false'}
               className="min-h-[100px] rounded-xl border border-border-primary bg-background-primary px-3 py-2 text-sm text-text-primary outline-none resize-none focus:border-oak-primary focus:ring-2 focus:ring-oak-primary/30 sm:min-h-[140px]"
             />
           </label>
@@ -114,8 +121,14 @@ export function EsigningFieldInputModal({
             value={value}
             onChange={(event) => setValue(event.target.value)}
             placeholder={placeholder}
+            error={unsupportedTextMessage ?? undefined}
           />
         )}
+        {unsupportedTextMessage && field?.type === 'TEXT' ? (
+          <p role="alert" className="text-xs text-red-400">
+            {unsupportedTextMessage}
+          </p>
+        ) : null}
       </ModalBody>
       <ModalFooter className="justify-between">
         <Button

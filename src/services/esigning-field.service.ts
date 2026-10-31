@@ -3,6 +3,10 @@ import type { Prisma } from '@/generated/prisma';
 import { prisma } from '@/lib/prisma';
 import { storage, StorageKeys } from '@/lib/storage';
 import { createLogger } from '@/lib/logger';
+import {
+  getUnsupportedEsigningPdfTextMessage,
+  normalizeEsigningPdfText,
+} from '@/lib/esigning-pdf-text';
 import type { EsigningFieldType } from '@/generated/prisma';
 import type {
   EsigningFieldDefinitionInput,
@@ -280,7 +284,18 @@ export async function saveRecipientFieldValues(input: {
             ? null
           : valueInput.value === undefined
             ? existing?.value ?? null
-            : valueInput.value?.trim() ?? null;
+            : valueInput.value === null
+              ? null
+              : normalizeEsigningPdfText(valueInput.value).trim();
+
+      // The route schema already rejects these; keep the same rule here so no caller can store text the
+      // signed-PDF fonts cannot draw (the failure would otherwise surface after every signer has signed).
+      if (normalizedValue && field.type !== 'CHECKBOX') {
+        const unsupportedTextMessage = getUnsupportedEsigningPdfTextMessage(normalizedValue, 'This field');
+        if (unsupportedTextMessage) {
+          throw new Error(unsupportedTextMessage);
+        }
+      }
 
       const hasContent = hasFieldValueContent(field.type, normalizedValue, valueInput.signatureDataUrl);
       const timestamp = hasContent ? new Date() : null;

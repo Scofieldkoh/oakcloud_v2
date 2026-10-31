@@ -5,6 +5,7 @@ import { requirePermission } from '@/lib/rbac';
 import { createErrorResponse, resolveWorkspaceId } from '@/lib/api-helpers';
 import { ESIGNING_LIMITS } from '@/lib/validations/esigning';
 import { createEsigningEnvelopeFromGeneratedDocuments } from '@/services/esigning-envelope.service';
+import { esigningValidationErrorResponse } from '@/lib/esigning-validation-response';
 
 const bodySchema = z.object({
   tenantId: z.string().uuid().optional(),
@@ -36,7 +37,7 @@ export async function POST(request: NextRequest) {
     }, { status: 201 });
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return NextResponse.json({ error: 'Invalid payload', details: error.errors }, { status: 400 });
+      return esigningValidationErrorResponse(error);
     }
     return createErrorResponse(error);
   }

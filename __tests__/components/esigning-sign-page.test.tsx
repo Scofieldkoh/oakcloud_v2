@@ -1272,3 +1272,108 @@ describe('EsigningSignPage access code prompt', () => {
     expect(screen.queryByPlaceholderText(/from your email/i)).not.toBeInTheDocument();
   });
 });
+
+describe('EsigningSignPage text the signed PDF cannot print', () => {
+  const UNSUPPORTED_MESSAGE =
+    'This field contains a character that cannot be printed on the signed document: "😀" (U+1F600). ' +
+    'Use Latin (including Vietnamese), Greek, Cyrillic, Chinese or Japanese kana characters, numbers and common punctuation instead.';
+
+  beforeEach(() => {
+    mocks.toastError.mockClear();
+    mocks.toastSuccess.mockClear();
+    mocks.isMobile = false;
+    consentHandler = () => jsonResponse(makeSession());
+    fieldsHandler = null;
+    window.matchMedia = vi.fn().mockImplementation((query: string) => ({
+      matches: false,
+      media: query,
+      onchange: null,
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    })) as unknown as typeof window.matchMedia;
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.restoreAllMocks();
+  });
+
+  it.each(['Tan Wei Ming 陈伟明', 'Nguyễn Văn A', 'INR ₹1,000'])(
+    'accepts %s in a text field and sends it to the server',
+    async (text) => {
+      const session = makeSigningSession(makeField({ type: 'TEXT' }));
+      stubSigningFetch(session);
+      render(<EsigningSignPage />);
+      await screen.findByTestId('signing-document');
+
+      await userEvent.click(screen.getByRole('button', { name: /Fill In/i }));
+      await userEvent.type(screen.getByRole('textbox'), text);
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+      await userEvent.click(screen.getByRole('button', { name: /Save/i }));
+
+      await waitFor(() => expect(fieldSaveRequests).toHaveLength(1));
+      const body = JSON.parse(String(fieldSaveRequests[0].body)) as { values: Array<{ value: string }> };
+      expect(body.values[0].value).toBe(text);
+    }
+  );
+
+  it('tells the signer while typing and will not save an unsupported character', async () => {
+    const session = makeSigningSession(makeField({ type: 'TEXT' }));
+    stubSigningFetch(session);
+    render(<EsigningSignPage />);
+    await screen.findByTestId('signing-document');
+
+    await userEvent.click(screen.getByRole('button', { name: /Fill In/i }));
+    await userEvent.type(screen.getByRole('textbox'), 'Happy 😀');
+
+    expect(screen.getByRole('alert')).toHaveTextContent(UNSUPPORTED_MESSAGE);
+    expect(screen.getByRole('button', { name: /^Save$/i })).toBeDisabled();
+    await new Promise((resolve) => setTimeout(resolve, 650));
+    expect(fieldSaveRequests).toHaveLength(0);
+  });
+
+  it('shows the server message when a save is refused for unsupported text', async () => {
+    const session = makeSigningSession(makeField({ type: 'TEXT' }));
+    stubSigningFetch(session);
+    fieldsHandler = () =>
+      jsonResponse({ error: UNSUPPORTED_MESSAGE, code: 'UNSUPPORTED_PDF_CHARACTERS' }, 400);
+    render(<EsigningSignPage />);
+    await screen.findByTestId('signing-document');
+
+    await userEvent.click(screen.getByRole('button', { name: /Fill In/i }));
+    await userEvent.type(screen.getByRole('textbox'), 'Plain text');
+    await userEvent.click(screen.getByRole('button', { name: /Save/i }));
+
+    expect(await screen.findByText(UNSUPPORTED_MESSAGE)).toBeInTheDocument();
+    expect(screen.queryByText('Invalid payload')).not.toBeInTheDocument();
+  });
+
+  it('flags a value saved earlier, names the field, holds it back and offers to edit it', async () => {
+    const session = makeSigningSession(makeField({ type: 'TEXT', label: 'Full name' }), {
+      fieldValues: [
+        {
+          id: 'value-1',
+          fieldDefinitionId: 'field-1',
+          recipientId: 'recipient-1',
+          value: 'Smile 😀',
+          signatureStoragePath: null,
+          filledAt: '2026-08-11T08:02:00.000Z',
+          finalizedAt: null,
+          revision: 1,
+        },
+      ],
+    });
+    stubSigningFetch(session);
+    render(<EsigningSignPage />);
+    await screen.findByTestId('signing-document');
+
+    expect(await screen.findByText(/The "Full name" field contains a character that cannot be printed/)).toBeInTheDocument();
+    await userEvent.click(screen.getByRole('button', { name: 'Edit field' }));
+    expect(screen.getByRole('textbox')).toHaveValue('Smile 😀');
+    expect(screen.getByRole('button', { name: /^Save$/i })).toBeDisabled();
+    expect(fieldSaveRequests).toHaveLength(0);
+  });
+});

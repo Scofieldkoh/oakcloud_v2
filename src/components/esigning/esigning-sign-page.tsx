@@ -18,6 +18,7 @@ import type {
   EsigningSigningSessionDto,
   EsigningSigningSessionStatusDto,
 } from '@/types/esigning';
+import { getUnsupportedEsigningPdfTextMessage } from '@/lib/esigning-pdf-text';
 import { EsigningConsentScreen } from '@/components/esigning/signing/esigning-consent-screen';
 import { EsigningFieldInputModal } from '@/components/esigning/signing/esigning-field-input-modal';
 import { EsigningSigningHeader } from '@/components/esigning/signing/esigning-signing-header';
@@ -135,6 +136,37 @@ function serializeValues(values: Record<string, DraftValue>): Array<{
       value,
       signatureDataUrl,
     }));
+}
+
+function getFieldDisplayName(field: EsigningFieldDefinitionDto): string {
+  const label = field.label?.trim();
+  if (label) return label;
+  const typeNames: Partial<Record<EsigningFieldDefinitionDto['type'], string>> = {
+    NAME: 'Name',
+    COMPANY: 'Company',
+    TITLE: 'Title',
+    TEXT: 'Text',
+  };
+  return typeNames[field.type] ?? 'Text';
+}
+
+/**
+ * Typed values the signed PDF cannot print (for example an emoji). Found here so the signer is told
+ * which field to fix before anything is sent; the server applies the same rule as a backstop.
+ */
+function findUnsupportedDraftText(
+  values: Record<string, DraftValue>,
+  fields: EsigningFieldDefinitionDto[]
+): Array<{ fieldId: string; message: string }> {
+  const problems: Array<{ fieldId: string; message: string }> = [];
+  for (const field of fields) {
+    if (field.type === 'CHECKBOX' || field.type === 'DATE_SIGNED') continue;
+    const value = values[field.id]?.value;
+    if (!value) continue;
+    const message = getUnsupportedEsigningPdfTextMessage(value, `The "${getFieldDisplayName(field)}" field`);
+    if (message) problems.push({ fieldId: field.id, message });
+  }
+  return problems;
 }
 
 function isDraftValueComplete(draftValue: DraftValue | undefined): boolean {
@@ -414,6 +446,18 @@ export function EsigningSignPage() {
       })
       .map(({ field }) => field);
   }, [session?.documents, session?.fields]);
+
+  const unsupportedDraftText = useMemo(
+    () => findUnsupportedDraftText(draftValues, fields),
+    [draftValues, fields]
+  );
+
+  // The debounced autosave effect calls saveProgress with the draft it was scheduled for; it reads the
+  // current fields through a ref so a session reload in between cannot leave it with a stale list.
+  const fieldsRef = useRef(fields);
+  useEffect(() => {
+    fieldsRef.current = fields;
+  }, [fields]);
 
   const requiredFields = useMemo(
     () => fields.filter((f) => f.required),
@@ -1086,7 +1130,13 @@ export function EsigningSignPage() {
       }
     }
 
-    const serializedValues = serializeValues(nextValues);
+    // One rejected value would make the server refuse the whole batch, so hold back text the signed PDF
+    // cannot print, tell the signer which field it is, and keep saving everything else.
+    const unsupportedText = findUnsupportedDraftText(nextValues, fieldsRef.current);
+    const heldBackFieldIds = new Set(unsupportedText.map((problem) => problem.fieldId));
+    const serializedValues = serializeValues(nextValues).filter(
+      (entry) => !heldBackFieldIds.has(entry.fieldDefinitionId)
+    );
     if (serializedValues.length === 0) {
       return;
     }
@@ -1179,6 +1229,13 @@ export function EsigningSignPage() {
   }
 
   async function completeSigning(values: Record<string, DraftValue> = latestDraftValuesRef.current) {
+    const unsupportedText = findUnsupportedDraftText(values, fields);
+    if (unsupportedText.length > 0) {
+      setActiveInputFieldId(unsupportedText[0].fieldId);
+      toast.error(unsupportedText[0].message);
+      return;
+    }
+
     try {
       setIsCompleting(true);
       await flushPendingSaves(values);
@@ -1485,7 +1542,19 @@ export function EsigningSignPage() {
           </Alert>
         ) : null}
 
-        {saveError ? (
+        {unsupportedDraftText.length > 0 ? (
+          <Alert variant="warning" className="mb-4 flex items-center justify-between gap-3">
+            <span>{unsupportedDraftText[0].message}</span>
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              onClick={() => setActiveInputFieldId(unsupportedDraftText[0].fieldId)}
+            >
+              Edit field
+            </Button>
+          </Alert>
+        ) : saveError ? (
           <Alert variant="warning" className="mb-4 flex items-center justify-between gap-3">
             <span>{saveError}</span>
             <Button

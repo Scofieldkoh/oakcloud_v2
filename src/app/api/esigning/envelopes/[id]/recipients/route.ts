@@ -5,6 +5,7 @@ import { requirePermission } from '@/lib/rbac';
 import { createErrorResponse, resolveWorkspaceId } from '@/lib/api-helpers';
 import { esigningRecipientInputSchema } from '@/lib/validations/esigning';
 import { addEsigningEnvelopeRecipient } from '@/services/esigning-envelope.service';
+import { esigningValidationErrorResponse } from '@/lib/esigning-validation-response';
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -24,7 +25,7 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
     return NextResponse.json(result, { status: 201 });
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return NextResponse.json({ error: 'Invalid payload', details: error.errors }, { status: 400 });
+      return esigningValidationErrorResponse(error);
     }
 
     return createErrorResponse(error);
