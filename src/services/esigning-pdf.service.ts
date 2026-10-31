@@ -10,6 +10,7 @@ import {
 } from '@/lib/esigning-document-filename';
 import { isEsigningDocumentVisibleToRecipient } from '@/lib/esigning-document-visibility';
 import { Prisma } from '@/generated/prisma';
+import { createEsigningPdfTextFonts } from '@/services/esigning-pdf-fonts';
 import {
   buildEsigningDeliveryDownloadUrl,
   createEsigningDeliveryToken,
@@ -293,7 +294,10 @@ async function generateEnvelopeArtifacts(envelopeId: string): Promise<void> {
   for (const document of envelope.documents) {
     const originalBuffer = await storage.download(document.storagePath);
     const originalPdf = await PDFDocument.load(originalBuffer);
+    // Helvetica only covers WinAnsi, so it is kept for the fixed ASCII stamp and checkbox mark. Field
+    // values are user text and use the bundled Unicode fonts (subset on embed, see esigning-pdf-fonts).
     const font = await originalPdf.embedFont(StandardFonts.Helvetica);
+    const textFonts = await createEsigningPdfTextFonts(originalPdf);
 
     for (let pageIndex = 0; pageIndex < originalPdf.getPageCount(); pageIndex += 1) {
       const pageNumber = pageIndex + 1;
@@ -357,11 +361,10 @@ async function generateEnvelopeArtifacts(envelopeId: string): Promise<void> {
         }
 
         if (value?.value) {
-          page.drawText(value.value, {
+          textFonts.drawText(page, value.value, {
             x: bounds.x + 2,
             y: bounds.y + Math.max(2, bounds.height / 3),
             size: Math.max(9, Math.min(12, bounds.height * 0.65)),
-            font,
             color: rgb(0.1, 0.15, 0.2),
             maxWidth: bounds.width - 4,
           });

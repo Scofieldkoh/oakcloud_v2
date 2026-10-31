@@ -5,6 +5,7 @@ import { RATE_LIMIT_CONFIGS, getClientIp } from '@/lib/rate-limit';
 import { enforceEsigningRateLimit, requireEsigningSameOrigin } from '@/lib/esigning-public-route';
 import { saveEsigningFieldValuesSchema } from '@/lib/validations/esigning';
 import { completeEsigningSigningSession } from '@/services/esigning-signing.service';
+import { esigningValidationErrorResponse } from '@/lib/esigning-validation-response';
 
 export async function POST(request: NextRequest) {
   const sameOriginError = requireEsigningSameOrigin(request);
@@ -32,7 +33,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(result);
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return NextResponse.json({ error: 'Invalid payload', details: error.errors }, { status: 400 });
+      return esigningValidationErrorResponse(error);
     }
 
     return createErrorResponse(error);

@@ -337,6 +337,43 @@ describe('session payload handling', () => {
     expect(mocks.saveEsigningSigningFieldValues).not.toHaveBeenCalled();
   });
 
+  it.each([
+    ['fields', 'PUT', 'saveEsigningSigningFieldValues'],
+    ['complete', 'POST', 'completeEsigningSigningSession'],
+  ] as const)(
+    'rejects text the signed PDF cannot print on session/%s with a clear message',
+    async (segment, method, serviceName) => {
+      const route = await import(`@/app/api/esigning/sign/session/${segment}/route`);
+      const response = await route[method](
+        request('/x', { method, body: { values: [{ fieldDefinitionId: FIELD_ID, value: 'Happy 😀' }] } })
+      );
+
+      expect(response.status).toBe(400);
+      const body = await response.json();
+      expect(body.code).toBe('UNSUPPORTED_PDF_CHARACTERS');
+      expect(body.error).toContain('This field contains a character that cannot be printed on the signed document');
+      expect(body.error).toContain('"😀" (U+1F600)');
+      expect(mocks[serviceName]).not.toHaveBeenCalled();
+    }
+  );
+
+  it('passes Latin, Vietnamese, CJK and rupee text through, normalised to NFC', async () => {
+    mocks.saveEsigningSigningFieldValues.mockResolvedValue({ ok: true });
+    const { PUT } = await import('@/app/api/esigning/sign/session/fields/route');
+    const values = ['John Tan', 'Tan Wei Ming 陈伟明', 'Nguye\u0302\u0303n Va\u0306n A', '₹ 100'];
+    const response = await PUT(
+      request('/x', {
+        method: 'PUT',
+        body: { values: values.map((value) => ({ fieldDefinitionId: FIELD_ID, value })) },
+      })
+    );
+
+    expect(response.status).toBe(200);
+    expect(mocks.saveEsigningSigningFieldValues).toHaveBeenCalledWith(
+      values.map((value) => expect.objectContaining({ value: value.normalize('NFC') }))
+    );
+  });
+
   it('returns success for a decline with a reason and 400 for a blank reason', async () => {
     const { POST } = await import('@/app/api/esigning/sign/session/decline/route');
 

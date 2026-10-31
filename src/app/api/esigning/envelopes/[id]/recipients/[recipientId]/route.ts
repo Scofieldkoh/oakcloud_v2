@@ -8,6 +8,7 @@ import {
   removeEsigningEnvelopeRecipient,
   updateEsigningEnvelopeRecipient,
 } from '@/services/esigning-envelope.service';
+import { esigningValidationErrorResponse } from '@/lib/esigning-validation-response';
 
 interface RouteParams {
   params: Promise<{ id: string; recipientId: string }>;
@@ -35,7 +36,7 @@ export async function PATCH(request: NextRequest, { params }: RouteParams) {
     return NextResponse.json(result);
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return NextResponse.json({ error: 'Invalid payload', details: error.errors }, { status: 400 });
+      return esigningValidationErrorResponse(error);
     }
 
     return createErrorResponse(error);
