@@ -70,6 +70,7 @@ export async function safelyProcessServiceAgreementActivations(envelopeId: strin
 
 export async function processEsigningCompletionArtifacts(input: {
   envelopeCompleted: boolean;
+  tenantId: string;
   envelopeId: string;
 }): Promise<void> {
   if (!input.envelopeCompleted) {
@@ -80,7 +81,10 @@ export async function processEsigningCompletionArtifacts(input: {
     const { generateEsigningEnvelopeArtifactsNow } = await import(
       '@/services/esigning-pdf.service'
     );
-    await generateEsigningEnvelopeArtifactsNow({ envelopeId: input.envelopeId });
+    await generateEsigningEnvelopeArtifactsNow({
+      tenantId: input.tenantId,
+      envelopeId: input.envelopeId,
+    });
   } catch (error) {
     const correlationId = randomUUID();
     log.warn('Immediate signed-document generation failed', {
@@ -1224,6 +1228,7 @@ export async function completeEsigningSigningSession(input: {
   }
   await processEsigningCompletionArtifacts({
     envelopeCompleted,
+    tenantId: context.envelope.tenantId,
     envelopeId: context.envelope.id,
   });
   if (envelopeCompleted) {
@@ -1402,6 +1407,7 @@ export async function downloadEsigningSessionDocument(input: {
   if (input.variant === 'signed') {
     const { ensureEsigningEnvelopeArtifacts } = await import('@/services/esigning-pdf.service');
     await ensureEsigningEnvelopeArtifacts({
+      tenantId: context.envelope.tenantId,
       envelopeId: context.envelope.id,
       requireCertificates: false,
     });

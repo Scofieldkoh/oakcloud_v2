@@ -142,8 +142,6 @@ interface VerificationResponse {
     hash: string;
     hasSignedCopy: boolean;
   }>;
-  /** False when the envelope completed before issued copies were fingerprinted. */
-  emailedCopiesVerifiable?: boolean;
   recipients: Array<{
     id: string;
     name: string;
@@ -169,7 +167,13 @@ interface VerificationMatchResponse {
   fileHash: string;
   document: VerificationResponse['documents'][number] | null;
   artifact?: {
-    kind: 'SIGNED_DOCUMENT' | 'CERTIFICATE' | 'DOCUMENT_WITH_CERTIFICATE' | null;
+    kind:
+      | 'SIGNED_DOCUMENT'
+      | 'CERTIFICATE'
+      | 'DOCUMENT_WITH_CERTIFICATE'
+      | 'PACKAGE_DOCUMENTS'
+      | 'PACKAGE_DOCUMENTS_WITH_CERTIFICATE'
+      | null;
     version: number | null;
     issuedAt: string;
     isCurrent: boolean;
@@ -181,6 +185,8 @@ const ARTIFACT_KIND_LABELS = {
   SIGNED_DOCUMENT: 'signed document',
   CERTIFICATE: 'certificate of completion',
   DOCUMENT_WITH_CERTIFICATE: 'signed document with its certificate',
+  PACKAGE_DOCUMENTS: 'combined PDF of all signed documents',
+  PACKAGE_DOCUMENTS_WITH_CERTIFICATE: 'combined PDF of all signed documents with the certificate',
 } as const;
 
 function describeMatchedArtifact(match: VerificationMatchResponse): string {
@@ -647,12 +653,10 @@ export function EsigningVerifyPage() {
               Upload a PDF to compare its BLAKE3 fingerprint with the files issued under this certificate: the signed
               document, the certificate, and the signed document with its certificate as emailed or filed.
             </p>
-            {data.emailedCopiesVerifiable === false ? (
-              <p className="mt-2 text-xs text-text-muted">
-                This envelope was completed before issued copies were fingerprinted. Copies that were emailed then
-                cannot be verified here; the signed documents and certificate downloaded from OakCloud can.
-              </p>
-            ) : null}
+            <p className="mt-2 text-xs text-text-muted">
+              Only files that OakCloud recorded when it issued them can be recognised. A copy issued before
+              fingerprints were recorded, or a file that has been edited or re-saved, will not match.
+            </p>
             <div className="mt-4">
               <DropZone isChecking={isChecking} onFile={checkFile} />
             </div>

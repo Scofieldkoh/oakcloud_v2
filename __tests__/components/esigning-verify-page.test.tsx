@@ -27,7 +27,6 @@ function verification(overrides: Record<string, unknown> = {}) {
     tenantName: 'Oaktree',
     companyName: null,
     documents: [{ id: 'doc-1', fileName: 'agreement.pdf', hash: HASH, hasSignedCopy: true }],
-    emailedCopiesVerifiable: true,
     recipients: [],
     events: [],
     ...overrides,
@@ -70,17 +69,19 @@ describe('EsigningVerifyPage', () => {
     expect(container.textContent).not.toContain('SHA-256');
     expect(container.textContent?.toLowerCase()).not.toContain('tamper');
     expect(container.textContent).toContain('signed document with its certificate as emailed or filed');
+    // Generic explanation only: it is shown for every envelope and the response carries no per-envelope flag.
+    expect(container.textContent).toContain('Only files that OakCloud recorded when it issued them can be recognised');
     expect(container.textContent).not.toContain('completed before issued copies were fingerprinted');
   });
 
-  it('says that copies emailed before issued copies were fingerprinted cannot be verified', async () => {
-    mockFetch({ verification: verification({ emailedCopiesVerifiable: false }) });
+  it('shows the same explanation whatever the response contains (no envelope-specific flag)', async () => {
+    mockFetch({ verification: verification() });
     const { container } = render(createElement(EsigningVerifyPage));
 
     await screen.findByText('agreement.pdf');
 
-    expect(container.textContent).toContain('completed before issued copies were fingerprinted');
-    expect(container.textContent).toContain('cannot be verified here');
+    expect(container.textContent).toContain('A copy issued before fingerprints were recorded');
+    expect(container.textContent).not.toContain('cannot be verified here');
   });
 
   it('reports a match with the kind of file and that it is the current issue', async () => {

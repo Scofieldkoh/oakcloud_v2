@@ -7,7 +7,7 @@ import { createEsigningPdfTextFonts, type EsigningPdfTextFonts } from '@/service
 import { buildEsigningEventLabel, summarizeEsigningUserAgent } from '@/services/esigning-evidence';
 
 export const CERTIFICATE_VERIFICATION_COPY =
-  'This certificate records the signing process. Upload a copy at the address below to compare it with the fingerprints recorded when it was issued.';
+  'This certificate records the signing process. Upload a copy at the link below to compare it with the fingerprints recorded at issue.';
 
 const MM = 72 / 25.4;
 const mm = (value: number) => value * MM;
@@ -686,7 +686,8 @@ export async function renderEsigningCertificatePdf(input: CertificatePdfRenderIn
   const qrX = PW - STRUCT_RAIL - qrSize;
   // The wording is a statement about what the check does, not a claim of tamper-evidence: an ordinary
   // PDF can be edited, and the upload check compares the file with the fingerprints kept on record.
-  // At 8.15 pt it is wider than the space left of the QR code, so it wraps to a second line.
+  // The wording is kept short enough (about 461 of the 482 pt left of the QR code at 8.15 pt) to sit on
+  // one line; a test asserts that, so a longer sentence cannot silently wrap again.
   const copyLines = wrapText(CERTIFICATE_VERIFICATION_COPY, regular, 8.15, qrX - STRUCT_RAIL - mm(4));
   copyLines.forEach((line, lineIndex) => {
     drawTextTop(page, line, STRUCT_RAIL, copyTop + lineIndex * 9.4, 8.15, regular, C.secondary);

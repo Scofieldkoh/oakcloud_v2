@@ -4632,6 +4632,10 @@ enum EsigningIssuedArtifactKind {
   SIGNED_DOCUMENT
   CERTIFICATE
   DOCUMENT_WITH_CERTIFICATE
+  /// Multi-document envelopes only: every signed document in one PDF, as offered by "Download all".
+  PACKAGE_DOCUMENTS
+  /// Multi-document envelopes only: every signed document followed by the certificate, in one PDF.
+  PACKAGE_DOCUMENTS_WITH_CERTIFICATE
 }
 
 enum EsigningPdfGenerationStatus {

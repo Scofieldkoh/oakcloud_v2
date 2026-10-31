@@ -47,6 +47,8 @@ function currentVersion(withCertificate: Record<string, unknown>) {
     certificate: null,
     signedByDocumentId: new Map(),
     withCertificateByDocumentId: new Map(Object.entries(withCertificate)),
+    packageDocuments: null,
+    packageWithCertificate: null,
   };
 }
 
@@ -65,9 +67,28 @@ describe('downloadSharePointFilingSource', () => {
 
     await expect(downloadSharePointFilingSource(input)).resolves.toBe(stored);
 
-    expect(mocks.ensureArtifacts).toHaveBeenCalledWith({ envelopeId: 'envelope-1', requireCertificates: true });
+    expect(mocks.ensureArtifacts).toHaveBeenCalledWith({
+      tenantId: 'tenant-1',
+      envelopeId: 'envelope-1',
+      requireCertificates: true,
+    });
+    expect(mocks.getCurrentIssuedVersion).toHaveBeenCalledWith('tenant-1', 'envelope-1');
     expect(mocks.exists).toHaveBeenCalledWith(artifact.storagePath);
     expect(mocks.readIssuedArtifact).toHaveBeenCalledWith(artifact);
+  });
+
+  it('rejects an envelope of another workspace permanently, before reading anything', async () => {
+    mocks.ensureArtifacts.mockRejectedValue(new EsigningArtifactError('ENVELOPE_NOT_FOUND', 'Envelope not found'));
+
+    await expect(downloadSharePointFilingSource({ ...input, tenantId: 'tenant-2' })).rejects.toMatchObject({
+      code: 'SOURCE_INVALID',
+      retryable: false,
+    });
+
+    expect(mocks.ensureArtifacts).toHaveBeenCalledWith(expect.objectContaining({ tenantId: 'tenant-2' }));
+    expect(mocks.getCurrentIssuedVersion).not.toHaveBeenCalled();
+    expect(mocks.readIssuedArtifact).not.toHaveBeenCalled();
+    expect(mocks.exists).not.toHaveBeenCalled();
   });
 
   it('is retryable when the document has no stored artifact yet', async () => {

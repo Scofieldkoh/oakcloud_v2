@@ -6002,5 +6002,3 @@ export type NestedEnumBizFileOperationEffectStateWithAggregatesFilter<$PrismaMod
   _min?: Prisma.NestedEnumBizFileOperationEffectStateFilter<$PrismaModel>
   _max?: Prisma.NestedEnumBizFileOperationEffectStateFilter<$PrismaModel>
 }
-
-

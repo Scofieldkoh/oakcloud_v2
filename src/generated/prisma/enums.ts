@@ -1150,7 +1150,9 @@ export type EsigningSigningOrder = (typeof EsigningSigningOrder)[keyof typeof Es
 export const EsigningIssuedArtifactKind = {
   SIGNED_DOCUMENT: 'SIGNED_DOCUMENT',
   CERTIFICATE: 'CERTIFICATE',
-  DOCUMENT_WITH_CERTIFICATE: 'DOCUMENT_WITH_CERTIFICATE'
+  DOCUMENT_WITH_CERTIFICATE: 'DOCUMENT_WITH_CERTIFICATE',
+  PACKAGE_DOCUMENTS: 'PACKAGE_DOCUMENTS',
+  PACKAGE_DOCUMENTS_WITH_CERTIFICATE: 'PACKAGE_DOCUMENTS_WITH_CERTIFICATE'
 } as const
 
 export type EsigningIssuedArtifactKind = (typeof EsigningIssuedArtifactKind)[keyof typeof EsigningIssuedArtifactKind]

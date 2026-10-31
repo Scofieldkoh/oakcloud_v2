@@ -113,16 +113,6 @@ export async function getEsigningVerificationData(certificateId: string) {
     throw new Error('Certificate not found');
   }
 
-  // Copies emailed before issued artifacts were recorded were never fingerprinted. Rows created by the
-  // migration or the first-delivery backfill carry a "backfilled" marker.
-  const legacyIssuedCopies =
-    (await prisma.esigningIssuedArtifact.count({
-      where: {
-        envelopeId: envelope.id,
-        sourceDigests: { path: ['backfilled'], equals: true },
-      },
-    })) > 0;
-
   return {
     certificateId: envelope.certificateId,
     envelopeId: envelope.id,
@@ -138,8 +128,6 @@ export async function getEsigningVerificationData(certificateId: string) {
       hash: document.signedHash ?? document.originalHash,
       hasSignedCopy: Boolean(document.signedStoragePath),
     })),
-    /** False when this envelope completed before issued copies were fingerprinted. */
-    emailedCopiesVerifiable: !legacyIssuedCopies,
     recipients: envelope.recipients.map((recipient) => ({
       id: recipient.id,
       name: recipient.name,
@@ -214,9 +202,11 @@ export async function findIssuedArtifactMatch(
   certificateId: string,
   buffer: Buffer,
 ): Promise<IssuedArtifactMatch> {
+  // The certificate id is the one global key (the public page has no tenant); the tenant is discovered
+  // from it here, and every later query is scoped to that tenant.
   const envelope = await prisma.esigningEnvelope.findUnique({
     where: { certificateId },
-    select: { id: true, currentArtifactVersion: true },
+    select: { id: true, tenantId: true, currentArtifactVersion: true },
   });
   if (!envelope) {
     throw new NotFoundError('Certificate not found');
@@ -224,7 +214,7 @@ export async function findIssuedArtifactMatch(
 
   const fileHash = hashBlake3(buffer);
   const rows = await prisma.esigningIssuedArtifact.findMany({
-    where: { envelopeId: envelope.id, blake3: fileHash },
+    where: { tenantId: envelope.tenantId, envelopeId: envelope.id, blake3: fileHash },
     orderBy: [{ version: 'desc' }, { createdAt: 'asc' }],
   });
   const match =
@@ -246,6 +236,7 @@ export async function findIssuedArtifactMatch(
 
   const filing = await prisma.esigningSharePointFiling.findFirst({
     where: {
+      tenantId: envelope.tenantId,
       envelopeId: envelope.id,
       status: 'COMPLETED',
       sourceSignedHash: hashSha256(buffer),

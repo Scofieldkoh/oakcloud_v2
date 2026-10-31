@@ -13,8 +13,14 @@ import { storage, StorageKeys } from '@/lib/storage';
  * (the file that is emailed and filed). The merged file is built once at generation time and stored,
  * so every send, filing and download serves the same bytes and the public check can recognise them.
  *
- * Rows and files are append-only. A regeneration writes version n+1 under its own `v{n+1}/` storage
- * folder and moves the envelope pointers in one transaction; earlier rows and files are not touched.
+ * Rows and files are append-only. A regeneration writes version n+1 under its own `v{n+1}/{attempt}/`
+ * storage folder and moves the envelope pointers in one transaction; earlier rows and files are not
+ * touched. The attempt folder is unique to one generation attempt, and the publishing transaction is
+ * fenced by the generation claim, so a worker whose lease expired can neither overwrite a file another
+ * worker published nor change the envelope the replacement worker completed.
+ *
+ * Every read and write here is scoped by `tenantId`; callers pass the tenant they were authorised for
+ * (the public certificate lookup is the one place that discovers it, from the certificate id).
  */
 
 const log = createLogger('esigning-issued-artifacts');
@@ -31,7 +37,9 @@ export type EsigningArtifactErrorCode =
   | 'SOURCE_DIGEST_MISMATCH'
   | 'ARTIFACT_HASH_MISMATCH'
   | 'ARTIFACT_NOT_FOUND'
-  | 'ARTIFACTS_PROCESSING';
+  | 'ARTIFACTS_PROCESSING'
+  | 'ARTIFACT_CLAIM_LOST'
+  | 'ENVELOPE_NOT_FOUND';
 
 /** Typed failure so callers do not have to classify by message text. */
 export class EsigningArtifactError extends Error {
@@ -66,6 +74,30 @@ export interface IssuedVersionSnapshot {
   certificate: IssuedArtifactRecord | null;
   signedByDocumentId: Map<string, IssuedArtifactRecord>;
   withCertificateByDocumentId: Map<string, IssuedArtifactRecord>;
+  /** Multi-document envelopes only: the stored "Download all" package without the certificate. */
+  packageDocuments: IssuedArtifactRecord | null;
+  /** Multi-document envelopes only: the stored "Download all" package with the certificate. */
+  packageWithCertificate: IssuedArtifactRecord | null;
+}
+
+/** Which of the derived files (beyond the signed documents) the caller is about to serve. */
+export interface IssuedNeeds {
+  certificates: boolean;
+  packageDocuments: boolean;
+  packageWithCertificate: boolean;
+}
+
+export type IssuedPackageVariant = 'documents' | 'documents_with_certificates';
+
+export function issuedNeedsFor(input: {
+  requireCertificates?: boolean;
+  requirePackage?: IssuedPackageVariant | null;
+}): IssuedNeeds {
+  return {
+    certificates: Boolean(input.requireCertificates) || input.requirePackage === 'documents_with_certificates',
+    packageDocuments: input.requirePackage === 'documents',
+    packageWithCertificate: input.requirePackage === 'documents_with_certificates',
+  };
 }
 
 export interface NewIssuedArtifact {
@@ -104,11 +136,12 @@ export async function mergeIssuedPdfs(buffers: Uint8Array[], issuedAt: Date): Pr
 }
 
 export async function loadIssuedVersion(
+  tenantId: string,
   envelopeId: string,
   version: number,
 ): Promise<IssuedVersionSnapshot> {
   const rows = await prisma.esigningIssuedArtifact.findMany({
-    where: { envelopeId, version },
+    where: { tenantId, envelopeId, version },
     orderBy: { createdAt: 'asc' },
   });
   const snapshot: IssuedVersionSnapshot = {
@@ -116,10 +149,16 @@ export async function loadIssuedVersion(
     certificate: null,
     signedByDocumentId: new Map(),
     withCertificateByDocumentId: new Map(),
+    packageDocuments: null,
+    packageWithCertificate: null,
   };
   for (const row of rows) {
     if (row.kind === 'CERTIFICATE') {
       snapshot.certificate = row;
+    } else if (row.kind === 'PACKAGE_DOCUMENTS') {
+      snapshot.packageDocuments = row;
+    } else if (row.kind === 'PACKAGE_DOCUMENTS_WITH_CERTIFICATE') {
+      snapshot.packageWithCertificate = row;
     } else if (row.kind === 'SIGNED_DOCUMENT' && row.documentId) {
       snapshot.signedByDocumentId.set(row.documentId, row);
     } else if (row.kind === 'DOCUMENT_WITH_CERTIFICATE' && row.documentId) {
@@ -130,15 +169,18 @@ export async function loadIssuedVersion(
 }
 
 /** The artifacts of the envelope's current version, or null when nothing has been issued. */
-export async function getCurrentIssuedVersion(envelopeId: string): Promise<IssuedVersionSnapshot | null> {
-  const envelope = await prisma.esigningEnvelope.findUnique({
-    where: { id: envelopeId },
+export async function getCurrentIssuedVersion(
+  tenantId: string,
+  envelopeId: string,
+): Promise<IssuedVersionSnapshot | null> {
+  const envelope = await prisma.esigningEnvelope.findFirst({
+    where: { id: envelopeId, tenantId },
     select: { currentArtifactVersion: true },
   });
   if (!envelope || envelope.currentArtifactVersion == null) {
     return null;
   }
-  return loadIssuedVersion(envelopeId, envelope.currentArtifactVersion);
+  return loadIssuedVersion(tenantId, envelopeId, envelope.currentArtifactVersion);
 }
 
 /**
@@ -168,17 +210,21 @@ function requireRecord<T extends IssuedArtifactRecord | null | undefined>(
   return record as NonNullable<T>;
 }
 
-export async function getCurrentCertificateArtifact(envelopeId: string): Promise<IssuedArtifactRecord> {
-  const version = await getCurrentIssuedVersion(envelopeId);
+export async function getCurrentCertificateArtifact(
+  tenantId: string,
+  envelopeId: string,
+): Promise<IssuedArtifactRecord> {
+  const version = await getCurrentIssuedVersion(tenantId, envelopeId);
   return requireRecord(version?.certificate, 'The completion certificate');
 }
 
 export async function getCurrentDocumentArtifact(
+  tenantId: string,
   envelopeId: string,
   documentId: string,
   kind: 'SIGNED_DOCUMENT' | 'DOCUMENT_WITH_CERTIFICATE',
 ): Promise<IssuedArtifactRecord> {
-  const version = await getCurrentIssuedVersion(envelopeId);
+  const version = await getCurrentIssuedVersion(tenantId, envelopeId);
   const record =
     kind === 'SIGNED_DOCUMENT'
       ? version?.signedByDocumentId.get(documentId)
@@ -205,18 +251,51 @@ export function buildSourceDigests(input: {
 
 /**
  * Insert a new version and move the envelope pointers, in one transaction. Files must already be
- * uploaded. The unique (envelopeId, version, kind, document) index makes a competing writer fail
- * rather than overwrite.
+ * uploaded (under this attempt's own folder).
+ *
+ * The first statement is a fence: it only matches while the envelope is still PROCESSING under the
+ * claim this attempt took (`claimedAt`) and still at the version it started from. A worker whose
+ * lease expired and was replaced matches nothing, so it throws `ARTIFACT_CLAIM_LOST` and changes
+ * nothing. The unique (envelope, version, kind, document) index is the second line of defence.
  */
 export async function persistIssuedVersion(input: {
   tenantId: string;
   envelopeId: string;
   version: number;
+  /** The envelope's `currentArtifactVersion` when this attempt started. */
+  previousVersion: number | null;
+  /** The `pdfGenerationClaimedAt` this attempt wrote when it took the claim. */
+  claimedAt: Date;
   rendererVersion: number;
   artifacts: NewIssuedArtifact[];
   envelopeMetadata: Prisma.InputJsonValue;
 }): Promise<void> {
   await prisma.$transaction(async (tx) => {
+    const fenced = await tx.esigningEnvelope.updateMany({
+      where: {
+        id: input.envelopeId,
+        tenantId: input.tenantId,
+        status: 'COMPLETED',
+        pdfGenerationStatus: 'PROCESSING',
+        pdfGenerationClaimedAt: input.claimedAt,
+        currentArtifactVersion: input.previousVersion,
+      },
+      data: {
+        currentArtifactVersion: input.version,
+        pdfGenerationStatus: 'COMPLETED',
+        pdfGenerationClaimedAt: null,
+        pdfGenerationError: null,
+        metadata: input.envelopeMetadata,
+      },
+    });
+    if (fenced.count !== 1) {
+      throw new EsigningArtifactError(
+        'ARTIFACT_CLAIM_LOST',
+        'This generation no longer holds the envelope claim; its result was discarded',
+        { envelopeId: input.envelopeId, version: input.version },
+      );
+    }
+
     await tx.esigningIssuedArtifact.createMany({
       data: input.artifacts.map((artifact) => ({
         tenantId: input.tenantId,
@@ -234,24 +313,44 @@ export async function persistIssuedVersion(input: {
 
     for (const artifact of input.artifacts) {
       if (artifact.kind === 'SIGNED_DOCUMENT' && artifact.documentId) {
-        await tx.esigningEnvelopeDocument.update({
-          where: { id: artifact.documentId },
+        await tx.esigningEnvelopeDocument.updateMany({
+          where: { id: artifact.documentId, envelopeId: input.envelopeId, tenantId: input.tenantId },
           data: { signedStoragePath: artifact.storagePath, signedHash: artifact.blake3 },
         });
       }
     }
-
-    await tx.esigningEnvelope.update({
-      where: { id: input.envelopeId },
-      data: {
-        currentArtifactVersion: input.version,
-        pdfGenerationStatus: 'COMPLETED',
-        pdfGenerationClaimedAt: null,
-        pdfGenerationError: null,
-        metadata: input.envelopeMetadata,
-      },
-    });
   });
+}
+
+/**
+ * Delete files a generation attempt uploaded but did not publish. The paths are unique to the
+ * attempt, so nothing another worker published can be affected; as a guard against an ambiguous
+ * commit, a path that some row references is never deleted. Best effort: an orphaned object is
+ * unreferenced and harmless.
+ */
+export async function discardUnpublishedFiles(input: {
+  tenantId: string;
+  envelopeId: string;
+  paths: string[];
+}): Promise<void> {
+  if (input.paths.length === 0) return;
+  try {
+    const referenced = await prisma.esigningIssuedArtifact.findMany({
+      where: { tenantId: input.tenantId, envelopeId: input.envelopeId, storagePath: { in: input.paths } },
+      select: { storagePath: true },
+    });
+    const keep = new Set(referenced.map((row) => row.storagePath));
+    for (const path of input.paths) {
+      if (keep.has(path)) continue;
+      try {
+        await storage.delete(path);
+      } catch (error) {
+        log.warn('Could not delete an unpublished issued file', { envelopeId: input.envelopeId, path, error });
+      }
+    }
+  } catch (error) {
+    log.warn('Could not clean up unpublished issued files', { envelopeId: input.envelopeId, error });
+  }
 }
 
 export type CurrentVersionState = 'ready' | 'regenerate';
@@ -261,26 +360,35 @@ export type CurrentVersionState = 'ready' | 'regenerate';
  *
  * `regenerate` only when nothing has been issued, or a file of the current version is gone from
  * storage. A different renderer version is deliberately not a reason: issued means immutable.
- * For a version-1 envelope that predates the certificate/merged rows, the certificate and merged
- * files are backfilled here (once, from the stored legacy certificate) instead of re-rendering.
+ * For an envelope that predates the certificate, merged or package rows, the missing derived files
+ * are backfilled here (once, from the stored signed documents and certificate) instead of re-rendering.
  */
 export async function inspectCurrentIssuedVersion(input: {
+  tenantId: string;
   envelopeId: string;
-  requireCertificates: boolean;
+  needs: IssuedNeeds;
 }): Promise<CurrentVersionState> {
-  const envelope = await prisma.esigningEnvelope.findUnique({
-    where: { id: input.envelopeId },
+  const envelope = await prisma.esigningEnvelope.findFirst({
+    where: { id: input.envelopeId, tenantId: input.tenantId },
     select: {
       id: true,
       currentArtifactVersion: true,
       documents: { select: { id: true } },
     },
   });
-  if (!envelope || envelope.currentArtifactVersion == null) {
+  if (!envelope) {
+    throw new EsigningArtifactError('ENVELOPE_NOT_FOUND', 'Envelope not found');
+  }
+  if (envelope.currentArtifactVersion == null) {
     return 'regenerate';
   }
 
-  let version = await loadIssuedVersion(envelope.id, envelope.currentArtifactVersion);
+  const { needs } = input;
+  const multiDocument = envelope.documents.length > 1;
+  const needPackageDocuments = multiDocument && needs.packageDocuments;
+  const needPackageWithCertificate = multiDocument && needs.packageWithCertificate;
+
+  let version = await loadIssuedVersion(input.tenantId, envelope.id, envelope.currentArtifactVersion);
 
   for (const document of envelope.documents) {
     const signed = version.signedByDocumentId.get(document.id);
@@ -289,25 +397,35 @@ export async function inspectCurrentIssuedVersion(input: {
     }
   }
 
-  if (!input.requireCertificates) {
+  if (!needs.certificates && !needPackageDocuments && !needPackageWithCertificate) {
     return 'ready';
   }
 
-  const hasEveryCertificateRow =
-    Boolean(version.certificate) &&
-    envelope.documents.every((document) => version.withCertificateByDocumentId.has(document.id));
+  const hasEveryRow =
+    (!needs.certificates ||
+      (Boolean(version.certificate) &&
+        envelope.documents.every((document) => version.withCertificateByDocumentId.has(document.id)))) &&
+    (!needPackageDocuments || Boolean(version.packageDocuments)) &&
+    (!needPackageWithCertificate || Boolean(version.packageWithCertificate));
 
-  if (!hasEveryCertificateRow) {
-    const outcome = await backfillLegacyCertificateArtifacts(envelope.id);
+  if (!hasEveryRow) {
+    const outcome = await backfillLegacyCertificateArtifacts(input.tenantId, envelope.id, {
+      certificates: needs.certificates,
+      packageDocuments: needPackageDocuments,
+      packageWithCertificate: needPackageWithCertificate,
+    });
     if (outcome === 'legacy-certificate-missing') {
       return 'regenerate';
     }
-    version = await loadIssuedVersion(envelope.id, envelope.currentArtifactVersion);
+    version = await loadIssuedVersion(input.tenantId, envelope.id, envelope.currentArtifactVersion);
   }
 
   const files = [
-    version.certificate,
-    ...envelope.documents.map((document) => version.withCertificateByDocumentId.get(document.id)),
+    ...(needs.certificates
+      ? [version.certificate, ...envelope.documents.map((document) => version.withCertificateByDocumentId.get(document.id))]
+      : []),
+    ...(needPackageDocuments ? [version.packageDocuments] : []),
+    ...(needPackageWithCertificate ? [version.packageWithCertificate] : []),
   ];
   for (const file of files) {
     if (!file || !(await storage.exists(file.storagePath))) {
@@ -318,17 +436,43 @@ export async function inspectCurrentIssuedVersion(input: {
 }
 
 /**
- * Version 1 of an envelope completed before this feature has signed-document rows (from the
- * migration) but no certificate or merged rows. Hash the stored certificate, merge once, store the
- * merged files under the v1 paths and add the rows. Nothing is re-rendered, so the certificate and
- * signed documents are exactly the ones issued earlier. Copies emailed before this release were never
- * fingerprinted and still cannot be verified.
+ * Write a backfilled file to its deterministic key. The merge is deterministic, so a concurrent
+ * backfill produces the same bytes; an object already there is left alone when it is identical and
+ * is an error when it is not (it is never overwritten).
+ */
+async function putDeterministicFile(
+  path: string,
+  content: Buffer,
+  metadata: Record<string, string>,
+): Promise<void> {
+  if (await storage.exists(path)) {
+    const existing = await storage.download(path);
+    if (hashBlake3(existing) === hashBlake3(content)) {
+      return;
+    }
+    throw new EsigningArtifactError(
+      'ARTIFACT_HASH_MISMATCH',
+      'A different file already exists where a backfilled issued file would be written',
+      { path },
+    );
+  }
+  await storage.upload(path, content, { contentType: 'application/pdf', metadata });
+}
+
+/**
+ * An envelope completed before this feature has signed-document rows (from the migration) but no
+ * certificate, merged or package rows. Hash the stored certificate, merge once, store the merged files
+ * under the deterministic keys of the current version and add the rows. Nothing is re-rendered, so the
+ * certificate and signed documents are exactly the ones issued earlier. Copies emailed before this
+ * release were never fingerprinted and still cannot be verified.
  */
 export async function backfillLegacyCertificateArtifacts(
+  tenantId: string,
   envelopeId: string,
+  needs: IssuedNeeds = { certificates: true, packageDocuments: false, packageWithCertificate: false },
 ): Promise<'backfilled' | 'legacy-certificate-missing'> {
-  const envelope = await prisma.esigningEnvelope.findUniqueOrThrow({
-    where: { id: envelopeId },
+  const envelope = await prisma.esigningEnvelope.findFirstOrThrow({
+    where: { id: envelopeId, tenantId },
     select: {
       id: true,
       tenantId: true,
@@ -343,24 +487,33 @@ export async function backfillLegacyCertificateArtifacts(
     throw new EsigningArtifactError('ARTIFACT_NOT_FOUND', 'The envelope has no issued version to backfill');
   }
 
-  const existing = await loadIssuedVersion(envelope.id, version);
+  const existing = await loadIssuedVersion(envelope.tenantId, envelope.id, version);
+  const multiDocument = envelope.documents.length > 1;
+  const wantPackageDocuments = multiDocument && needs.packageDocuments && !existing.packageDocuments;
+  const wantPackageWithCertificate =
+    multiDocument && needs.packageWithCertificate && !existing.packageWithCertificate;
+  const needCertificate = needs.certificates || wantPackageWithCertificate;
+
   const certificatePath = StorageKeys.esigningEnvelopeCertificate(envelope.tenantId, envelope.id);
   const certificateRecord = existing.certificate;
-  let certificateBuffer: Buffer;
+  let certificateBuffer: Buffer | null = null;
 
-  if (certificateRecord) {
-    if (!(await storage.exists(certificateRecord.storagePath))) {
-      return 'legacy-certificate-missing';
+  if (needCertificate) {
+    if (certificateRecord) {
+      if (!(await storage.exists(certificateRecord.storagePath))) {
+        return 'legacy-certificate-missing';
+      }
+      certificateBuffer = await readIssuedArtifact(certificateRecord);
+    } else {
+      if (!(await storage.exists(certificatePath))) {
+        return 'legacy-certificate-missing';
+      }
+      certificateBuffer = await storage.download(certificatePath);
     }
-    certificateBuffer = await readIssuedArtifact(certificateRecord);
-  } else {
-    if (!(await storage.exists(certificatePath))) {
-      return 'legacy-certificate-missing';
-    }
-    certificateBuffer = await storage.download(certificatePath);
   }
 
-  const certificateBlake3 = certificateRecord?.blake3 ?? hashBlake3(certificateBuffer);
+  const certificateBlake3 =
+    certificateRecord?.blake3 ?? (certificateBuffer ? hashBlake3(certificateBuffer) : undefined);
   const originalHashes = Object.fromEntries(
     envelope.documents.map((document) => [document.id, document.originalHash]),
   );
@@ -372,37 +525,46 @@ export async function backfillLegacyCertificateArtifacts(
   const issuedAt = envelope.completedAt ?? envelope.createdAt;
 
   const newRows: Array<NewIssuedArtifact> = [];
-  if (!certificateRecord) {
+  if (needs.certificates && !certificateRecord && certificateBuffer) {
     newRows.push({
       documentId: null,
       kind: 'CERTIFICATE',
       // The certificate stays where it was written; only the merged files get new keys.
       storagePath: certificatePath,
-      blake3: certificateBlake3,
+      blake3: hashBlake3(certificateBuffer),
       byteSize: certificateBuffer.byteLength,
       sourceDigests: buildSourceDigests({ originalHashes, extra: backfillMarker }),
     });
   }
 
+  const signedBuffers: Buffer[] = [];
+  const signedBlake3s: string[] = [];
   for (const document of envelope.documents) {
-    if (existing.withCertificateByDocumentId.has(document.id)) {
-      continue;
-    }
     const signedRecord = requireRecord(
       existing.signedByDocumentId.get(document.id),
       'The signed document',
     );
+    const needMerged = needs.certificates && !existing.withCertificateByDocumentId.has(document.id);
+    if (!needMerged && !wantPackageDocuments && !wantPackageWithCertificate) {
+      continue;
+    }
     const signedBuffer = await readIssuedArtifact(signedRecord);
-    const merged = await mergeIssuedPdfs([signedBuffer, certificateBuffer], issuedAt);
+    signedBuffers.push(signedBuffer);
+    signedBlake3s.push(signedRecord.blake3);
+    if (!needMerged) {
+      continue;
+    }
+    const merged = await mergeIssuedPdfs([signedBuffer, certificateBuffer as Buffer], issuedAt);
     const storagePath = StorageKeys.esigningIssuedDocumentWithCertificate(
       envelope.tenantId,
       envelope.id,
       version,
       document.id,
     );
-    await storage.upload(storagePath, merged, {
-      contentType: 'application/pdf',
-      metadata: { envelopeId: envelope.id, documentId: document.id, version: String(version) },
+    await putDeterministicFile(storagePath, merged, {
+      envelopeId: envelope.id,
+      documentId: document.id,
+      version: String(version),
     });
     newRows.push({
       documentId: document.id,
@@ -415,6 +577,46 @@ export async function backfillLegacyCertificateArtifacts(
         certificateBlake3,
         signedBlake3: signedRecord.blake3,
         extra: backfillMarker,
+      }),
+    });
+  }
+
+  if (wantPackageDocuments) {
+    const merged = await mergeIssuedPdfs(signedBuffers, issuedAt);
+    const storagePath = StorageKeys.esigningIssuedPackage(envelope.tenantId, envelope.id, version, 'documents');
+    await putDeterministicFile(storagePath, merged, { envelopeId: envelope.id, version: String(version) });
+    newRows.push({
+      documentId: null,
+      kind: 'PACKAGE_DOCUMENTS',
+      storagePath,
+      blake3: hashBlake3(merged),
+      byteSize: merged.byteLength,
+      sourceDigests: buildSourceDigests({
+        originalHashes,
+        extra: { ...backfillMarker, signedBlake3s },
+      }),
+    });
+  }
+
+  if (wantPackageWithCertificate && certificateBuffer) {
+    const merged = await mergeIssuedPdfs([...signedBuffers, certificateBuffer], issuedAt);
+    const storagePath = StorageKeys.esigningIssuedPackage(
+      envelope.tenantId,
+      envelope.id,
+      version,
+      'documents-with-certificate',
+    );
+    await putDeterministicFile(storagePath, merged, { envelopeId: envelope.id, version: String(version) });
+    newRows.push({
+      documentId: null,
+      kind: 'PACKAGE_DOCUMENTS_WITH_CERTIFICATE',
+      storagePath,
+      blake3: hashBlake3(merged),
+      byteSize: merged.byteLength,
+      sourceDigests: buildSourceDigests({
+        originalHashes,
+        certificateBlake3,
+        extra: { ...backfillMarker, signedBlake3s },
       }),
     });
   }
@@ -436,7 +638,7 @@ export async function backfillLegacyCertificateArtifacts(
       })),
       skipDuplicates: true,
     });
-    log.info('Backfilled certificate artifacts for a version-1 envelope', {
+    log.info('Backfilled issued artifacts for an existing envelope', {
       envelopeId: envelope.id,
       rows: newRows.length,
     });

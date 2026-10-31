@@ -27,11 +27,13 @@ describe('on-demand e-signing artifact generation', () => {
     await expect(
       processEsigningCompletionArtifacts({
         envelopeCompleted: true,
+        tenantId: 'tenant-1',
         envelopeId: 'envelope-1',
       })
     ).resolves.toBeUndefined();
 
     expect(pdfMocks.generateEsigningEnvelopeArtifactsNow).toHaveBeenCalledWith({
+      tenantId: 'tenant-1',
       envelopeId: 'envelope-1',
     });
   });
@@ -39,6 +41,7 @@ describe('on-demand e-signing artifact generation', () => {
   it('does not generate artifacts for a non-final signer', async () => {
     await processEsigningCompletionArtifacts({
       envelopeCompleted: false,
+      tenantId: 'tenant-1',
       envelopeId: 'envelope-1',
     });
 
@@ -53,6 +56,7 @@ describe('on-demand e-signing artifact generation', () => {
     await expect(
       processEsigningCompletionArtifacts({
         envelopeCompleted: true,
+        tenantId: 'tenant-1',
         envelopeId: 'envelope-1',
       })
     ).resolves.toBeUndefined();

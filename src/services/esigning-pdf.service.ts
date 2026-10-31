@@ -1,6 +1,8 @@
+import { randomUUID } from 'crypto';
 import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
 import { prisma } from '@/lib/prisma';
 import { hashBlake3 } from '@/lib/encryption';
+import { createLogger } from '@/lib/logger';
 import { storage, StorageKeys } from '@/lib/storage';
 import { markFilingJobsForTerminalSourceFailure } from '@/services/esigning-sharepoint-filing/enqueue';
 import {
@@ -27,17 +29,22 @@ import {
   getCurrentCertificateArtifact,
   getCurrentDocumentArtifact,
   getCurrentIssuedVersion,
+  discardUnpublishedFiles,
   inspectCurrentIssuedVersion,
   isSourceDigestMismatchMessage,
+  issuedNeedsFor,
   mergeIssuedPdfs,
   persistIssuedVersion,
   readIssuedArtifact,
+  type IssuedPackageVariant,
   type NewIssuedArtifact,
 } from '@/services/esigning-issued-artifacts';
 import {
   recordEsigningEnvelopeEmailDeliveryResults,
   withEsigningDeliveryTarget,
 } from '@/services/esigning-email-delivery.service';
+
+const log = createLogger('esigning-pdf');
 
 const PROCESSING_LEASE_MS = 15 * 60 * 1000;
 const MAX_EMAIL_ATTACHMENT_BYTES = 20 * 1024 * 1024;
@@ -116,44 +123,6 @@ function withEnvelopeArtifactVersion(metadata: Prisma.JsonValue | null | undefin
   } satisfies Prisma.InputJsonValue;
 }
 
-export async function mergePdfBuffers(buffers: Uint8Array[]): Promise<Buffer> {
-  const mergedPdf = await PDFDocument.create();
-
-  for (const buffer of buffers) {
-    const sourcePdf = await PDFDocument.load(new Uint8Array(buffer));
-    const copiedPages = await mergedPdf.copyPages(sourcePdf, sourcePdf.getPageIndices());
-    copiedPages.forEach((page) => mergedPdf.addPage(page));
-  }
-
-  return Buffer.from(await mergedPdf.save());
-}
-
-export async function composeEsigningEnvelopePackage(input: {
-  variant: 'documents' | 'documents_with_certificates' | 'certificates';
-  signedBuffers: Buffer[];
-  certificateBuffer?: Buffer;
-}): Promise<Buffer> {
-  if (input.variant === 'certificates') {
-    if (!input.certificateBuffer) {
-      throw new Error('Completion certificate is not available');
-    }
-    return mergePdfBuffers([input.certificateBuffer]);
-  }
-
-  if (input.signedBuffers.length === 0) {
-    throw new Error('No generated PDFs are available for download');
-  }
-
-  const buffers: Buffer[] = [...input.signedBuffers];
-  if (input.variant === 'documents_with_certificates') {
-    if (!input.certificateBuffer) {
-      throw new Error('Completion certificate is not available');
-    }
-    buffers.push(input.certificateBuffer);
-  }
-
-  return mergePdfBuffers(buffers);
-}
 export async function buildDeliveryDocumentLinks(input: {
   envelopeId: string;
   actorType: 'recipient' | 'sender';
@@ -189,9 +158,9 @@ export async function buildDeliveryDocumentLinks(input: {
   }));
 }
 
-async function loadEnvelopeForPdf(envelopeId: string) {
-  const envelope = await prisma.esigningEnvelope.findUnique({
-    where: { id: envelopeId },
+async function loadEnvelopeForPdf(tenantId: string, envelopeId: string) {
+  const envelope = await prisma.esigningEnvelope.findFirst({
+    where: { id: envelopeId, tenantId },
     include: {
       tenant: {
         select: {
@@ -234,11 +203,12 @@ async function loadEnvelopeForPdf(envelopeId: string) {
   });
 
   if (!envelope) {
-    throw new Error('Envelope not found');
+    throw new EsigningArtifactError('ENVELOPE_NOT_FOUND', 'Envelope not found');
   }
 
   const fieldValues = await prisma.esigningDocumentFieldValue.findMany({
     where: {
+      tenantId,
       recipient: {
         envelopeId,
       },
@@ -345,21 +315,31 @@ async function renderSignedDocument(
 
 /**
  * Generate the next artifact version. Nothing is uploaded until every source has been verified and
- * every file rendered, and earlier versions' rows and files are never touched: the new files go under
- * `v{n}/` and one transaction inserts the rows and moves the envelope pointers.
+ * every file rendered, and earlier versions' rows and files are never touched. The new files go under
+ * this attempt's own `v{n}/{attemptId}/` folder (so a second worker that picked the same version
+ * cannot overwrite them), and one fenced transaction inserts the rows and moves the envelope pointers.
+ * An attempt that loses the claim, or fails after uploading, deletes only its own folder's files.
  */
-async function generateEnvelopeArtifacts(envelopeId: string): Promise<void> {
-  const envelope = await loadEnvelopeForPdf(envelopeId);
+async function generateEnvelopeArtifacts(input: {
+  tenantId: string;
+  envelopeId: string;
+  /** The `pdfGenerationClaimedAt` written by this attempt's claim; the publish fence. */
+  claimedAt: Date;
+}): Promise<void> {
+  const { tenantId, envelopeId, claimedAt } = input;
+  const envelope = await loadEnvelopeForPdf(tenantId, envelopeId);
 
   if (envelope.status !== 'COMPLETED') {
     throw new Error('Only completed envelopes can generate signed PDFs');
   }
 
+  const attemptId = randomUUID();
+  const previousVersion = envelope.currentArtifactVersion ?? null;
   const latest = await prisma.esigningIssuedArtifact.aggregate({
-    where: { envelopeId },
+    where: { tenantId, envelopeId },
     _max: { version: true },
   });
-  const version = Math.max(envelope.currentArtifactVersion ?? 0, latest._max.version ?? 0) + 1;
+  const version = Math.max(previousVersion ?? 0, latest._max.version ?? 0) + 1;
 
   // Pre-pass: the originals are the evidence the signed copy is built from. Verify every one against
   // the digest recorded at upload, reuse the downloaded bytes, and stop before writing anything.
@@ -382,7 +362,12 @@ async function generateEnvelopeArtifacts(envelopeId: string): Promise<void> {
   const issuedAt = envelope.completedAt ?? envelope.createdAt;
   const certificateBuffer = await buildCertificatePdf({ envelope });
   const certificateBlake3 = hashBlake3(certificateBuffer);
-  const certificatePath = StorageKeys.esigningIssuedCertificate(envelope.tenantId, envelope.id, version);
+  const certificatePath = StorageKeys.esigningIssuedCertificate(
+    envelope.tenantId,
+    envelope.id,
+    version,
+    attemptId,
+  );
 
   const files: Array<{
     path: string;
@@ -409,6 +394,8 @@ async function generateEnvelopeArtifacts(envelopeId: string): Promise<void> {
     },
   ];
 
+  const signedBuffers: Buffer[] = [];
+  const signedBlake3s: string[] = [];
   for (const document of envelope.documents) {
     const signedBuffer = await renderSignedDocument(
       envelope,
@@ -416,18 +403,22 @@ async function generateEnvelopeArtifacts(envelopeId: string): Promise<void> {
       originals.get(document.id) as Buffer,
     );
     const signedBlake3 = hashBlake3(signedBuffer);
+    signedBuffers.push(signedBuffer);
+    signedBlake3s.push(signedBlake3);
     const mergedBuffer = await mergeIssuedPdfs([signedBuffer, certificateBuffer], issuedAt);
     const signedPath = StorageKeys.esigningIssuedSignedDocument(
       envelope.tenantId,
       envelope.id,
       version,
       document.id,
+      attemptId,
     );
     const mergedPath = StorageKeys.esigningIssuedDocumentWithCertificate(
       envelope.tenantId,
       envelope.id,
       version,
       document.id,
+      attemptId,
     );
     const metadata = {
       envelopeId: envelope.id,
@@ -465,21 +456,90 @@ async function generateEnvelopeArtifacts(envelopeId: string): Promise<void> {
     );
   }
 
-  for (const file of files) {
-    await storage.upload(file.path, file.buffer, {
-      contentType: 'application/pdf',
-      metadata: file.metadata,
-    });
+  // "Download all" for several documents is one combined PDF. Build and fingerprint it now, like every
+  // other issued file, so what is downloaded is exactly what the public check recognises.
+  if (envelope.documents.length > 1) {
+    const packageMetadata = {
+      envelopeId: envelope.id,
+      certificateId: envelope.certificateId,
+      version: String(version),
+    };
+    const documentsPackage = await mergeIssuedPdfs(signedBuffers, issuedAt);
+    const documentsPackagePath = StorageKeys.esigningIssuedPackage(
+      envelope.tenantId,
+      envelope.id,
+      version,
+      'documents',
+      attemptId,
+    );
+    const withCertificatePackage = await mergeIssuedPdfs([...signedBuffers, certificateBuffer], issuedAt);
+    const withCertificatePackagePath = StorageKeys.esigningIssuedPackage(
+      envelope.tenantId,
+      envelope.id,
+      version,
+      'documents-with-certificate',
+      attemptId,
+    );
+    files.push(
+      {
+        path: documentsPackagePath,
+        buffer: documentsPackage,
+        metadata: packageMetadata,
+        artifact: {
+          documentId: null,
+          kind: 'PACKAGE_DOCUMENTS',
+          storagePath: documentsPackagePath,
+          blake3: hashBlake3(documentsPackage),
+          byteSize: documentsPackage.byteLength,
+          sourceDigests: buildSourceDigests({ originalHashes, extra: { signedBlake3s } }),
+        },
+      },
+      {
+        path: withCertificatePackagePath,
+        buffer: withCertificatePackage,
+        metadata: packageMetadata,
+        artifact: {
+          documentId: null,
+          kind: 'PACKAGE_DOCUMENTS_WITH_CERTIFICATE',
+          storagePath: withCertificatePackagePath,
+          blake3: hashBlake3(withCertificatePackage),
+          byteSize: withCertificatePackage.byteLength,
+          sourceDigests: buildSourceDigests({
+            originalHashes,
+            certificateBlake3,
+            extra: { signedBlake3s },
+          }),
+        },
+      },
+    );
   }
 
-  await persistIssuedVersion({
-    tenantId: envelope.tenantId,
-    envelopeId: envelope.id,
-    version,
-    rendererVersion: ESIGNING_RENDERER_VERSION,
-    artifacts: files.map((file) => file.artifact),
-    envelopeMetadata: withEnvelopeArtifactVersion(envelope.metadata),
-  });
+  try {
+    for (const file of files) {
+      await storage.upload(file.path, file.buffer, {
+        contentType: 'application/pdf',
+        metadata: file.metadata,
+      });
+    }
+
+    await persistIssuedVersion({
+      tenantId: envelope.tenantId,
+      envelopeId: envelope.id,
+      version,
+      previousVersion,
+      claimedAt,
+      rendererVersion: ESIGNING_RENDERER_VERSION,
+      artifacts: files.map((file) => file.artifact),
+      envelopeMetadata: withEnvelopeArtifactVersion(envelope.metadata),
+    });
+  } catch (error) {
+    await discardUnpublishedFiles({
+      tenantId: envelope.tenantId,
+      envelopeId: envelope.id,
+      paths: files.map((file) => file.path),
+    });
+    throw error;
+  }
 }
 
 /**
@@ -487,13 +547,23 @@ async function generateEnvelopeArtifacts(envelopeId: string): Promise<void> {
  * `lazy` is the on-demand path (a download, email or filing noticed something is missing); the
  * scheduler and the explicit retry use the other one. A source-digest failure is never retried by a
  * lazy caller: it would fail identically and send another failure email.
+ *
+ * Returns the `pdfGenerationClaimedAt` this claim wrote, or null when another worker holds the claim.
+ * That timestamp is the fencing token: a lease is only taken over once the previous claim is at least
+ * `PROCESSING_LEASE_MS` old, so every claim of an envelope has a different value, and the publish and
+ * failure updates only apply while the envelope is still PROCESSING under exactly this claim.
  */
-async function claimEnvelopeForGeneration(envelopeId: string, options: { lazy: boolean }): Promise<boolean> {
+async function claimEnvelopeForGeneration(
+  tenantId: string,
+  envelopeId: string,
+  options: { lazy: boolean },
+): Promise<Date | null> {
   const now = new Date();
   const staleBefore = new Date(now.getTime() - PROCESSING_LEASE_MS);
   const claim = await prisma.esigningEnvelope.updateMany({
     where: {
       id: envelopeId,
+      tenantId,
       status: 'COMPLETED',
       OR: [
         { pdfGenerationStatus: null },
@@ -520,42 +590,55 @@ async function claimEnvelopeForGeneration(envelopeId: string, options: { lazy: b
       pdfGenerationError: null,
     },
   });
-  return claim.count === 1;
+  return claim.count === 1 ? now : null;
+}
+
+/** Every service entry point starts here: the envelope must belong to the tenant the caller was authorised for. */
+async function requireTenantEnvelope(tenantId: string, envelopeId: string) {
+  const envelope = await prisma.esigningEnvelope.findFirst({
+    where: { id: envelopeId, tenantId },
+    select: { id: true, status: true, pdfGenerationStatus: true, pdfGenerationClaimedAt: true },
+  });
+  if (!envelope) {
+    throw new EsigningArtifactError('ENVELOPE_NOT_FOUND', 'Envelope not found');
+  }
+  return envelope;
 }
 
 /**
  * Make sure the current issued version can be served. An issued version is immutable: this only
  * generates when nothing has been issued or a file of the current version is missing from storage
  * (the new files become the next version). A different renderer version is not a reason.
+ *
+ * A foreign-tenant envelope id is rejected before any generation or storage access.
  */
 export async function ensureEsigningEnvelopeArtifacts(input: {
+  tenantId: string;
   envelopeId: string;
   requireCertificates?: boolean;
+  /** Multi-document envelopes: the stored combined package that is about to be served. */
+  requirePackage?: IssuedPackageVariant | null;
 }): Promise<void> {
-  const envelope = await prisma.esigningEnvelope.findUnique({
-    where: { id: input.envelopeId },
-    select: { id: true, status: true },
-  });
-
-  if (!envelope) {
-    throw new Error('Envelope not found');
-  }
+  const envelope = await requireTenantEnvelope(input.tenantId, input.envelopeId);
 
   if (envelope.status !== 'COMPLETED') {
     throw new Error('Completed package is not available yet');
   }
 
+  const needs = issuedNeedsFor(input);
   const state = await inspectCurrentIssuedVersion({
+    tenantId: input.tenantId,
     envelopeId: envelope.id,
-    requireCertificates: Boolean(input.requireCertificates),
+    needs,
   });
   if (state === 'ready') {
     return;
   }
 
-  if (!(await claimEnvelopeForGeneration(envelope.id, { lazy: true }))) {
-    const current = await prisma.esigningEnvelope.findUnique({
-      where: { id: envelope.id },
+  const claimedAt = await claimEnvelopeForGeneration(input.tenantId, envelope.id, { lazy: true });
+  if (!claimedAt) {
+    const current = await prisma.esigningEnvelope.findFirst({
+      where: { id: envelope.id, tenantId: input.tenantId },
       select: { pdfGenerationStatus: true, pdfGenerationError: true },
     });
     if (current?.pdfGenerationStatus === 'FAILED' && isSourceDigestMismatchMessage(current.pdfGenerationError)) {
@@ -568,16 +651,42 @@ export async function ensureEsigningEnvelopeArtifacts(input: {
   }
 
   try {
-    await generateEnvelopeArtifacts(envelope.id);
+    await generateEnvelopeArtifacts({ tenantId: input.tenantId, envelopeId: envelope.id, claimedAt });
   } catch (error) {
-    await markEnvelopePdfFailure(envelope.id, error);
+    if (error instanceof EsigningArtifactError && error.code === 'ARTIFACT_CLAIM_LOST') {
+      // Another worker took over the lease and published; serve what it published if that is enough.
+      const after = await inspectCurrentIssuedVersion({
+        tenantId: input.tenantId,
+        envelopeId: envelope.id,
+        needs,
+      });
+      if (after === 'ready') {
+        return;
+      }
+      throw new EsigningArtifactError(
+        'ARTIFACTS_PROCESSING',
+        'Signed documents are being prepared. Try again shortly.',
+      );
+    }
+    await markEnvelopePdfFailure({ tenantId: input.tenantId, envelopeId: envelope.id, claimedAt, error });
     throw error;
   }
 }
 
-async function markEnvelopePdfFailure(envelopeId: string, error: unknown): Promise<void> {
-  const envelope = await prisma.esigningEnvelope.findUnique({
-    where: { id: envelopeId },
+/**
+ * Record a failed generation, but only while this attempt still holds the claim. A worker whose lease
+ * expired (another worker has since claimed or completed the envelope) changes nothing: no status, no
+ * event, no filing change, no email.
+ */
+async function markEnvelopePdfFailure(input: {
+  tenantId: string;
+  envelopeId: string;
+  claimedAt: Date;
+  error: unknown;
+}): Promise<void> {
+  const { tenantId, envelopeId, claimedAt, error } = input;
+  const envelope = await prisma.esigningEnvelope.findFirst({
+    where: { id: envelopeId, tenantId },
     include: {
       createdBy: {
         select: {
@@ -597,9 +706,14 @@ async function markEnvelopePdfFailure(envelopeId: string, error: unknown): Promi
   const typedDetails =
     error instanceof EsigningArtifactError ? { code: error.code, ...error.details } : {};
 
-  await prisma.$transaction(async (tx) => {
-    await tx.esigningEnvelope.update({
-      where: { id: envelopeId },
+  const recorded = await prisma.$transaction(async (tx) => {
+    const fenced = await tx.esigningEnvelope.updateMany({
+      where: {
+        id: envelopeId,
+        tenantId,
+        pdfGenerationStatus: 'PROCESSING',
+        pdfGenerationClaimedAt: claimedAt,
+      },
       data: {
         pdfGenerationStatus: 'FAILED',
         pdfGenerationClaimedAt: null,
@@ -607,6 +721,9 @@ async function markEnvelopePdfFailure(envelopeId: string, error: unknown): Promi
         pdfGenerationError: message,
       },
     });
+    if (fenced.count !== 1) {
+      return false;
+    }
 
     await tx.esigningEnvelopeEvent.create({
       data: {
@@ -625,7 +742,16 @@ async function markEnvelopePdfFailure(envelopeId: string, error: unknown): Promi
       'SOURCE_GENERATION_FAILED',
       envelope.tenantId,
     );
+    return true;
   });
+
+  if (!recorded) {
+    log.warn('Ignored the failure of a generation that no longer holds the envelope claim', {
+      envelopeId,
+      message,
+    });
+    return;
+  }
 
   const senderName =
     [envelope.createdBy.firstName, envelope.createdBy.lastName].filter(Boolean).join(' ').trim() ||
@@ -651,21 +777,10 @@ async function markEnvelopePdfFailure(envelopeId: string, error: unknown): Promi
  * manual retry after a failure. Appends the next artifact version; it never changes an earlier one.
  */
 export async function generateEsigningEnvelopeArtifactsNow(input: {
+  tenantId: string;
   envelopeId: string;
 }): Promise<'generated' | 'already-processing' | 'already-completed'> {
-  const envelope = await prisma.esigningEnvelope.findUnique({
-    where: { id: input.envelopeId },
-    select: {
-      id: true,
-      status: true,
-      pdfGenerationStatus: true,
-      pdfGenerationClaimedAt: true,
-    },
-  });
-
-  if (!envelope) {
-    throw new Error('Envelope not found');
-  }
+  const envelope = await requireTenantEnvelope(input.tenantId, input.envelopeId);
 
   if (envelope.status !== 'COMPLETED') {
     throw new Error('Only completed envelopes can generate signed PDFs');
@@ -675,15 +790,29 @@ export async function generateEsigningEnvelopeArtifactsNow(input: {
     return 'already-completed';
   }
 
-  if (!(await claimEnvelopeForGeneration(input.envelopeId, { lazy: false }))) {
+  const claimedAt = await claimEnvelopeForGeneration(input.tenantId, input.envelopeId, { lazy: false });
+  if (!claimedAt) {
     return 'already-processing';
   }
 
   try {
-    await generateEnvelopeArtifacts(input.envelopeId);
+    await generateEnvelopeArtifacts({
+      tenantId: input.tenantId,
+      envelopeId: input.envelopeId,
+      claimedAt,
+    });
     return 'generated';
   } catch (error) {
-    await markEnvelopePdfFailure(input.envelopeId, error);
+    if (error instanceof EsigningArtifactError && error.code === 'ARTIFACT_CLAIM_LOST') {
+      // Superseded by a worker that took over the expired lease. Its result stands; leave the envelope alone.
+      return 'already-processing';
+    }
+    await markEnvelopePdfFailure({
+      tenantId: input.tenantId,
+      envelopeId: input.envelopeId,
+      claimedAt,
+      error,
+    });
     throw error;
   }
 }
@@ -698,8 +827,10 @@ export async function downloadEsigningEnvelopePackage(input: {
 }> {
   const variant = input.variant ?? 'documents_with_certificates';
   await ensureEsigningEnvelopeArtifacts({
+    tenantId: input.tenantId,
     envelopeId: input.envelopeId,
     requireCertificates: variant !== 'documents',
+    requirePackage: variant === 'certificates' ? null : variant,
   });
 
   const envelope = await prisma.esigningEnvelope.findFirst({
@@ -720,28 +851,9 @@ export async function downloadEsigningEnvelopePackage(input: {
   if (envelope.status !== 'COMPLETED') {
     throw new Error('Completed package is not available yet');
   }
-  const issued = await getCurrentIssuedVersion(envelope.id);
+  const issued = await getCurrentIssuedVersion(envelope.tenantId, envelope.id);
   if (!issued) {
     throw new Error('One or more generated PDFs are not available yet');
-  }
-
-  const signedBuffers: Buffer[] = [];
-  if (variant !== 'certificates') {
-    for (const document of envelope.documents) {
-      const signed = issued.signedByDocumentId.get(document.id);
-      if (!signed) {
-        throw new Error('One or more generated PDFs are not available yet');
-      }
-      signedBuffers.push(await readIssuedArtifact(signed));
-    }
-  }
-
-  let certificateBuffer: Buffer | undefined;
-  if (variant !== 'documents') {
-    if (!issued.certificate) {
-      throw new Error('Completion certificate is not available');
-    }
-    certificateBuffer = await readIssuedArtifact(issued.certificate);
   }
 
   const fileNameBase = sanitizePdfBaseName(envelope.title);
@@ -752,30 +864,38 @@ export async function downloadEsigningEnvelopePackage(input: {
         ? `${fileNameBase}-documents.pdf`
         : `${fileNameBase}-documents-and-certificate.pdf`;
 
-  // A package that is exactly one issued file is served as stored, not re-saved, so the download
-  // can be recognised by the public check. Only a multi-document package has to be merged here.
-  const singleDocument = envelope.documents.length === 1 ? envelope.documents[0] : null;
-  if (variant === 'certificates' && certificateBuffer) {
-    return { buffer: certificateBuffer, fileName };
-  }
-  if (singleDocument && variant === 'documents') {
-    return { buffer: signedBuffers[0], fileName };
-  }
-  if (singleDocument && variant === 'documents_with_certificates') {
-    const merged = issued.withCertificateByDocumentId.get(singleDocument.id);
-    if (merged) {
-      return { buffer: await readIssuedArtifact(merged), fileName };
+  // Every package is a stored, fingerprinted file served byte for byte; nothing is merged on request,
+  // so each download is recognised by the public check. One document: its own stored file. Several:
+  // the combined package stored when the artifacts were generated.
+  if (variant === 'certificates') {
+    if (!issued.certificate) {
+      throw new Error('Completion certificate is not available');
     }
+    return { buffer: await readIssuedArtifact(issued.certificate), fileName };
   }
 
-  return {
-    buffer: await composeEsigningEnvelopePackage({
-      variant,
-      signedBuffers,
-      certificateBuffer,
-    }),
-    fileName,
-  };
+  if (envelope.documents.length === 0) {
+    throw new Error('No generated PDFs are available for download');
+  }
+
+  let record;
+  if (envelope.documents.length === 1) {
+    const onlyDocument = envelope.documents[0];
+    record =
+      variant === 'documents'
+        ? issued.signedByDocumentId.get(onlyDocument.id)
+        : issued.withCertificateByDocumentId.get(onlyDocument.id);
+  } else {
+    record = variant === 'documents' ? issued.packageDocuments : issued.packageWithCertificate;
+  }
+  if (!record) {
+    throw new Error(
+      variant === 'documents'
+        ? 'One or more generated PDFs are not available yet'
+        : 'Completion certificate is not available',
+    );
+  }
+  return { buffer: await readIssuedArtifact(record), fileName };
 }
 
 export async function downloadEsigningDocumentPackage(input: {
@@ -789,6 +909,7 @@ export async function downloadEsigningDocumentPackage(input: {
 }> {
   const variant = input.variant ?? 'signed';
   await ensureEsigningEnvelopeArtifacts({
+    tenantId: input.tenantId,
     envelopeId: input.envelopeId,
     requireCertificates: variant === 'signed_with_certificate',
   });
@@ -816,7 +937,12 @@ export async function downloadEsigningDocumentPackage(input: {
 
   const baseFileName = getEsigningDocumentPdfFileName(document).replace(/\.pdf$/iu, '');
   if (variant === 'signed') {
-    const signed = await getCurrentDocumentArtifact(envelope.id, document.id, 'SIGNED_DOCUMENT');
+    const signed = await getCurrentDocumentArtifact(
+      envelope.tenantId,
+      envelope.id,
+      document.id,
+      'SIGNED_DOCUMENT',
+    );
     return {
       buffer: await readIssuedArtifact(signed),
       fileName: `${baseFileName}-signed.pdf`,
@@ -825,6 +951,7 @@ export async function downloadEsigningDocumentPackage(input: {
 
   // The stored document+certificate file; never merged on request.
   const withCertificate = await getCurrentDocumentArtifact(
+    envelope.tenantId,
     envelope.id,
     document.id,
     'DOCUMENT_WITH_CERTIFICATE',
@@ -848,6 +975,8 @@ export async function downloadEsigningDeliveryDocument(input: {
     throw new Error('Download link is invalid or has expired');
   }
 
+  // The signed token is the credential here; the tenant is taken from the envelope it names and used
+  // for everything that follows.
   const envelope = await prisma.esigningEnvelope.findUnique({
     where: { id: claims.envelopeId },
     include: {
@@ -874,6 +1003,7 @@ export async function downloadEsigningDeliveryDocument(input: {
 
   const variant = input.variant ?? 'signed';
   await ensureEsigningEnvelopeArtifacts({
+    tenantId: envelope.tenantId,
     envelopeId: envelope.id,
     requireCertificates: variant === 'certificate',
   });
@@ -905,8 +1035,8 @@ export async function downloadEsigningDeliveryDocument(input: {
 
   const buffer = await readIssuedArtifact(
     variant === 'certificate'
-      ? await getCurrentCertificateArtifact(envelope.id)
-      : await getCurrentDocumentArtifact(envelope.id, document.id, 'SIGNED_DOCUMENT'),
+      ? await getCurrentCertificateArtifact(envelope.tenantId, envelope.id)
+      : await getCurrentDocumentArtifact(envelope.tenantId, envelope.id, document.id, 'SIGNED_DOCUMENT'),
   );
   const fileName =
     variant === 'certificate'

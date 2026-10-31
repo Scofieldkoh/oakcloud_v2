@@ -13,6 +13,9 @@ const MAX_SHAREPOINT_SOURCE_BYTES = 250 * 1024 * 1024;
  * The SharePoint filing source is the stored document+certificate artifact of the envelope's current
  * version, byte for byte: the same file that is emailed, so the hash recorded for the filing is the
  * hash the public check recognises. It is never re-merged here.
+ *
+ * Everything is scoped to `tenantId`: an envelope or document of another tenant is rejected before
+ * any generation or storage access.
  */
 export async function downloadSharePointFilingSource(input: {
   tenantId: string;
@@ -21,12 +24,26 @@ export async function downloadSharePointFilingSource(input: {
   /** Kept for the callers; the issued-artifact table is the source of truth for the path. */
   signedStoragePath?: string | null;
 }): Promise<Buffer> {
-  await ensureEsigningEnvelopeArtifacts({
-    envelopeId: input.envelopeId,
-    requireCertificates: true,
-  });
+  try {
+    await ensureEsigningEnvelopeArtifacts({
+      tenantId: input.tenantId,
+      envelopeId: input.envelopeId,
+      requireCertificates: true,
+    });
+  } catch (error) {
+    if (error instanceof EsigningArtifactError && error.code === 'ENVELOPE_NOT_FOUND') {
+      throw new SharePointServiceError({
+        code: 'SOURCE_INVALID',
+        category: 'VALIDATION',
+        statusCode: 400,
+        message: 'Envelope not found for this workspace',
+        retryable: false,
+      });
+    }
+    throw error;
+  }
 
-  const issued = await getCurrentIssuedVersion(input.envelopeId);
+  const issued = await getCurrentIssuedVersion(input.tenantId, input.envelopeId);
   const artifact = issued?.withCertificateByDocumentId.get(input.envelopeDocumentId);
   if (!artifact || !(await storage.exists(artifact.storagePath))) {
     throw new SharePointServiceError({

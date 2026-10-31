@@ -955,13 +955,14 @@ export async function processEsigningCompletionDelivery(
       throw new Error('No documents are visible to this completion recipient');
     }
     await ensureEsigningEnvelopeArtifacts({
+      tenantId: delivery.envelope.tenantId,
       envelopeId: delivery.envelope.id,
       requireCertificates: true,
     });
 
     // The attachment is the stored document+certificate file, byte for byte (merged and hashed once
     // when the artifacts were generated), so every send is identical and verifies on the public check.
-    const issuedVersion = await getCurrentIssuedVersion(delivery.envelope.id);
+    const issuedVersion = await getCurrentIssuedVersion(delivery.envelope.tenantId, delivery.envelope.id);
     const attachmentDocuments = await Promise.all(
       deliveryDocuments.map(async (document) => {
         const issued = issuedVersion?.withCertificateByDocumentId.get(document.id);
@@ -1086,14 +1087,17 @@ export async function processQueuedEsigningCompletionWork(input?: {
     },
     orderBy: { updatedAt: 'asc' },
     take: limit,
-    select: { id: true },
+    select: { id: true, tenantId: true },
   });
 
   for (let index = 0; index < artifactCandidates.length; index += concurrency) {
     const batch = artifactCandidates.slice(index, index + concurrency);
     const results = await Promise.allSettled(
       batch.map(async (candidate) => {
-        const outcome = await generateEsigningEnvelopeArtifactsNow({ envelopeId: candidate.id });
+        const outcome = await generateEsigningEnvelopeArtifactsNow({
+          tenantId: candidate.tenantId,
+          envelopeId: candidate.id,
+        });
         return outcome;
       })
     );

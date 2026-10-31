@@ -131,23 +131,24 @@ describe('certificate verification wording', () => {
     const text = items.map((item) => item.str).join(' ').replace(/\s+/g, ' ');
 
     expect(CERTIFICATE_VERIFICATION_COPY).toBe(
-      'This certificate records the signing process. Upload a copy at the address below to compare it with the fingerprints recorded when it was issued.',
+      'This certificate records the signing process. Upload a copy at the link below to compare it with the fingerprints recorded at issue.',
     );
     expect(text).toContain(CERTIFICATE_VERIFICATION_COPY);
     expect(text.toLowerCase()).not.toContain('tamper');
   });
 
-  it('keeps the wording left of the QR code (it is wider than one line, so it wraps)', async () => {
+  it('renders the wording on ONE line, left of the QR code', async () => {
     const items = await renderedTextItems();
-    const lines = items.filter(
-      (item) => item.str.trim().length > 20 && CERTIFICATE_VERIFICATION_COPY.includes(item.str.trim()),
-    );
+    const lines = items.filter((item) => CERTIFICATE_VERIFICATION_COPY.includes(item.str.trim()) && item.str.trim().length > 10);
     const qrLeft = (210 - 9 - 18) * (72 / 25.4);
 
-    expect(lines.length).toBeGreaterThanOrEqual(1);
-    expect(lines.length).toBeLessThanOrEqual(2);
-    for (const line of lines) {
-      expect(line.x + line.width).toBeLessThanOrEqual(qrLeft);
-    }
+    // The whole sentence is a single text run on a single baseline: it did not wrap.
+    expect(lines).toHaveLength(1);
+    expect(lines[0].str.trim()).toBe(CERTIFICATE_VERIFICATION_COPY);
+    expect(lines[0].x + lines[0].width).toBeLessThanOrEqual(qrLeft);
+    // And the verification URL sits on the next line, so nothing is pushed down by a second copy line.
+    const urlLine = items.find((item) => item.str.includes('/verify/'));
+    expect(urlLine).toBeDefined();
+    expect(lines[0].y - (urlLine as { y: number }).y).toBeLessThan(20);
   });
 });

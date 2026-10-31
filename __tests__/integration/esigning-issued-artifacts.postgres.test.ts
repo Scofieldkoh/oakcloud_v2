@@ -24,6 +24,15 @@ if (process.env.CI === 'true' && !testDatabaseUrl) {
 const memory = vi.hoisted(() => ({
   files: new Map<string, Buffer>(),
   uploads: [] as string[],
+  deleted: [] as string[],
+  /** Every download/exists call, so a test can prove a rejected request never touched storage. */
+  reads: [] as string[],
+  /** Pauses the next upload whose key matches, until the test releases (or fails) it. */
+  gate: null as null | {
+    match: (key: string) => boolean;
+    entered: () => void;
+    released: Promise<void>;
+  },
 }));
 const mail = vi.hoisted(() => ({
   completion: [] as Array<{ attachments?: Array<{ filename: string; content: Buffer }> }>,
@@ -36,15 +45,29 @@ vi.mock('@/lib/storage', async (importOriginal) => {
     ...actual,
     storage: {
       upload: async (key: string, data: Buffer) => {
+        const gate = memory.gate;
+        if (gate && gate.match(key)) {
+          memory.gate = null; // only the first matching upload is held; later workers pass straight through
+          gate.entered();
+          await gate.released;
+        }
         memory.uploads.push(key);
         memory.files.set(key, Buffer.from(data));
       },
       download: async (key: string) => {
+        memory.reads.push(key);
         const data = memory.files.get(key);
         if (!data) throw new Error(`missing object ${key}`);
         return Buffer.from(data);
       },
-      exists: async (key: string) => memory.files.has(key),
+      delete: async (key: string) => {
+        memory.deleted.push(key);
+        memory.files.delete(key);
+      },
+      exists: async (key: string) => {
+        memory.reads.push(key);
+        return memory.files.has(key);
+      },
     },
   };
 });
@@ -123,6 +146,9 @@ describePostgres('e-signing issued artifacts (real generation, hashing and verif
   afterEach(async () => {
     memory.files.clear();
     memory.uploads.length = 0;
+    memory.deleted.length = 0;
+    memory.reads.length = 0;
+    memory.gate = null;
     for (const tenantId of tenantIds.splice(0)) {
       await prisma.auditLog.deleteMany({ where: { tenantId } });
       await prisma.esigningEnvelope.deleteMany({ where: { tenantId } });
@@ -226,8 +252,24 @@ describePostgres('e-signing issued artifacts (real generation, hashing and verif
     return { workspace, user, envelope, recipient, documents };
   }
 
+  async function tenantOf(envelopeId: string) {
+    return (await prisma.esigningEnvelope.findUniqueOrThrow({ where: { id: envelopeId }, select: { tenantId: true } })).tenantId;
+  }
+
   async function generate(envelopeId: string) {
-    return pdfService.generateEsigningEnvelopeArtifactsNow({ envelopeId });
+    return pdfService.generateEsigningEnvelopeArtifactsNow({ tenantId: await tenantOf(envelopeId), envelopeId });
+  }
+
+  /** Hold the next upload whose key matches; `release()` lets it proceed, `fail()` makes it throw. */
+  function holdNextUpload(match: (key: string) => boolean) {
+    let entered!: () => void;
+    let release!: () => void;
+    let fail!: (error: Error) => void;
+    const enteredPromise = new Promise<void>((resolve) => { entered = resolve; });
+    const released = new Promise<void>((resolve, reject) => { release = resolve; fail = reject; });
+    released.catch(() => undefined);
+    memory.gate = { match, entered, released };
+    return { entered: enteredPromise, release, fail };
   }
 
   /** Mark a failed/finished envelope for an explicit retry, as "Retry processing" does. */
@@ -293,8 +335,11 @@ describePostgres('e-signing issued artifacts (real generation, hashing and verif
     expect(envelope.currentArtifactVersion).toBe(1);
     expect(rows.map((row) => row.kind).sort()).toEqual(['CERTIFICATE', 'DOCUMENT_WITH_CERTIFICATE', 'SIGNED_DOCUMENT']);
     const merged = rows.find((row) => row.kind === 'DOCUMENT_WITH_CERTIFICATE')!;
-    expect(merged.storagePath).toBe(
-      `${seed.workspace.id}/esigning/${seed.envelope.id}/v1/with-certificate/${seed.documents[0].id}.pdf`,
+    // Each generation attempt writes under its own folder, so no two workers can share a key.
+    expect(merged.storagePath).toMatch(
+      new RegExp(
+        `^${seed.workspace.id}/esigning/${seed.envelope.id}/v1/[0-9a-f-]{36}/with-certificate/${seed.documents[0].id}\\.pdf$`,
+      ),
     );
 
     // The real delivery path builds the attachment.
@@ -458,7 +503,7 @@ describePostgres('e-signing issued artifacts (real generation, hashing and verif
     const rowsBefore = await prisma.esigningIssuedArtifact.findMany({ where: { envelopeId: seed.envelope.id }, orderBy: { id: 'asc' } });
     memory.uploads.length = 0;
 
-    await pdfService.ensureEsigningEnvelopeArtifacts({ envelopeId: seed.envelope.id, requireCertificates: true });
+    await pdfService.ensureEsigningEnvelopeArtifacts({ tenantId: seed.workspace.id, envelopeId: seed.envelope.id, requireCertificates: true });
     await sendCompletionEmail(seed, 'after-bump');
     await pdfService.downloadEsigningDocumentPackage({
       tenantId: seed.workspace.id,
@@ -480,7 +525,7 @@ describePostgres('e-signing issued artifacts (real generation, hashing and verif
     const lost = v1.find((row) => row.kind === 'DOCUMENT_WITH_CERTIFICATE')!;
     memory.files.delete(lost.storagePath);
 
-    await pdfService.ensureEsigningEnvelopeArtifacts({ envelopeId: seed.envelope.id, requireCertificates: true });
+    await pdfService.ensureEsigningEnvelopeArtifacts({ tenantId: seed.workspace.id, envelopeId: seed.envelope.id, requireCertificates: true });
 
     const envelope = await prisma.esigningEnvelope.findUniqueOrThrow({ where: { id: seed.envelope.id } });
     expect(envelope.currentArtifactVersion).toBe(2);
@@ -522,7 +567,7 @@ describePostgres('e-signing issued artifacts (real generation, hashing and verif
 
     // Never retried by a lazy caller, and the previous version is still what gets served.
     mail.failures.length = 0;
-    await pdfService.ensureEsigningEnvelopeArtifacts({ envelopeId: seed.envelope.id, requireCertificates: true });
+    await pdfService.ensureEsigningEnvelopeArtifacts({ tenantId: seed.workspace.id, envelopeId: seed.envelope.id, requireCertificates: true });
     const after = await sendCompletionEmail(seed, 'after');
     expect(after.attachments[0].content.equals(served)).toBe(true);
     expect(memory.uploads).toEqual([]);
@@ -540,7 +585,7 @@ describePostgres('e-signing issued artifacts (real generation, hashing and verif
 
     // Downloads, emails and filing all go through ensure: they report the failure, no new email, no files.
     await expect(
-      pdfService.ensureEsigningEnvelopeArtifacts({ envelopeId: seed.envelope.id, requireCertificates: true }),
+      pdfService.ensureEsigningEnvelopeArtifacts({ tenantId: seed.workspace.id, envelopeId: seed.envelope.id, requireCertificates: true }),
     ).rejects.toMatchObject({ code: 'SOURCE_DIGEST_MISMATCH' });
     expect(mail.failures).toHaveLength(1);
     expect(memory.uploads.filter((key) => key.includes('/v1/'))).toEqual([]);
@@ -555,7 +600,7 @@ describePostgres('e-signing issued artifacts (real generation, hashing and verif
       generate(seed.envelope.id),
       generate(seed.envelope.id),
       generate(seed.envelope.id),
-      pdfService.ensureEsigningEnvelopeArtifacts({ envelopeId: seed.envelope.id, requireCertificates: true }),
+      pdfService.ensureEsigningEnvelopeArtifacts({ tenantId: seed.workspace.id, envelopeId: seed.envelope.id, requireCertificates: true }),
     ]);
 
     const generated = results.filter((result) => result.status === 'fulfilled' && result.value === 'generated');
@@ -618,6 +663,289 @@ describePostgres('e-signing issued artifacts (real generation, hashing and verif
     ).rejects.toMatchObject({ code: 'ARTIFACT_HASH_MISMATCH' });
     const send = await sendCompletionEmail(seed, 'swapped');
     expect(send.outcome.status).not.toBe('sent');
+  });
+
+  describe('a worker whose lease expired (OAK-008 / OAK-021 review finding 1)', () => {
+    const isMergedUpload = (key: string) => key.includes('/with-certificate/');
+
+    async function snapshotPublished(envelopeId: string) {
+      const rows = await prisma.esigningIssuedArtifact.findMany({ where: { envelopeId }, orderBy: [{ kind: 'asc' }, { id: 'asc' }] });
+      const files = new Map(rows.map((row) => [row.storagePath, Buffer.from(memory.files.get(row.storagePath)!)]));
+      const envelope = await prisma.esigningEnvelope.findUniqueOrThrow({ where: { id: envelopeId } });
+      const documents = await prisma.esigningEnvelopeDocument.findMany({ where: { envelopeId }, orderBy: { id: 'asc' } });
+      return { rows, files, envelope, documents };
+    }
+
+    it('cannot overwrite what the replacement worker published, and leaves the COMPLETED envelope alone', async () => {
+      const seed = await seedCompletedEnvelope({ documents: 2 });
+
+      // Worker A claims, renders and uploads, then stalls just before its first merged-file upload.
+      const hold = holdNextUpload(isMergedUpload);
+      const workerA = generate(seed.envelope.id);
+      await hold.entered;
+      const claimedByA = (await prisma.esigningEnvelope.findUniqueOrThrow({ where: { id: seed.envelope.id } })).pdfGenerationClaimedAt;
+      expect(claimedByA).not.toBeNull();
+
+      // A's 15 minute lease runs out; worker B takes over, generates and commits version 1.
+      await prisma.esigningEnvelope.update({
+        where: { id: seed.envelope.id },
+        data: { pdfGenerationClaimedAt: new Date(Date.now() - 20 * 60 * 1000) },
+      });
+      await expect(generate(seed.envelope.id)).resolves.toBe('generated');
+      const published = await snapshotPublished(seed.envelope.id);
+      expect(published.envelope.pdfGenerationStatus).toBe('COMPLETED');
+      expect(published.envelope.currentArtifactVersion).toBe(1);
+      expect(published.rows).toHaveLength(7); // certificate, 2 x (signed + merged), 2 packages
+      const uploadsBeforeResume = memory.uploads.length;
+
+      // A resumes: it carries on uploading, then tries to publish.
+      hold.release();
+      await expect(workerA).resolves.toBe('already-processing');
+
+      // B's rows, files and BLAKE3 hashes are exactly as B left them.
+      const after = await snapshotPublished(seed.envelope.id);
+      expect(after.rows).toEqual(published.rows);
+      for (const row of after.rows) {
+        expect(after.files.get(row.storagePath)!.equals(published.files.get(row.storagePath)!)).toBe(true);
+        expect(hashBlake3(memory.files.get(row.storagePath)!)).toBe(row.blake3);
+      }
+      expect(after.documents).toEqual(published.documents);
+      // The envelope is still COMPLETED at version 1, with no failure recorded or mailed.
+      expect(after.envelope.pdfGenerationStatus).toBe('COMPLETED');
+      expect(after.envelope.pdfGenerationError).toBeNull();
+      expect(after.envelope.currentArtifactVersion).toBe(1);
+      expect(await prisma.esigningEnvelopeEvent.count({ where: { envelopeId: seed.envelope.id, action: 'PDF_GENERATION_FAILED' } })).toBe(0);
+      expect(mail.failures).toEqual([]);
+      // No object key was ever written twice: A chose the same version as B but its own folder.
+      expect(new Set(memory.uploads).size).toBe(memory.uploads.length);
+      expect(memory.uploads.length).toBeGreaterThan(uploadsBeforeResume);
+      // Everything A wrote that was not published was removed; nothing B published was deleted.
+      const publishedPaths = new Set(after.rows.map((row) => row.storagePath));
+      expect(memory.deleted.length).toBeGreaterThan(0);
+      for (const deleted of memory.deleted) expect(publishedPaths.has(deleted)).toBe(false);
+      const leftovers = [...memory.files.keys()].filter((key) => key.includes('/v1/') && !publishedPaths.has(key));
+      expect(leftovers).toEqual([]);
+      // And the public check still recognises B's file.
+      const check = await runCheck(seed.envelope.certificateId, published.files.get(published.rows.find((r) => r.kind === 'DOCUMENT_WITH_CERTIFICATE')!.storagePath)!);
+      expect(check.body).toMatchObject({ matched: true, artifact: { version: 1, isCurrent: true } });
+    });
+
+    it('cannot mark the envelope FAILED when its own attempt then errors, whether the replacement finished or is still running', async () => {
+      const seed = await seedCompletedEnvelope();
+
+      const hold = holdNextUpload(isMergedUpload);
+      const workerA = generate(seed.envelope.id);
+      await hold.entered;
+      await prisma.esigningEnvelope.update({
+        where: { id: seed.envelope.id },
+        data: { pdfGenerationClaimedAt: new Date(Date.now() - 20 * 60 * 1000) },
+      });
+
+      // Worker B has taken over and is still generating: a fresh claim, status PROCESSING.
+      const claimedByB = new Date();
+      await prisma.esigningEnvelope.update({ where: { id: seed.envelope.id }, data: { pdfGenerationClaimedAt: claimedByB } });
+      hold.fail(new Error('storage unavailable'));
+      await expect(workerA).rejects.toThrow('storage unavailable');
+
+      const midFlight = await prisma.esigningEnvelope.findUniqueOrThrow({ where: { id: seed.envelope.id } });
+      expect(midFlight.pdfGenerationStatus).toBe('PROCESSING');
+      expect(midFlight.pdfGenerationClaimedAt?.getTime()).toBe(claimedByB.getTime());
+      expect(midFlight.pdfGenerationError).toBeNull();
+      expect(midFlight.pdfGenerationAttempts).toBe(0);
+      expect(await prisma.esigningEnvelopeEvent.count({ where: { envelopeId: seed.envelope.id, action: 'PDF_GENERATION_FAILED' } })).toBe(0);
+      expect(mail.failures).toEqual([]);
+
+      // B then finishes (a stale-claim takeover again, since B's claim here is only simulated).
+      await prisma.esigningEnvelope.update({
+        where: { id: seed.envelope.id },
+        data: { pdfGenerationClaimedAt: new Date(Date.now() - 20 * 60 * 1000) },
+      });
+      await expect(generate(seed.envelope.id)).resolves.toBe('generated');
+      const published = await snapshotPublished(seed.envelope.id);
+
+      // A second stalled worker that errors after B completed changes nothing either.
+      const hold2 = holdNextUpload(isMergedUpload);
+      await prisma.esigningEnvelope.update({ where: { id: seed.envelope.id }, data: { pdfGenerationStatus: 'PENDING' } });
+      const workerC = generate(seed.envelope.id);
+      await hold2.entered;
+      await prisma.esigningEnvelope.update({
+        where: { id: seed.envelope.id },
+        data: { pdfGenerationStatus: 'COMPLETED', pdfGenerationClaimedAt: null },
+      });
+      hold2.fail(new Error('connection reset'));
+      await expect(workerC).rejects.toThrow('connection reset');
+
+      const after = await snapshotPublished(seed.envelope.id);
+      expect(after.envelope.pdfGenerationStatus).toBe('COMPLETED');
+      expect(after.rows).toEqual(published.rows);
+      for (const row of after.rows) {
+        expect(after.files.get(row.storagePath)!.equals(published.files.get(row.storagePath)!)).toBe(true);
+      }
+      expect(await prisma.esigningEnvelopeEvent.count({ where: { envelopeId: seed.envelope.id, action: 'PDF_GENERATION_FAILED' } })).toBe(0);
+      expect(mail.failures).toEqual([]);
+    });
+  });
+
+  describe('tenant scoping (review finding 2)', () => {
+    it('rejects an envelope id from another workspace before any generation, storage access or write', async () => {
+      const owner = await seedCompletedEnvelope({ documents: 2 });
+      const other = await seedCompletedEnvelope();
+      const foreign = other.workspace.id;
+      const envelopeBefore = await prisma.esigningEnvelope.findUniqueOrThrow({ where: { id: owner.envelope.id } });
+      memory.reads.length = 0;
+      memory.uploads.length = 0;
+
+      const attempts = [
+        pdfService.generateEsigningEnvelopeArtifactsNow({ tenantId: foreign, envelopeId: owner.envelope.id }),
+        pdfService.ensureEsigningEnvelopeArtifacts({ tenantId: foreign, envelopeId: owner.envelope.id, requireCertificates: true }),
+        pdfService.downloadEsigningEnvelopePackage({ tenantId: foreign, envelopeId: owner.envelope.id }),
+        pdfService.downloadEsigningDocumentPackage({ tenantId: foreign, envelopeId: owner.envelope.id, documentId: owner.documents[0].id, variant: 'signed_with_certificate' }),
+        filingSource.downloadSharePointFilingSource({ tenantId: foreign, envelopeId: owner.envelope.id, envelopeDocumentId: owner.documents[0].id, signedStoragePath: null }),
+      ];
+      const results = await Promise.allSettled(attempts);
+      for (const result of results) {
+        expect(result.status).toBe('rejected');
+      }
+      expect((results[0] as PromiseRejectedResult).reason).toMatchObject({ code: 'ENVELOPE_NOT_FOUND' });
+      expect((results[4] as PromiseRejectedResult).reason).toMatchObject({ code: 'SOURCE_INVALID', retryable: false });
+
+      // No side effects: nothing read or written in storage, the envelope untouched, nothing issued, nothing mailed.
+      expect(memory.reads).toEqual([]);
+      expect(memory.uploads).toEqual([]);
+      expect(await prisma.esigningEnvelope.findUniqueOrThrow({ where: { id: owner.envelope.id } })).toEqual(envelopeBefore);
+      expect(await prisma.esigningIssuedArtifact.count({ where: { envelopeId: owner.envelope.id } })).toBe(0);
+      expect(await prisma.esigningEnvelopeEvent.count({ where: { envelopeId: owner.envelope.id, action: 'PDF_GENERATION_FAILED' } })).toBe(0);
+      expect(mail.failures).toEqual([]);
+    });
+
+    it('rejects foreign-tenant requests for an envelope that already has issued files, without reading them', async () => {
+      const owner = await seedCompletedEnvelope();
+      const other = await seedCompletedEnvelope();
+      await generate(owner.envelope.id);
+      const rowsBefore = await prisma.esigningIssuedArtifact.findMany({ where: { envelopeId: owner.envelope.id }, orderBy: { id: 'asc' } });
+      memory.reads.length = 0;
+      memory.uploads.length = 0;
+
+      await expect(
+        filingSource.downloadSharePointFilingSource({ tenantId: other.workspace.id, envelopeId: owner.envelope.id, envelopeDocumentId: owner.documents[0].id, signedStoragePath: null }),
+      ).rejects.toMatchObject({ code: 'SOURCE_INVALID' });
+      await expect(
+        pdfService.downloadEsigningEnvelopePackage({ tenantId: other.workspace.id, envelopeId: owner.envelope.id, variant: 'certificates' }),
+      ).rejects.toThrow();
+      await expect(issued.getCurrentIssuedVersion(other.workspace.id, owner.envelope.id)).resolves.toBeNull();
+      await expect(
+        issued.getCurrentDocumentArtifact(other.workspace.id, owner.envelope.id, owner.documents[0].id, 'SIGNED_DOCUMENT'),
+      ).rejects.toMatchObject({ code: 'ARTIFACT_NOT_FOUND' });
+      expect(memory.reads).toEqual([]);
+      expect(memory.uploads).toEqual([]);
+      expect(await prisma.esigningIssuedArtifact.findMany({ where: { envelopeId: owner.envelope.id }, orderBy: { id: 'asc' } })).toEqual(rowsBefore);
+
+      // The owning workspace is unaffected, and the filing source returns the stored merged file.
+      const filed = await filingSource.downloadSharePointFilingSource({ tenantId: owner.workspace.id, envelopeId: owner.envelope.id, envelopeDocumentId: owner.documents[0].id, signedStoragePath: null });
+      expect(hashBlake3(filed)).toBe(rowsBefore.find((row) => row.kind === 'DOCUMENT_WITH_CERTIFICATE')!.blake3);
+      // A document id of another envelope is no use under the right tenant either.
+      await expect(
+        filingSource.downloadSharePointFilingSource({ tenantId: owner.workspace.id, envelopeId: owner.envelope.id, envelopeDocumentId: other.documents[0].id, signedStoragePath: null }),
+      ).rejects.toMatchObject({ code: 'SOURCE_NOT_READY' });
+    });
+
+    it('the public lookup discovers the workspace from the certificate id and then stays inside it', async () => {
+      const owner = await seedCompletedEnvelope();
+      const other = await seedCompletedEnvelope();
+      await generate(owner.envelope.id);
+      await generate(other.envelope.id);
+      const ownerMerged = await prisma.esigningIssuedArtifact.findFirstOrThrow({ where: { envelopeId: owner.envelope.id, kind: 'DOCUMENT_WITH_CERTIFICATE' } });
+
+      // The other envelope's certificate id does not recognise this envelope's file, and vice versa.
+      const crossed = await runCheck(other.envelope.certificateId, memory.files.get(ownerMerged.storagePath)!);
+      expect(crossed.body.matched).toBe(false);
+      const own = await runCheck(owner.envelope.certificateId, memory.files.get(ownerMerged.storagePath)!);
+      expect(own.body.matched).toBe(true);
+    });
+  });
+
+  describe('multi-document envelopes (review finding 3)', () => {
+    async function pageCount(buffer: Buffer) {
+      return (await PDFDocument.load(new Uint8Array(buffer))).getPageCount();
+    }
+
+    it('downloads the stored, fingerprinted package: it passes the public check, a modified copy does not', async () => {
+      const seed = await seedCompletedEnvelope({ documents: 2 });
+      await generate(seed.envelope.id);
+      const rows = await prisma.esigningIssuedArtifact.findMany({ where: { envelopeId: seed.envelope.id, version: 1 } });
+      const withCertificate = rows.find((row) => row.kind === 'PACKAGE_DOCUMENTS_WITH_CERTIFICATE')!;
+      const documentsOnly = rows.find((row) => row.kind === 'PACKAGE_DOCUMENTS')!;
+      expect(withCertificate.documentId).toBeNull();
+      expect(documentsOnly.documentId).toBeNull();
+      memory.uploads.length = 0;
+
+      const download = await pdfService.downloadEsigningEnvelopePackage({
+        tenantId: seed.workspace.id,
+        envelopeId: seed.envelope.id,
+        variant: 'documents_with_certificates',
+      });
+
+      // Stored bytes, served as they are: same hash as recorded, nothing merged or written on request.
+      expect(hashBlake3(download.buffer)).toBe(withCertificate.blake3);
+      expect(download.buffer.equals(memory.files.get(withCertificate.storagePath)!)).toBe(true);
+      expect(memory.uploads).toEqual([]);
+      expect(await pageCount(download.buffer)).toBeGreaterThanOrEqual(3); // two signed documents + the certificate
+      const again = await pdfService.downloadEsigningEnvelopePackage({ tenantId: seed.workspace.id, envelopeId: seed.envelope.id });
+      expect(again.buffer.equals(download.buffer)).toBe(true);
+
+      // Real route, real lookup: the untouched download is recognised, one flipped byte is not.
+      const ok = await runCheck(seed.envelope.certificateId, download.buffer);
+      expect(ok.status).toBe(200);
+      expect(ok.body).toMatchObject({
+        matched: true,
+        fileHash: withCertificate.blake3,
+        document: null,
+        artifact: { kind: 'PACKAGE_DOCUMENTS_WITH_CERTIFICATE', version: 1, isCurrent: true, source: 'ISSUED_ARTIFACT' },
+      });
+      const modified = Buffer.from(download.buffer);
+      modified[Math.floor(modified.length / 2)] ^= 0x01;
+      const bad = await runCheck(seed.envelope.certificateId, modified);
+      expect(bad.body).toMatchObject({ matched: false, document: null, artifact: null });
+
+      // The documents-only package is stored and recognised the same way.
+      const docsDownload = await pdfService.downloadEsigningEnvelopePackage({
+        tenantId: seed.workspace.id,
+        envelopeId: seed.envelope.id,
+        variant: 'documents',
+      });
+      expect(hashBlake3(docsDownload.buffer)).toBe(documentsOnly.blake3);
+      expect(await pageCount(docsDownload.buffer)).toBe(2);
+      const docsOk = await runCheck(seed.envelope.certificateId, docsDownload.buffer);
+      expect(docsOk.body).toMatchObject({ matched: true, artifact: { kind: 'PACKAGE_DOCUMENTS' } });
+      const docsModified = Buffer.from(docsDownload.buffer);
+      docsModified[Math.floor(docsModified.length / 3)] ^= 0x01;
+      expect((await runCheck(seed.envelope.certificateId, docsModified)).body.matched).toBe(false);
+      expect(memory.uploads).toEqual([]);
+    });
+
+    it('records the package for a multi-document version that was issued without one, once, from the stored files', async () => {
+      const seed = await seedCompletedEnvelope({ documents: 2 });
+      await generate(seed.envelope.id);
+      const packages = await prisma.esigningIssuedArtifact.findMany({
+        where: { envelopeId: seed.envelope.id, kind: { in: ['PACKAGE_DOCUMENTS', 'PACKAGE_DOCUMENTS_WITH_CERTIFICATE'] } },
+      });
+      expect(packages).toHaveLength(2);
+      // Simulate a version issued before packages were recorded.
+      await prisma.esigningIssuedArtifact.deleteMany({ where: { id: { in: packages.map((row) => row.id) } } });
+      for (const row of packages) memory.files.delete(row.storagePath);
+      memory.uploads.length = 0;
+
+      const first = await pdfService.downloadEsigningEnvelopePackage({ tenantId: seed.workspace.id, envelopeId: seed.envelope.id });
+      const second = await pdfService.downloadEsigningEnvelopePackage({ tenantId: seed.workspace.id, envelopeId: seed.envelope.id });
+
+      expect(second.buffer.equals(first.buffer)).toBe(true);
+      expect(memory.uploads).toHaveLength(1); // written once, then served as stored
+      expect(memory.uploads[0]).toBe(`${seed.workspace.id}/esigning/${seed.envelope.id}/v1/package/documents-with-certificate.pdf`);
+      expect(await prisma.esigningIssuedArtifact.count({ where: { envelopeId: seed.envelope.id, kind: 'PACKAGE_DOCUMENTS_WITH_CERTIFICATE' } })).toBe(1);
+      expect((await prisma.esigningEnvelope.findUniqueOrThrow({ where: { id: seed.envelope.id } })).currentArtifactVersion).toBe(1);
+      const check = await runCheck(seed.envelope.certificateId, first.buffer);
+      expect(check.body).toMatchObject({ matched: true, artifact: { kind: 'PACKAGE_DOCUMENTS_WITH_CERTIFICATE', version: 1, isCurrent: true } });
+    });
   });
 
   describe('envelopes completed before issued artifacts were recorded', () => {
@@ -729,11 +1057,11 @@ describePostgres('e-signing issued artifacts (real generation, hashing and verif
       expect(first.attachments[0].content.equals(second.attachments[0].content)).toBe(true);
     });
 
-    it('tells the verify page that earlier emailed copies cannot be verified, and still matches files filed to SharePoint by their SHA-256', async () => {
+    it('adds no per-envelope flag to the public data, and still matches files filed to SharePoint by their SHA-256', async () => {
       const legacy = await seedLegacyEnvelope();
 
       const before = await certificateService.getEsigningVerificationData(legacy.envelope.certificateId);
-      expect(before.emailedCopiesVerifiable).toBe(false);
+      expect(before).not.toHaveProperty('emailedCopiesVerifiable');
 
       // A file filed to SharePoint before this release: only its SHA-256 was recorded on the filing.
       const filedBefore = Buffer.from('%PDF-filed-before-the-change');
@@ -768,13 +1096,24 @@ describePostgres('e-signing issued artifacts (real generation, hashing and verif
       expect(unrelated.body.matched).toBe(false);
     });
 
-    it('a newly generated envelope has verifiable emailed copies', async () => {
+    it('the public verification response carries exactly the previously approved fields', async () => {
       const seed = await seedCompletedEnvelope();
       await generate(seed.envelope.id);
 
       const data = await certificateService.getEsigningVerificationData(seed.envelope.certificateId);
 
-      expect(data.emailedCopiesVerifiable).toBe(true);
+      expect(Object.keys(data).sort()).toEqual([
+        'certificateId',
+        'companyName',
+        'completedAt',
+        'documents',
+        'envelopeId',
+        'events',
+        'recipients',
+        'status',
+        'tenantName',
+        'title',
+      ]);
     });
   });
 });

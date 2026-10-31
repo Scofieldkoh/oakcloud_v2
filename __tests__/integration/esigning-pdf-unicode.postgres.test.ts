@@ -176,7 +176,7 @@ describePostgres('e-signing signed PDF with non-Latin field values (real generat
       });
     }
 
-    await expect(generateEsigningEnvelopeArtifactsNow({ envelopeId: envelope.id })).resolves.toBe('generated');
+    await expect(generateEsigningEnvelopeArtifactsNow({ tenantId: envelope.tenantId, envelopeId: envelope.id })).resolves.toBe('generated');
 
     const finished = await prisma.esigningEnvelope.findUniqueOrThrow({ where: { id: envelope.id } });
     expect(finished.pdfGenerationStatus).toBe('COMPLETED');
@@ -228,7 +228,7 @@ describePostgres('e-signing signed PDF with non-Latin field values (real generat
       },
     });
 
-    await expect(generateEsigningEnvelopeArtifactsNow({ envelopeId: envelope.id })).resolves.toBe('generated');
+    await expect(generateEsigningEnvelopeArtifactsNow({ tenantId: envelope.tenantId, envelopeId: envelope.id })).resolves.toBe('generated');
 
     const finished = await prisma.esigningEnvelope.findUniqueOrThrow({ where: { id: envelope.id } });
     expect(finished.pdfGenerationStatus).toBe('COMPLETED');

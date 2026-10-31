@@ -432,6 +432,7 @@ describe('e-signing completion worker', () => {
     });
 
     await ensureEsigningEnvelopeArtifacts({
+      tenantId: 'tenant-1',
       envelopeId: 'envelope-1',
       requireCertificates: true,
     });
