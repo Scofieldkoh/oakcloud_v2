@@ -323,10 +323,10 @@ async function renderSignedDocument(
 async function generateEnvelopeArtifacts(input: {
   tenantId: string;
   envelopeId: string;
-  /** The `pdfGenerationClaimedAt` written by this attempt's claim; the publish fence. */
-  claimedAt: Date;
+  /** The unique `pdfGenerationClaimId` this attempt's claim wrote; the publish fence. */
+  claimId: string;
 }): Promise<void> {
-  const { tenantId, envelopeId, claimedAt } = input;
+  const { tenantId, envelopeId, claimId } = input;
   const envelope = await loadEnvelopeForPdf(tenantId, envelopeId);
 
   if (envelope.status !== 'COMPLETED') {
@@ -527,7 +527,7 @@ async function generateEnvelopeArtifacts(input: {
       envelopeId: envelope.id,
       version,
       previousVersion,
-      claimedAt,
+      claimId,
       rendererVersion: ESIGNING_RENDERER_VERSION,
       artifacts: files.map((file) => file.artifact),
       envelopeMetadata: withEnvelopeArtifactVersion(envelope.metadata),
@@ -548,17 +548,19 @@ async function generateEnvelopeArtifacts(input: {
  * scheduler and the explicit retry use the other one. A source-digest failure is never retried by a
  * lazy caller: it would fail identically and send another failure email.
  *
- * Returns the `pdfGenerationClaimedAt` this claim wrote, or null when another worker holds the claim.
- * That timestamp is the fencing token: a lease is only taken over once the previous claim is at least
- * `PROCESSING_LEASE_MS` old, so every claim of an envelope has a different value, and the publish and
- * failure updates only apply while the envelope is still PROCESSING under exactly this claim.
+ * Returns the claim identity this claim wrote, or null when another worker holds the claim. The
+ * identity is a fresh random value stored in `pdfGenerationClaimId`; it is the fencing token. It is
+ * deliberately not the lease time (`pdfGenerationClaimedAt`): timestamps can repeat, and a delayed
+ * claim can install an old one. The publish and failure updates only apply while the envelope is
+ * still PROCESSING under exactly this identity, so a stale worker changes nothing.
  */
 async function claimEnvelopeForGeneration(
   tenantId: string,
   envelopeId: string,
   options: { lazy: boolean },
-): Promise<Date | null> {
+): Promise<string | null> {
   const now = new Date();
+  const claimId = randomUUID();
   const staleBefore = new Date(now.getTime() - PROCESSING_LEASE_MS);
   const claim = await prisma.esigningEnvelope.updateMany({
     where: {
@@ -587,10 +589,11 @@ async function claimEnvelopeForGeneration(
     data: {
       pdfGenerationStatus: 'PROCESSING',
       pdfGenerationClaimedAt: now,
+      pdfGenerationClaimId: claimId,
       pdfGenerationError: null,
     },
   });
-  return claim.count === 1 ? now : null;
+  return claim.count === 1 ? claimId : null;
 }
 
 /** Every service entry point starts here: the envelope must belong to the tenant the caller was authorised for. */
@@ -635,8 +638,8 @@ export async function ensureEsigningEnvelopeArtifacts(input: {
     return;
   }
 
-  const claimedAt = await claimEnvelopeForGeneration(input.tenantId, envelope.id, { lazy: true });
-  if (!claimedAt) {
+  const claimId = await claimEnvelopeForGeneration(input.tenantId, envelope.id, { lazy: true });
+  if (!claimId) {
     const current = await prisma.esigningEnvelope.findFirst({
       where: { id: envelope.id, tenantId: input.tenantId },
       select: { pdfGenerationStatus: true, pdfGenerationError: true },
@@ -651,7 +654,7 @@ export async function ensureEsigningEnvelopeArtifacts(input: {
   }
 
   try {
-    await generateEnvelopeArtifacts({ tenantId: input.tenantId, envelopeId: envelope.id, claimedAt });
+    await generateEnvelopeArtifacts({ tenantId: input.tenantId, envelopeId: envelope.id, claimId });
   } catch (error) {
     if (error instanceof EsigningArtifactError && error.code === 'ARTIFACT_CLAIM_LOST') {
       // Another worker took over the lease and published; serve what it published if that is enough.
@@ -668,7 +671,7 @@ export async function ensureEsigningEnvelopeArtifacts(input: {
         'Signed documents are being prepared. Try again shortly.',
       );
     }
-    await markEnvelopePdfFailure({ tenantId: input.tenantId, envelopeId: envelope.id, claimedAt, error });
+    await markEnvelopePdfFailure({ tenantId: input.tenantId, envelopeId: envelope.id, claimId, error });
     throw error;
   }
 }
@@ -681,10 +684,10 @@ export async function ensureEsigningEnvelopeArtifacts(input: {
 async function markEnvelopePdfFailure(input: {
   tenantId: string;
   envelopeId: string;
-  claimedAt: Date;
+  claimId: string;
   error: unknown;
 }): Promise<void> {
-  const { tenantId, envelopeId, claimedAt, error } = input;
+  const { tenantId, envelopeId, claimId, error } = input;
   const envelope = await prisma.esigningEnvelope.findFirst({
     where: { id: envelopeId, tenantId },
     include: {
@@ -712,11 +715,12 @@ async function markEnvelopePdfFailure(input: {
         id: envelopeId,
         tenantId,
         pdfGenerationStatus: 'PROCESSING',
-        pdfGenerationClaimedAt: claimedAt,
+        pdfGenerationClaimId: claimId,
       },
       data: {
         pdfGenerationStatus: 'FAILED',
         pdfGenerationClaimedAt: null,
+        pdfGenerationClaimId: null,
         pdfGenerationAttempts: { increment: 1 },
         pdfGenerationError: message,
       },
@@ -790,8 +794,8 @@ export async function generateEsigningEnvelopeArtifactsNow(input: {
     return 'already-completed';
   }
 
-  const claimedAt = await claimEnvelopeForGeneration(input.tenantId, input.envelopeId, { lazy: false });
-  if (!claimedAt) {
+  const claimId = await claimEnvelopeForGeneration(input.tenantId, input.envelopeId, { lazy: false });
+  if (!claimId) {
     return 'already-processing';
   }
 
@@ -799,7 +803,7 @@ export async function generateEsigningEnvelopeArtifactsNow(input: {
     await generateEnvelopeArtifacts({
       tenantId: input.tenantId,
       envelopeId: input.envelopeId,
-      claimedAt,
+      claimId,
     });
     return 'generated';
   } catch (error) {
@@ -810,7 +814,7 @@ export async function generateEsigningEnvelopeArtifactsNow(input: {
     await markEnvelopePdfFailure({
       tenantId: input.tenantId,
       envelopeId: input.envelopeId,
-      claimedAt,
+      claimId,
       error,
     });
     throw error;

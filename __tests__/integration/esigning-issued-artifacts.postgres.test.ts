@@ -21,6 +21,15 @@ if (process.env.CI === 'true' && !testDatabaseUrl) {
   });
 }
 
+/** The signing-session download reads its session cookie; everything else about it runs for real. */
+const signingSession = vi.hoisted(() => ({
+  claims: null as null | { recipientId: string; envelopeId: string; sessionVersion: number },
+}));
+vi.mock('@/lib/esigning-session', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/lib/esigning-session')>()),
+  getEsigningSessionClaims: vi.fn(async () => signingSession.claims),
+}));
+
 const memory = vi.hoisted(() => ({
   files: new Map<string, Buffer>(),
   uploads: [] as string[],
@@ -276,7 +285,7 @@ describePostgres('e-signing issued artifacts (real generation, hashing and verif
   async function requestRetry(envelopeId: string) {
     await prisma.esigningEnvelope.update({
       where: { id: envelopeId },
-      data: { pdfGenerationStatus: 'PENDING', pdfGenerationError: null, pdfGenerationClaimedAt: null },
+      data: { pdfGenerationStatus: 'PENDING', pdfGenerationError: null, pdfGenerationClaimedAt: null, pdfGenerationClaimId: null },
     });
   }
 
@@ -732,57 +741,230 @@ describePostgres('e-signing issued artifacts (real generation, hashing and verif
 
     it('cannot mark the envelope FAILED when its own attempt then errors, whether the replacement finished or is still running', async () => {
       const seed = await seedCompletedEnvelope();
+      const claimOf = async () => {
+        const row = await prisma.esigningEnvelope.findUniqueOrThrow({ where: { id: seed.envelope.id } });
+        return { status: row.pdfGenerationStatus, claimId: row.pdfGenerationClaimId, row };
+      };
 
-      const hold = holdNextUpload(isMergedUpload);
+      // Worker A claims and stalls before its first merged upload.
+      const holdA = holdNextUpload(isMergedUpload);
       const workerA = generate(seed.envelope.id);
-      await hold.entered;
+      await holdA.entered;
+      const claimA = (await claimOf()).claimId;
+      expect(claimA).not.toBeNull();
+      // A's lease runs out (only time is simulated: the stored claim of A is not touched otherwise).
       await prisma.esigningEnvelope.update({
         where: { id: seed.envelope.id },
         data: { pdfGenerationClaimedAt: new Date(Date.now() - 20 * 60 * 1000) },
       });
 
-      // Worker B has taken over and is still generating: a fresh claim, status PROCESSING.
-      const claimedByB = new Date();
-      await prisma.esigningEnvelope.update({ where: { id: seed.envelope.id }, data: { pdfGenerationClaimedAt: claimedByB } });
-      hold.fail(new Error('storage unavailable'));
+      // Worker B really takes over (a new claim identity) and is still generating.
+      const holdB = holdNextUpload(isMergedUpload);
+      const workerB = generate(seed.envelope.id);
+      await holdB.entered;
+      const claimB = (await claimOf()).claimId;
+      expect(claimB).not.toBeNull();
+      expect(claimB).not.toBe(claimA);
+
+      holdA.fail(new Error('storage unavailable'));
       await expect(workerA).rejects.toThrow('storage unavailable');
 
-      const midFlight = await prisma.esigningEnvelope.findUniqueOrThrow({ where: { id: seed.envelope.id } });
+      const midFlight = (await claimOf()).row;
       expect(midFlight.pdfGenerationStatus).toBe('PROCESSING');
-      expect(midFlight.pdfGenerationClaimedAt?.getTime()).toBe(claimedByB.getTime());
+      expect(midFlight.pdfGenerationClaimId).toBe(claimB);
       expect(midFlight.pdfGenerationError).toBeNull();
       expect(midFlight.pdfGenerationAttempts).toBe(0);
       expect(await prisma.esigningEnvelopeEvent.count({ where: { envelopeId: seed.envelope.id, action: 'PDF_GENERATION_FAILED' } })).toBe(0);
       expect(mail.failures).toEqual([]);
 
-      // B then finishes (a stale-claim takeover again, since B's claim here is only simulated).
+      // B finishes normally.
+      holdB.release();
+      await expect(workerB).resolves.toBe('generated');
+      const published = await snapshotPublished(seed.envelope.id);
+      expect(published.envelope.pdfGenerationStatus).toBe('COMPLETED');
+      expect(published.envelope.pdfGenerationClaimId).toBeNull();
+
+      // A later worker C stalls, its lease runs out, worker D really completes version 2, then C errors.
+      await requestRetry(seed.envelope.id);
+      const holdC = holdNextUpload(isMergedUpload);
+      const workerC = generate(seed.envelope.id);
+      await holdC.entered;
       await prisma.esigningEnvelope.update({
         where: { id: seed.envelope.id },
         data: { pdfGenerationClaimedAt: new Date(Date.now() - 20 * 60 * 1000) },
       });
       await expect(generate(seed.envelope.id)).resolves.toBe('generated');
-      const published = await snapshotPublished(seed.envelope.id);
+      const afterD = await snapshotPublished(seed.envelope.id);
+      expect(afterD.envelope.pdfGenerationStatus).toBe('COMPLETED');
+      expect(afterD.envelope.currentArtifactVersion).toBe(2);
 
-      // A second stalled worker that errors after B completed changes nothing either.
-      const hold2 = holdNextUpload(isMergedUpload);
-      await prisma.esigningEnvelope.update({ where: { id: seed.envelope.id }, data: { pdfGenerationStatus: 'PENDING' } });
-      const workerC = generate(seed.envelope.id);
-      await hold2.entered;
-      await prisma.esigningEnvelope.update({
-        where: { id: seed.envelope.id },
-        data: { pdfGenerationStatus: 'COMPLETED', pdfGenerationClaimedAt: null },
-      });
-      hold2.fail(new Error('connection reset'));
+      holdC.fail(new Error('connection reset'));
       await expect(workerC).rejects.toThrow('connection reset');
 
       const after = await snapshotPublished(seed.envelope.id);
       expect(after.envelope.pdfGenerationStatus).toBe('COMPLETED');
-      expect(after.rows).toEqual(published.rows);
+      expect(after.envelope.pdfGenerationAttempts).toBe(0);
+      expect(after.rows).toEqual(afterD.rows);
       for (const row of after.rows) {
-        expect(after.files.get(row.storagePath)!.equals(published.files.get(row.storagePath)!)).toBe(true);
+        expect(after.files.get(row.storagePath)!.equals(afterD.files.get(row.storagePath)!)).toBe(true);
       }
       expect(await prisma.esigningEnvelopeEvent.count({ where: { envelopeId: seed.envelope.id, action: 'PDF_GENERATION_FAILED' } })).toBe(0);
       expect(mail.failures).toEqual([]);
+    });
+
+    // Review round 2, blocking 1: the fence is a unique claim identity, not the lease time. A request
+    // prepared in the same millisecond as an old claim can install that same timestamp later; it must
+    // not be mistaken for the worker whose lease already expired.
+    it.each(['publication', 'failure'] as const)(
+      'a delayed claim that reuses an expired worker\'s lease time cannot be completed or failed by that stale worker (%s)',
+      async (mode) => {
+        const seed = await seedCompletedEnvelope();
+        const t0 = new Date();
+        vi.useFakeTimers({ toFake: ['Date'] });
+        vi.setSystemTime(t0);
+        const realClaim = prisma.esigningEnvelope.updateMany.bind(prisma.esigningEnvelope);
+        let releaseDelayedClaim!: () => void;
+        let delayedClaimReady!: () => void;
+        const delayedReady = new Promise<void>((resolve) => { delayedClaimReady = resolve; });
+        const delayedGate = new Promise<void>((resolve) => { releaseDelayedClaim = resolve; });
+        let claims = 0;
+        // Only the second PROCESSING claim is held, after its arguments (including its lease time and
+        // claim id) were computed. Everything it does once released is the real Prisma call.
+        const spy = vi.spyOn(prisma.esigningEnvelope, 'updateMany').mockImplementation((async (args: Parameters<typeof realClaim>[0]) => {
+          if (args?.data && (args.data as { pdfGenerationStatus?: string }).pdfGenerationStatus === 'PROCESSING' && ++claims === 2) {
+            delayedClaimReady();
+            await delayedGate;
+          }
+          return realClaim(args);
+        }) as never);
+        const observe = (promise: Promise<unknown>) => promise.then((value) => ({ value }), (error: Error) => ({ error }));
+
+        const holdFirst = holdNextUpload(isMergedUpload);
+        // Two callers start together: one takes the claim and stalls before its merged upload, the
+        // other's prepared claim query is held back.
+        const callerOne = observe(generate(seed.envelope.id));
+        const callerTwo = observe(generate(seed.envelope.id));
+        let holdDelayed: ReturnType<typeof holdNextUpload> | undefined;
+        try {
+          await Promise.all([holdFirst.entered, delayedReady]);
+          const staleClaim = await prisma.esigningEnvelope.findUniqueOrThrow({ where: { id: seed.envelope.id } });
+          expect(staleClaim.pdfGenerationStatus).toBe('PROCESSING');
+          expect(staleClaim.pdfGenerationClaimedAt?.getTime()).toBe(t0.getTime());
+
+          // The first claim expires. Worker B takes over normally and then fails on a transient error.
+          vi.setSystemTime(new Date(t0.getTime() + 20 * 60 * 1000));
+          const holdB = holdNextUpload(isMergedUpload);
+          const workerB = observe(generate(seed.envelope.id));
+          await holdB.entered;
+          holdB.fail(new Error('replacement storage failure'));
+          expect(await workerB).toMatchObject({ error: { message: 'replacement storage failure' } });
+          const afterB = await prisma.esigningEnvelope.findUniqueOrThrow({ where: { id: seed.envelope.id } });
+          expect(afterB.pdfGenerationStatus).toBe('FAILED');
+          expect(afterB.pdfGenerationAttempts).toBe(1);
+          mail.failures.length = 0;
+
+          // The held claim now runs: it matches FAILED and writes the original lease time again.
+          holdDelayed = holdNextUpload(isMergedUpload);
+          releaseDelayedClaim();
+          await holdDelayed.entered;
+          const delayedClaim = await prisma.esigningEnvelope.findUniqueOrThrow({ where: { id: seed.envelope.id } });
+          expect(delayedClaim.pdfGenerationStatus).toBe('PROCESSING');
+          expect(delayedClaim.pdfGenerationClaimedAt?.getTime()).toBe(t0.getTime()); // same lease time as the stale worker's claim
+          expect(delayedClaim.pdfGenerationClaimId).not.toBeNull();
+          expect(delayedClaim.pdfGenerationClaimId).not.toBe(staleClaim.pdfGenerationClaimId); // a different identity
+
+          // The stale worker (the first claimant) now publishes, or errors.
+          if (mode === 'failure') holdFirst.fail(new Error('stale worker storage failure'));
+          else holdFirst.release();
+          const staleOutcome = await Promise.race([callerOne, callerTwo]);
+          if (mode === 'failure') expect(staleOutcome).toMatchObject({ error: { message: 'stale worker storage failure' } });
+          else expect(staleOutcome).toEqual({ value: 'already-processing' });
+
+          // Nothing of the delayed claimant's envelope changed: still PROCESSING under its identity.
+          const afterStale = await prisma.esigningEnvelope.findUniqueOrThrow({ where: { id: seed.envelope.id } });
+          expect(afterStale.pdfGenerationStatus).toBe('PROCESSING');
+          expect(afterStale.pdfGenerationClaimId).toBe(delayedClaim.pdfGenerationClaimId);
+          expect(afterStale.pdfGenerationAttempts).toBe(1);
+          expect(afterStale.pdfGenerationError).toBeNull();
+          expect(afterStale.currentArtifactVersion).toBeNull();
+          expect(await prisma.esigningIssuedArtifact.count({ where: { envelopeId: seed.envelope.id } })).toBe(0);
+          expect(await prisma.esigningEnvelopeEvent.count({ where: { envelopeId: seed.envelope.id, action: 'PDF_GENERATION_FAILED' } })).toBe(1); // worker B's own, nothing from the stale worker
+          expect(mail.failures).toEqual([]);
+          expect(mail.completion).toEqual([]);
+
+          // The delayed claimant still finishes its own work.
+          holdDelayed.release();
+          const finished = await Promise.all([callerOne, callerTwo]);
+          expect(finished.filter((outcome) => 'value' in outcome && outcome.value === 'generated')).toHaveLength(1);
+          const done = await prisma.esigningEnvelope.findUniqueOrThrow({ where: { id: seed.envelope.id } });
+          expect(done.pdfGenerationStatus).toBe('COMPLETED');
+          expect(done.pdfGenerationClaimId).toBeNull();
+          expect(done.currentArtifactVersion).toBe(1);
+          expect(await prisma.esigningIssuedArtifact.count({ where: { envelopeId: seed.envelope.id, version: 1 } })).toBe(3);
+          expect(mail.failures).toEqual([]);
+        } finally {
+          releaseDelayedClaim();
+          holdFirst.release();
+          holdDelayed?.release();
+          await Promise.allSettled([callerOne, callerTwo]);
+          spy.mockRestore();
+          vi.useRealTimers();
+        }
+      },
+    );
+  });
+
+  describe('signing-session download of the signed document (review round 2, blocking 2)', () => {
+    async function downloadAsRecipient(seed: Awaited<ReturnType<typeof seedCompletedEnvelope>>) {
+      const signing = await import('@/services/esigning-signing.service');
+      signingSession.claims = {
+        recipientId: seed.recipient.id,
+        envelopeId: seed.envelope.id,
+        sessionVersion: seed.recipient.sessionVersion,
+      };
+      try {
+        return await signing.downloadEsigningSessionDocument({ documentId: seed.documents[0].id, variant: 'signed' });
+      } finally {
+        signingSession.claims = null;
+      }
+    }
+
+    it('recovers on the first request when the stored signed file is missing: ensure issues version 2 and the download serves it', async () => {
+      const seed = await seedCompletedEnvelope();
+      await generate(seed.envelope.id);
+      const v1 = (await currentRows(seed.envelope.id)).rows.find((row) => row.kind === 'SIGNED_DOCUMENT')!;
+      memory.files.delete(v1.storagePath);
+
+      const result = await downloadAsRecipient(seed);
+
+      const { envelope, rows } = await currentRows(seed.envelope.id);
+      expect(envelope.currentArtifactVersion).toBe(2);
+      const v2 = rows.find((row) => row.kind === 'SIGNED_DOCUMENT')!;
+      expect(v2.storagePath).not.toBe(v1.storagePath);
+      expect(hashBlake3(result.buffer)).toBe(v2.blake3);
+      expect(result.buffer.equals(memory.files.get(v2.storagePath)!)).toBe(true);
+      // The recorded fingerprint of version 1 is kept for verifying copies issued earlier.
+      expect(await prisma.esigningIssuedArtifact.findUniqueOrThrow({ where: { id: v1.id } })).toMatchObject({ version: 1, blake3: v1.blake3 });
+      expect(mail.failures).toEqual([]);
+    });
+
+    it('serves the current stored file when nothing is missing, without issuing a new version', async () => {
+      const seed = await seedCompletedEnvelope();
+      await generate(seed.envelope.id);
+      const v1 = (await currentRows(seed.envelope.id)).rows.find((row) => row.kind === 'SIGNED_DOCUMENT')!;
+      const result = await downloadAsRecipient(seed);
+      expect(hashBlake3(result.buffer)).toBe(v1.blake3);
+      expect((await currentRows(seed.envelope.id)).envelope.currentArtifactVersion).toBe(1);
+    });
+
+    it('refuses a stored signed file whose bytes changed after issue, instead of serving them', async () => {
+      const seed = await seedCompletedEnvelope();
+      await generate(seed.envelope.id);
+      const v1 = (await currentRows(seed.envelope.id)).rows.find((row) => row.kind === 'SIGNED_DOCUMENT')!;
+      memory.files.set(v1.storagePath, Buffer.from('%PDF-swapped-issued-document'));
+
+      await expect(downloadAsRecipient(seed)).rejects.toMatchObject({ code: 'ARTIFACT_HASH_MISMATCH' });
+      expect(memory.files.get(v1.storagePath)!.toString()).toBe('%PDF-swapped-issued-document');
     });
   });
 

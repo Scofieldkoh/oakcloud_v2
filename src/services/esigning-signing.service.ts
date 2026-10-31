@@ -116,6 +116,7 @@ export async function finalizeEsigningEnvelopeCompletion(
         completedAt: input.completedAt,
         pdfGenerationStatus: 'PENDING',
         pdfGenerationClaimedAt: null,
+        pdfGenerationClaimId: null,
         pdfGenerationError: null,
       },
     });
@@ -1404,25 +1405,43 @@ export async function downloadEsigningSessionDocument(input: {
     throw new Error('Document not found');
   }
 
+  let buffer: Buffer;
   if (input.variant === 'signed') {
     const { ensureEsigningEnvelopeArtifacts } = await import('@/services/esigning-pdf.service');
+    const { EsigningArtifactError, getCurrentDocumentArtifact, readIssuedArtifact } = await import(
+      '@/services/esigning-issued-artifacts'
+    );
     await ensureEsigningEnvelopeArtifacts({
       tenantId: context.envelope.tenantId,
       envelopeId: context.envelope.id,
       requireCertificates: false,
     });
+
+    // Ensure may have issued a new version (a missing file is regenerated under a new path), so the
+    // document pointer loaded above can be stale. Resolve the current tenant-scoped artifact now and
+    // read it through the reader that checks the hash recorded at issue.
+    let record;
+    try {
+      record = await getCurrentDocumentArtifact(
+        context.envelope.tenantId,
+        context.envelope.id,
+        document.id,
+        'SIGNED_DOCUMENT',
+      );
+    } catch (error) {
+      if (error instanceof EsigningArtifactError && error.code === 'ARTIFACT_NOT_FOUND') {
+        throw new Error('Document is not available');
+      }
+      throw error;
+    }
+    buffer = await readIssuedArtifact(record);
+  } else {
+    if (!document.storagePath) {
+      throw new Error('Document is not available');
+    }
+    buffer = await storage.download(document.storagePath);
   }
 
-  const storagePath =
-    input.variant === 'signed'
-      ? document.signedStoragePath
-      : document.storagePath;
-
-  if (!storagePath) {
-    throw new Error('Document is not available');
-  }
-
-  const buffer = await storage.download(storagePath);
   const fileName =
     input.variant === 'signed'
       ? getEsigningDocumentVariantFileName(document, 'signed')

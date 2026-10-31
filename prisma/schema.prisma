@@ -2290,6 +2290,7 @@ model EsigningEnvelope {
   pdfGenerationStatus       EsigningPdfGenerationStatus?
   pdfGenerationAttempts     Int                               @default(0)
   pdfGenerationClaimedAt    DateTime?
+  pdfGenerationClaimId      String?                           @db.VarChar(36)
   pdfGenerationError        String?
   currentArtifactVersion    Int?
   autoFilingStatus          EsigningPostCompletionStatus      @default(NOT_REQUIRED)

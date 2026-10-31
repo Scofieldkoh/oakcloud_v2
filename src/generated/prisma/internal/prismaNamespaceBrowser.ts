@@ -1672,6 +1672,7 @@ export const EsigningEnvelopeScalarFieldEnum = {
   pdfGenerationStatus: 'pdfGenerationStatus',
   pdfGenerationAttempts: 'pdfGenerationAttempts',
   pdfGenerationClaimedAt: 'pdfGenerationClaimedAt',
+  pdfGenerationClaimId: 'pdfGenerationClaimId',
   pdfGenerationError: 'pdfGenerationError',
   currentArtifactVersion: 'currentArtifactVersion',
   autoFilingStatus: 'autoFilingStatus',

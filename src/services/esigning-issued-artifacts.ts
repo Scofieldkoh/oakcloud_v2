@@ -254,7 +254,7 @@ export function buildSourceDigests(input: {
  * uploaded (under this attempt's own folder).
  *
  * The first statement is a fence: it only matches while the envelope is still PROCESSING under the
- * claim this attempt took (`claimedAt`) and still at the version it started from. A worker whose
+ * claim this attempt took (`claimId`, a unique value, never the lease time) and still at the version it started from. A worker whose
  * lease expired and was replaced matches nothing, so it throws `ARTIFACT_CLAIM_LOST` and changes
  * nothing. The unique (envelope, version, kind, document) index is the second line of defence.
  */
@@ -264,8 +264,8 @@ export async function persistIssuedVersion(input: {
   version: number;
   /** The envelope's `currentArtifactVersion` when this attempt started. */
   previousVersion: number | null;
-  /** The `pdfGenerationClaimedAt` this attempt wrote when it took the claim. */
-  claimedAt: Date;
+  /** The unique `pdfGenerationClaimId` this attempt wrote when it took the claim. */
+  claimId: string;
   rendererVersion: number;
   artifacts: NewIssuedArtifact[];
   envelopeMetadata: Prisma.InputJsonValue;
@@ -277,13 +277,14 @@ export async function persistIssuedVersion(input: {
         tenantId: input.tenantId,
         status: 'COMPLETED',
         pdfGenerationStatus: 'PROCESSING',
-        pdfGenerationClaimedAt: input.claimedAt,
+        pdfGenerationClaimId: input.claimId,
         currentArtifactVersion: input.previousVersion,
       },
       data: {
         currentArtifactVersion: input.version,
         pdfGenerationStatus: 'COMPLETED',
         pdfGenerationClaimedAt: null,
+        pdfGenerationClaimId: null,
         pdfGenerationError: null,
         metadata: input.envelopeMetadata,
       },
