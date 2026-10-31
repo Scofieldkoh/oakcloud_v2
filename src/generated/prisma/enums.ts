@@ -1147,6 +1147,15 @@ export const EsigningSigningOrder = {
 export type EsigningSigningOrder = (typeof EsigningSigningOrder)[keyof typeof EsigningSigningOrder]
 
 
+export const EsigningIssuedArtifactKind = {
+  SIGNED_DOCUMENT: 'SIGNED_DOCUMENT',
+  CERTIFICATE: 'CERTIFICATE',
+  DOCUMENT_WITH_CERTIFICATE: 'DOCUMENT_WITH_CERTIFICATE'
+} as const
+
+export type EsigningIssuedArtifactKind = (typeof EsigningIssuedArtifactKind)[keyof typeof EsigningIssuedArtifactKind]
+
+
 export const EsigningPdfGenerationStatus = {
   PENDING: 'PENDING',
   PROCESSING: 'PROCESSING',

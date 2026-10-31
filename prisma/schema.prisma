@@ -2291,6 +2291,7 @@ model EsigningEnvelope {
   pdfGenerationAttempts     Int                               @default(0)
   pdfGenerationClaimedAt    DateTime?
   pdfGenerationError        String?
+  currentArtifactVersion    Int?
   autoFilingStatus          EsigningPostCompletionStatus      @default(NOT_REQUIRED)
   autoFilingAttempts        Int                               @default(0)
   autoFilingAvailableAt     DateTime?
@@ -2315,6 +2316,7 @@ model EsigningEnvelope {
   taskStageOutcomes         TaskStageOutcome[]
   taskEsigningPreparations  TaskEsigningPreparation[]
   sharePointFilings         EsigningSharePointFiling[]
+  issuedArtifacts           EsigningIssuedArtifact[]
 
   @@index([tenantId, status, createdAt])
   @@index([createdById, status, createdAt])
@@ -2349,11 +2351,40 @@ model EsigningEnvelopeDocument {
   generatedDocument        GeneratedDocument?                @relation(fields: [generatedDocumentId], references: [id], onDelete: SetNull)
   taskEsigningPreparations TaskEsigningPreparation[]
   sharePointFiling          EsigningSharePointFiling?
+  issuedArtifacts          EsigningIssuedArtifact[]
 
   @@unique([envelopeId, generatedDocumentId])
   @@index([envelopeId, sortOrder])
   @@index([tenantId, envelopeId])
   @@map("esigning_envelope_documents")
+}
+
+/// Immutable record of every PDF issued for a completed envelope (signed document,
+/// certificate, and the document+certificate file that is emailed and filed), with the
+/// BLAKE3 fingerprint recorded at issue time. Rows are only ever inserted. A regeneration
+/// appends a new `version`; earlier rows and files stay as they were so a file issued earlier
+/// can still be recognised. A unique index on (envelopeId, version, kind, COALESCE(documentId, ''))
+/// is created in the migration SQL because Prisma cannot express it.
+model EsigningIssuedArtifact {
+  id              String                     @id @default(uuid())
+  tenantId        String
+  envelopeId      String
+  documentId      String?
+  version         Int
+  kind            EsigningIssuedArtifactKind
+  storagePath     String
+  blake3          String
+  /// NULL for rows backfilled from the legacy signed_hash column, where the size was never recorded.
+  byteSize        Int?
+  rendererVersion Int
+  sourceDigests   Json
+  createdAt       DateTime                   @default(now())
+  envelope        EsigningEnvelope           @relation(fields: [envelopeId], references: [id], onDelete: Cascade)
+  document        EsigningEnvelopeDocument?  @relation(fields: [documentId], references: [id], onDelete: Cascade)
+
+  @@index([envelopeId])
+  @@index([blake3])
+  @@map("esigning_issued_artifacts")
 }
 
 model EsigningSharePointFiling {
@@ -4595,6 +4626,12 @@ enum EsigningSigningOrder {
   PARALLEL
   SEQUENTIAL
   MIXED
+}
+
+enum EsigningIssuedArtifactKind {
+  SIGNED_DOCUMENT
+  CERTIFICATE
+  DOCUMENT_WITH_CERTIFICATE
 }
 
 enum EsigningPdfGenerationStatus {

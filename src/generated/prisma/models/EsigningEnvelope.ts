@@ -31,6 +31,7 @@ export type EsigningEnvelopeAvgAggregateOutputType = {
   reminderStartDays: number | null
   expiryWarningDays: number | null
   pdfGenerationAttempts: number | null
+  currentArtifactVersion: number | null
   autoFilingAttempts: number | null
 }
 
@@ -39,6 +40,7 @@ export type EsigningEnvelopeSumAggregateOutputType = {
   reminderStartDays: number | null
   expiryWarningDays: number | null
   pdfGenerationAttempts: number | null
+  currentArtifactVersion: number | null
   autoFilingAttempts: number | null
 }
 
@@ -64,6 +66,7 @@ export type EsigningEnvelopeMinAggregateOutputType = {
   pdfGenerationAttempts: number | null
   pdfGenerationClaimedAt: Date | null
   pdfGenerationError: string | null
+  currentArtifactVersion: number | null
   autoFilingStatus: $Enums.EsigningPostCompletionStatus | null
   autoFilingAttempts: number | null
   autoFilingAvailableAt: Date | null
@@ -99,6 +102,7 @@ export type EsigningEnvelopeMaxAggregateOutputType = {
   pdfGenerationAttempts: number | null
   pdfGenerationClaimedAt: Date | null
   pdfGenerationError: string | null
+  currentArtifactVersion: number | null
   autoFilingStatus: $Enums.EsigningPostCompletionStatus | null
   autoFilingAttempts: number | null
   autoFilingAvailableAt: Date | null
@@ -135,6 +139,7 @@ export type EsigningEnvelopeCountAggregateOutputType = {
   pdfGenerationAttempts: number
   pdfGenerationClaimedAt: number
   pdfGenerationError: number
+  currentArtifactVersion: number
   autoFilingStatus: number
   autoFilingAttempts: number
   autoFilingAvailableAt: number
@@ -157,6 +162,7 @@ export type EsigningEnvelopeAvgAggregateInputType = {
   reminderStartDays?: true
   expiryWarningDays?: true
   pdfGenerationAttempts?: true
+  currentArtifactVersion?: true
   autoFilingAttempts?: true
 }
 
@@ -165,6 +171,7 @@ export type EsigningEnvelopeSumAggregateInputType = {
   reminderStartDays?: true
   expiryWarningDays?: true
   pdfGenerationAttempts?: true
+  currentArtifactVersion?: true
   autoFilingAttempts?: true
 }
 
@@ -190,6 +197,7 @@ export type EsigningEnvelopeMinAggregateInputType = {
   pdfGenerationAttempts?: true
   pdfGenerationClaimedAt?: true
   pdfGenerationError?: true
+  currentArtifactVersion?: true
   autoFilingStatus?: true
   autoFilingAttempts?: true
   autoFilingAvailableAt?: true
@@ -225,6 +233,7 @@ export type EsigningEnvelopeMaxAggregateInputType = {
   pdfGenerationAttempts?: true
   pdfGenerationClaimedAt?: true
   pdfGenerationError?: true
+  currentArtifactVersion?: true
   autoFilingStatus?: true
   autoFilingAttempts?: true
   autoFilingAvailableAt?: true
@@ -261,6 +270,7 @@ export type EsigningEnvelopeCountAggregateInputType = {
   pdfGenerationAttempts?: true
   pdfGenerationClaimedAt?: true
   pdfGenerationError?: true
+  currentArtifactVersion?: true
   autoFilingStatus?: true
   autoFilingAttempts?: true
   autoFilingAvailableAt?: true
@@ -386,6 +396,7 @@ export type EsigningEnvelopeGroupByOutputType = {
   pdfGenerationAttempts: number
   pdfGenerationClaimedAt: Date | null
   pdfGenerationError: string | null
+  currentArtifactVersion: number | null
   autoFilingStatus: $Enums.EsigningPostCompletionStatus
   autoFilingAttempts: number
   autoFilingAvailableAt: Date | null
@@ -447,6 +458,7 @@ export type EsigningEnvelopeWhereInput = {
   pdfGenerationAttempts?: Prisma.IntFilter<"EsigningEnvelope"> | number
   pdfGenerationClaimedAt?: Prisma.DateTimeNullableFilter<"EsigningEnvelope"> | Date | string | null
   pdfGenerationError?: Prisma.StringNullableFilter<"EsigningEnvelope"> | string | null
+  currentArtifactVersion?: Prisma.IntNullableFilter<"EsigningEnvelope"> | number | null
   autoFilingStatus?: Prisma.EnumEsigningPostCompletionStatusFilter<"EsigningEnvelope"> | $Enums.EsigningPostCompletionStatus
   autoFilingAttempts?: Prisma.IntFilter<"EsigningEnvelope"> | number
   autoFilingAvailableAt?: Prisma.DateTimeNullableFilter<"EsigningEnvelope"> | Date | string | null
@@ -471,6 +483,7 @@ export type EsigningEnvelopeWhereInput = {
   taskStageOutcomes?: Prisma.TaskStageOutcomeListRelationFilter
   taskEsigningPreparations?: Prisma.TaskEsigningPreparationListRelationFilter
   sharePointFilings?: Prisma.EsigningSharePointFilingListRelationFilter
+  issuedArtifacts?: Prisma.EsigningIssuedArtifactListRelationFilter
 }
 
 export type EsigningEnvelopeOrderByWithRelationInput = {
@@ -496,6 +509,7 @@ export type EsigningEnvelopeOrderByWithRelationInput = {
   pdfGenerationAttempts?: Prisma.SortOrder
   pdfGenerationClaimedAt?: Prisma.SortOrderInput | Prisma.SortOrder
   pdfGenerationError?: Prisma.SortOrderInput | Prisma.SortOrder
+  currentArtifactVersion?: Prisma.SortOrderInput | Prisma.SortOrder
   autoFilingStatus?: Prisma.SortOrder
   autoFilingAttempts?: Prisma.SortOrder
   autoFilingAvailableAt?: Prisma.SortOrderInput | Prisma.SortOrder
@@ -520,6 +534,7 @@ export type EsigningEnvelopeOrderByWithRelationInput = {
   taskStageOutcomes?: Prisma.TaskStageOutcomeOrderByRelationAggregateInput
   taskEsigningPreparations?: Prisma.TaskEsigningPreparationOrderByRelationAggregateInput
   sharePointFilings?: Prisma.EsigningSharePointFilingOrderByRelationAggregateInput
+  issuedArtifacts?: Prisma.EsigningIssuedArtifactOrderByRelationAggregateInput
 }
 
 export type EsigningEnvelopeWhereUniqueInput = Prisma.AtLeast<{
@@ -548,6 +563,7 @@ export type EsigningEnvelopeWhereUniqueInput = Prisma.AtLeast<{
   pdfGenerationAttempts?: Prisma.IntFilter<"EsigningEnvelope"> | number
   pdfGenerationClaimedAt?: Prisma.DateTimeNullableFilter<"EsigningEnvelope"> | Date | string | null
   pdfGenerationError?: Prisma.StringNullableFilter<"EsigningEnvelope"> | string | null
+  currentArtifactVersion?: Prisma.IntNullableFilter<"EsigningEnvelope"> | number | null
   autoFilingStatus?: Prisma.EnumEsigningPostCompletionStatusFilter<"EsigningEnvelope"> | $Enums.EsigningPostCompletionStatus
   autoFilingAttempts?: Prisma.IntFilter<"EsigningEnvelope"> | number
   autoFilingAvailableAt?: Prisma.DateTimeNullableFilter<"EsigningEnvelope"> | Date | string | null
@@ -572,6 +588,7 @@ export type EsigningEnvelopeWhereUniqueInput = Prisma.AtLeast<{
   taskStageOutcomes?: Prisma.TaskStageOutcomeListRelationFilter
   taskEsigningPreparations?: Prisma.TaskEsigningPreparationListRelationFilter
   sharePointFilings?: Prisma.EsigningSharePointFilingListRelationFilter
+  issuedArtifacts?: Prisma.EsigningIssuedArtifactListRelationFilter
 }, "id" | "certificateId">
 
 export type EsigningEnvelopeOrderByWithAggregationInput = {
@@ -597,6 +614,7 @@ export type EsigningEnvelopeOrderByWithAggregationInput = {
   pdfGenerationAttempts?: Prisma.SortOrder
   pdfGenerationClaimedAt?: Prisma.SortOrderInput | Prisma.SortOrder
   pdfGenerationError?: Prisma.SortOrderInput | Prisma.SortOrder
+  currentArtifactVersion?: Prisma.SortOrderInput | Prisma.SortOrder
   autoFilingStatus?: Prisma.SortOrder
   autoFilingAttempts?: Prisma.SortOrder
   autoFilingAvailableAt?: Prisma.SortOrderInput | Prisma.SortOrder
@@ -643,6 +661,7 @@ export type EsigningEnvelopeScalarWhereWithAggregatesInput = {
   pdfGenerationAttempts?: Prisma.IntWithAggregatesFilter<"EsigningEnvelope"> | number
   pdfGenerationClaimedAt?: Prisma.DateTimeNullableWithAggregatesFilter<"EsigningEnvelope"> | Date | string | null
   pdfGenerationError?: Prisma.StringNullableWithAggregatesFilter<"EsigningEnvelope"> | string | null
+  currentArtifactVersion?: Prisma.IntNullableWithAggregatesFilter<"EsigningEnvelope"> | number | null
   autoFilingStatus?: Prisma.EnumEsigningPostCompletionStatusWithAggregatesFilter<"EsigningEnvelope"> | $Enums.EsigningPostCompletionStatus
   autoFilingAttempts?: Prisma.IntWithAggregatesFilter<"EsigningEnvelope"> | number
   autoFilingAvailableAt?: Prisma.DateTimeNullableWithAggregatesFilter<"EsigningEnvelope"> | Date | string | null
@@ -678,6 +697,7 @@ export type EsigningEnvelopeCreateInput = {
   pdfGenerationAttempts?: number
   pdfGenerationClaimedAt?: Date | string | null
   pdfGenerationError?: string | null
+  currentArtifactVersion?: number | null
   autoFilingStatus?: $Enums.EsigningPostCompletionStatus
   autoFilingAttempts?: number
   autoFilingAvailableAt?: Date | string | null
@@ -702,6 +722,7 @@ export type EsigningEnvelopeCreateInput = {
   taskStageOutcomes?: Prisma.TaskStageOutcomeCreateNestedManyWithoutEsigningEnvelopeInput
   taskEsigningPreparations?: Prisma.TaskEsigningPreparationCreateNestedManyWithoutEsigningEnvelopeInput
   sharePointFilings?: Prisma.EsigningSharePointFilingCreateNestedManyWithoutEnvelopeInput
+  issuedArtifacts?: Prisma.EsigningIssuedArtifactCreateNestedManyWithoutEnvelopeInput
 }
 
 export type EsigningEnvelopeUncheckedCreateInput = {
@@ -727,6 +748,7 @@ export type EsigningEnvelopeUncheckedCreateInput = {
   pdfGenerationAttempts?: number
   pdfGenerationClaimedAt?: Date | string | null
   pdfGenerationError?: string | null
+  currentArtifactVersion?: number | null
   autoFilingStatus?: $Enums.EsigningPostCompletionStatus
   autoFilingAttempts?: number
   autoFilingAvailableAt?: Date | string | null
@@ -748,6 +770,7 @@ export type EsigningEnvelopeUncheckedCreateInput = {
   taskStageOutcomes?: Prisma.TaskStageOutcomeUncheckedCreateNestedManyWithoutEsigningEnvelopeInput
   taskEsigningPreparations?: Prisma.TaskEsigningPreparationUncheckedCreateNestedManyWithoutEsigningEnvelopeInput
   sharePointFilings?: Prisma.EsigningSharePointFilingUncheckedCreateNestedManyWithoutEnvelopeInput
+  issuedArtifacts?: Prisma.EsigningIssuedArtifactUncheckedCreateNestedManyWithoutEnvelopeInput
 }
 
 export type EsigningEnvelopeUpdateInput = {
@@ -770,6 +793,7 @@ export type EsigningEnvelopeUpdateInput = {
   pdfGenerationAttempts?: Prisma.IntFieldUpdateOperationsInput | number
   pdfGenerationClaimedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   pdfGenerationError?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  currentArtifactVersion?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   autoFilingStatus?: Prisma.EnumEsigningPostCompletionStatusFieldUpdateOperationsInput | $Enums.EsigningPostCompletionStatus
   autoFilingAttempts?: Prisma.IntFieldUpdateOperationsInput | number
   autoFilingAvailableAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -794,6 +818,7 @@ export type EsigningEnvelopeUpdateInput = {
   taskStageOutcomes?: Prisma.TaskStageOutcomeUpdateManyWithoutEsigningEnvelopeNestedInput
   taskEsigningPreparations?: Prisma.TaskEsigningPreparationUpdateManyWithoutEsigningEnvelopeNestedInput
   sharePointFilings?: Prisma.EsigningSharePointFilingUpdateManyWithoutEnvelopeNestedInput
+  issuedArtifacts?: Prisma.EsigningIssuedArtifactUpdateManyWithoutEnvelopeNestedInput
 }
 
 export type EsigningEnvelopeUncheckedUpdateInput = {
@@ -819,6 +844,7 @@ export type EsigningEnvelopeUncheckedUpdateInput = {
   pdfGenerationAttempts?: Prisma.IntFieldUpdateOperationsInput | number
   pdfGenerationClaimedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   pdfGenerationError?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  currentArtifactVersion?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   autoFilingStatus?: Prisma.EnumEsigningPostCompletionStatusFieldUpdateOperationsInput | $Enums.EsigningPostCompletionStatus
   autoFilingAttempts?: Prisma.IntFieldUpdateOperationsInput | number
   autoFilingAvailableAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -840,6 +866,7 @@ export type EsigningEnvelopeUncheckedUpdateInput = {
   taskStageOutcomes?: Prisma.TaskStageOutcomeUncheckedUpdateManyWithoutEsigningEnvelopeNestedInput
   taskEsigningPreparations?: Prisma.TaskEsigningPreparationUncheckedUpdateManyWithoutEsigningEnvelopeNestedInput
   sharePointFilings?: Prisma.EsigningSharePointFilingUncheckedUpdateManyWithoutEnvelopeNestedInput
+  issuedArtifacts?: Prisma.EsigningIssuedArtifactUncheckedUpdateManyWithoutEnvelopeNestedInput
 }
 
 export type EsigningEnvelopeCreateManyInput = {
@@ -865,6 +892,7 @@ export type EsigningEnvelopeCreateManyInput = {
   pdfGenerationAttempts?: number
   pdfGenerationClaimedAt?: Date | string | null
   pdfGenerationError?: string | null
+  currentArtifactVersion?: number | null
   autoFilingStatus?: $Enums.EsigningPostCompletionStatus
   autoFilingAttempts?: number
   autoFilingAvailableAt?: Date | string | null
@@ -900,6 +928,7 @@ export type EsigningEnvelopeUpdateManyMutationInput = {
   pdfGenerationAttempts?: Prisma.IntFieldUpdateOperationsInput | number
   pdfGenerationClaimedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   pdfGenerationError?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  currentArtifactVersion?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   autoFilingStatus?: Prisma.EnumEsigningPostCompletionStatusFieldUpdateOperationsInput | $Enums.EsigningPostCompletionStatus
   autoFilingAttempts?: Prisma.IntFieldUpdateOperationsInput | number
   autoFilingAvailableAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -938,6 +967,7 @@ export type EsigningEnvelopeUncheckedUpdateManyInput = {
   pdfGenerationAttempts?: Prisma.IntFieldUpdateOperationsInput | number
   pdfGenerationClaimedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   pdfGenerationError?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  currentArtifactVersion?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   autoFilingStatus?: Prisma.EnumEsigningPostCompletionStatusFieldUpdateOperationsInput | $Enums.EsigningPostCompletionStatus
   autoFilingAttempts?: Prisma.IntFieldUpdateOperationsInput | number
   autoFilingAvailableAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -986,6 +1016,7 @@ export type EsigningEnvelopeCountOrderByAggregateInput = {
   pdfGenerationAttempts?: Prisma.SortOrder
   pdfGenerationClaimedAt?: Prisma.SortOrder
   pdfGenerationError?: Prisma.SortOrder
+  currentArtifactVersion?: Prisma.SortOrder
   autoFilingStatus?: Prisma.SortOrder
   autoFilingAttempts?: Prisma.SortOrder
   autoFilingAvailableAt?: Prisma.SortOrder
@@ -1006,6 +1037,7 @@ export type EsigningEnvelopeAvgOrderByAggregateInput = {
   reminderStartDays?: Prisma.SortOrder
   expiryWarningDays?: Prisma.SortOrder
   pdfGenerationAttempts?: Prisma.SortOrder
+  currentArtifactVersion?: Prisma.SortOrder
   autoFilingAttempts?: Prisma.SortOrder
 }
 
@@ -1031,6 +1063,7 @@ export type EsigningEnvelopeMaxOrderByAggregateInput = {
   pdfGenerationAttempts?: Prisma.SortOrder
   pdfGenerationClaimedAt?: Prisma.SortOrder
   pdfGenerationError?: Prisma.SortOrder
+  currentArtifactVersion?: Prisma.SortOrder
   autoFilingStatus?: Prisma.SortOrder
   autoFilingAttempts?: Prisma.SortOrder
   autoFilingAvailableAt?: Prisma.SortOrder
@@ -1066,6 +1099,7 @@ export type EsigningEnvelopeMinOrderByAggregateInput = {
   pdfGenerationAttempts?: Prisma.SortOrder
   pdfGenerationClaimedAt?: Prisma.SortOrder
   pdfGenerationError?: Prisma.SortOrder
+  currentArtifactVersion?: Prisma.SortOrder
   autoFilingStatus?: Prisma.SortOrder
   autoFilingAttempts?: Prisma.SortOrder
   autoFilingAvailableAt?: Prisma.SortOrder
@@ -1084,6 +1118,7 @@ export type EsigningEnvelopeSumOrderByAggregateInput = {
   reminderStartDays?: Prisma.SortOrder
   expiryWarningDays?: Prisma.SortOrder
   pdfGenerationAttempts?: Prisma.SortOrder
+  currentArtifactVersion?: Prisma.SortOrder
   autoFilingAttempts?: Prisma.SortOrder
 }
 
@@ -1262,6 +1297,20 @@ export type EsigningEnvelopeUpdateOneRequiredWithoutDocumentsNestedInput = {
   update?: Prisma.XOR<Prisma.XOR<Prisma.EsigningEnvelopeUpdateToOneWithWhereWithoutDocumentsInput, Prisma.EsigningEnvelopeUpdateWithoutDocumentsInput>, Prisma.EsigningEnvelopeUncheckedUpdateWithoutDocumentsInput>
 }
 
+export type EsigningEnvelopeCreateNestedOneWithoutIssuedArtifactsInput = {
+  create?: Prisma.XOR<Prisma.EsigningEnvelopeCreateWithoutIssuedArtifactsInput, Prisma.EsigningEnvelopeUncheckedCreateWithoutIssuedArtifactsInput>
+  connectOrCreate?: Prisma.EsigningEnvelopeCreateOrConnectWithoutIssuedArtifactsInput
+  connect?: Prisma.EsigningEnvelopeWhereUniqueInput
+}
+
+export type EsigningEnvelopeUpdateOneRequiredWithoutIssuedArtifactsNestedInput = {
+  create?: Prisma.XOR<Prisma.EsigningEnvelopeCreateWithoutIssuedArtifactsInput, Prisma.EsigningEnvelopeUncheckedCreateWithoutIssuedArtifactsInput>
+  connectOrCreate?: Prisma.EsigningEnvelopeCreateOrConnectWithoutIssuedArtifactsInput
+  upsert?: Prisma.EsigningEnvelopeUpsertWithoutIssuedArtifactsInput
+  connect?: Prisma.EsigningEnvelopeWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.EsigningEnvelopeUpdateToOneWithWhereWithoutIssuedArtifactsInput, Prisma.EsigningEnvelopeUpdateWithoutIssuedArtifactsInput>, Prisma.EsigningEnvelopeUncheckedUpdateWithoutIssuedArtifactsInput>
+}
+
 export type EsigningEnvelopeCreateNestedOneWithoutSharePointFilingsInput = {
   create?: Prisma.XOR<Prisma.EsigningEnvelopeCreateWithoutSharePointFilingsInput, Prisma.EsigningEnvelopeUncheckedCreateWithoutSharePointFilingsInput>
   connectOrCreate?: Prisma.EsigningEnvelopeCreateOrConnectWithoutSharePointFilingsInput
@@ -1384,6 +1433,7 @@ export type EsigningEnvelopeCreateWithoutTenantInput = {
   pdfGenerationAttempts?: number
   pdfGenerationClaimedAt?: Date | string | null
   pdfGenerationError?: string | null
+  currentArtifactVersion?: number | null
   autoFilingStatus?: $Enums.EsigningPostCompletionStatus
   autoFilingAttempts?: number
   autoFilingAvailableAt?: Date | string | null
@@ -1407,6 +1457,7 @@ export type EsigningEnvelopeCreateWithoutTenantInput = {
   taskStageOutcomes?: Prisma.TaskStageOutcomeCreateNestedManyWithoutEsigningEnvelopeInput
   taskEsigningPreparations?: Prisma.TaskEsigningPreparationCreateNestedManyWithoutEsigningEnvelopeInput
   sharePointFilings?: Prisma.EsigningSharePointFilingCreateNestedManyWithoutEnvelopeInput
+  issuedArtifacts?: Prisma.EsigningIssuedArtifactCreateNestedManyWithoutEnvelopeInput
 }
 
 export type EsigningEnvelopeUncheckedCreateWithoutTenantInput = {
@@ -1431,6 +1482,7 @@ export type EsigningEnvelopeUncheckedCreateWithoutTenantInput = {
   pdfGenerationAttempts?: number
   pdfGenerationClaimedAt?: Date | string | null
   pdfGenerationError?: string | null
+  currentArtifactVersion?: number | null
   autoFilingStatus?: $Enums.EsigningPostCompletionStatus
   autoFilingAttempts?: number
   autoFilingAvailableAt?: Date | string | null
@@ -1452,6 +1504,7 @@ export type EsigningEnvelopeUncheckedCreateWithoutTenantInput = {
   taskStageOutcomes?: Prisma.TaskStageOutcomeUncheckedCreateNestedManyWithoutEsigningEnvelopeInput
   taskEsigningPreparations?: Prisma.TaskEsigningPreparationUncheckedCreateNestedManyWithoutEsigningEnvelopeInput
   sharePointFilings?: Prisma.EsigningSharePointFilingUncheckedCreateNestedManyWithoutEnvelopeInput
+  issuedArtifacts?: Prisma.EsigningIssuedArtifactUncheckedCreateNestedManyWithoutEnvelopeInput
 }
 
 export type EsigningEnvelopeCreateOrConnectWithoutTenantInput = {
@@ -1506,6 +1559,7 @@ export type EsigningEnvelopeScalarWhereInput = {
   pdfGenerationAttempts?: Prisma.IntFilter<"EsigningEnvelope"> | number
   pdfGenerationClaimedAt?: Prisma.DateTimeNullableFilter<"EsigningEnvelope"> | Date | string | null
   pdfGenerationError?: Prisma.StringNullableFilter<"EsigningEnvelope"> | string | null
+  currentArtifactVersion?: Prisma.IntNullableFilter<"EsigningEnvelope"> | number | null
   autoFilingStatus?: Prisma.EnumEsigningPostCompletionStatusFilter<"EsigningEnvelope"> | $Enums.EsigningPostCompletionStatus
   autoFilingAttempts?: Prisma.IntFilter<"EsigningEnvelope"> | number
   autoFilingAvailableAt?: Prisma.DateTimeNullableFilter<"EsigningEnvelope"> | Date | string | null
@@ -1541,6 +1595,7 @@ export type EsigningEnvelopeCreateWithoutCreatedByInput = {
   pdfGenerationAttempts?: number
   pdfGenerationClaimedAt?: Date | string | null
   pdfGenerationError?: string | null
+  currentArtifactVersion?: number | null
   autoFilingStatus?: $Enums.EsigningPostCompletionStatus
   autoFilingAttempts?: number
   autoFilingAvailableAt?: Date | string | null
@@ -1564,6 +1619,7 @@ export type EsigningEnvelopeCreateWithoutCreatedByInput = {
   taskStageOutcomes?: Prisma.TaskStageOutcomeCreateNestedManyWithoutEsigningEnvelopeInput
   taskEsigningPreparations?: Prisma.TaskEsigningPreparationCreateNestedManyWithoutEsigningEnvelopeInput
   sharePointFilings?: Prisma.EsigningSharePointFilingCreateNestedManyWithoutEnvelopeInput
+  issuedArtifacts?: Prisma.EsigningIssuedArtifactCreateNestedManyWithoutEnvelopeInput
 }
 
 export type EsigningEnvelopeUncheckedCreateWithoutCreatedByInput = {
@@ -1588,6 +1644,7 @@ export type EsigningEnvelopeUncheckedCreateWithoutCreatedByInput = {
   pdfGenerationAttempts?: number
   pdfGenerationClaimedAt?: Date | string | null
   pdfGenerationError?: string | null
+  currentArtifactVersion?: number | null
   autoFilingStatus?: $Enums.EsigningPostCompletionStatus
   autoFilingAttempts?: number
   autoFilingAvailableAt?: Date | string | null
@@ -1609,6 +1666,7 @@ export type EsigningEnvelopeUncheckedCreateWithoutCreatedByInput = {
   taskStageOutcomes?: Prisma.TaskStageOutcomeUncheckedCreateNestedManyWithoutEsigningEnvelopeInput
   taskEsigningPreparations?: Prisma.TaskEsigningPreparationUncheckedCreateNestedManyWithoutEsigningEnvelopeInput
   sharePointFilings?: Prisma.EsigningSharePointFilingUncheckedCreateNestedManyWithoutEnvelopeInput
+  issuedArtifacts?: Prisma.EsigningIssuedArtifactUncheckedCreateNestedManyWithoutEnvelopeInput
 }
 
 export type EsigningEnvelopeCreateOrConnectWithoutCreatedByInput = {
@@ -1657,6 +1715,7 @@ export type EsigningEnvelopeCreateWithoutCompanyInput = {
   pdfGenerationAttempts?: number
   pdfGenerationClaimedAt?: Date | string | null
   pdfGenerationError?: string | null
+  currentArtifactVersion?: number | null
   autoFilingStatus?: $Enums.EsigningPostCompletionStatus
   autoFilingAttempts?: number
   autoFilingAvailableAt?: Date | string | null
@@ -1680,6 +1739,7 @@ export type EsigningEnvelopeCreateWithoutCompanyInput = {
   taskStageOutcomes?: Prisma.TaskStageOutcomeCreateNestedManyWithoutEsigningEnvelopeInput
   taskEsigningPreparations?: Prisma.TaskEsigningPreparationCreateNestedManyWithoutEsigningEnvelopeInput
   sharePointFilings?: Prisma.EsigningSharePointFilingCreateNestedManyWithoutEnvelopeInput
+  issuedArtifacts?: Prisma.EsigningIssuedArtifactCreateNestedManyWithoutEnvelopeInput
 }
 
 export type EsigningEnvelopeUncheckedCreateWithoutCompanyInput = {
@@ -1704,6 +1764,7 @@ export type EsigningEnvelopeUncheckedCreateWithoutCompanyInput = {
   pdfGenerationAttempts?: number
   pdfGenerationClaimedAt?: Date | string | null
   pdfGenerationError?: string | null
+  currentArtifactVersion?: number | null
   autoFilingStatus?: $Enums.EsigningPostCompletionStatus
   autoFilingAttempts?: number
   autoFilingAvailableAt?: Date | string | null
@@ -1725,6 +1786,7 @@ export type EsigningEnvelopeUncheckedCreateWithoutCompanyInput = {
   taskStageOutcomes?: Prisma.TaskStageOutcomeUncheckedCreateNestedManyWithoutEsigningEnvelopeInput
   taskEsigningPreparations?: Prisma.TaskEsigningPreparationUncheckedCreateNestedManyWithoutEsigningEnvelopeInput
   sharePointFilings?: Prisma.EsigningSharePointFilingUncheckedCreateNestedManyWithoutEnvelopeInput
+  issuedArtifacts?: Prisma.EsigningIssuedArtifactUncheckedCreateNestedManyWithoutEnvelopeInput
 }
 
 export type EsigningEnvelopeCreateOrConnectWithoutCompanyInput = {
@@ -1773,6 +1835,7 @@ export type EsigningEnvelopeCreateWithoutDocumentsInput = {
   pdfGenerationAttempts?: number
   pdfGenerationClaimedAt?: Date | string | null
   pdfGenerationError?: string | null
+  currentArtifactVersion?: number | null
   autoFilingStatus?: $Enums.EsigningPostCompletionStatus
   autoFilingAttempts?: number
   autoFilingAvailableAt?: Date | string | null
@@ -1796,6 +1859,7 @@ export type EsigningEnvelopeCreateWithoutDocumentsInput = {
   taskStageOutcomes?: Prisma.TaskStageOutcomeCreateNestedManyWithoutEsigningEnvelopeInput
   taskEsigningPreparations?: Prisma.TaskEsigningPreparationCreateNestedManyWithoutEsigningEnvelopeInput
   sharePointFilings?: Prisma.EsigningSharePointFilingCreateNestedManyWithoutEnvelopeInput
+  issuedArtifacts?: Prisma.EsigningIssuedArtifactCreateNestedManyWithoutEnvelopeInput
 }
 
 export type EsigningEnvelopeUncheckedCreateWithoutDocumentsInput = {
@@ -1821,6 +1885,7 @@ export type EsigningEnvelopeUncheckedCreateWithoutDocumentsInput = {
   pdfGenerationAttempts?: number
   pdfGenerationClaimedAt?: Date | string | null
   pdfGenerationError?: string | null
+  currentArtifactVersion?: number | null
   autoFilingStatus?: $Enums.EsigningPostCompletionStatus
   autoFilingAttempts?: number
   autoFilingAvailableAt?: Date | string | null
@@ -1841,6 +1906,7 @@ export type EsigningEnvelopeUncheckedCreateWithoutDocumentsInput = {
   taskStageOutcomes?: Prisma.TaskStageOutcomeUncheckedCreateNestedManyWithoutEsigningEnvelopeInput
   taskEsigningPreparations?: Prisma.TaskEsigningPreparationUncheckedCreateNestedManyWithoutEsigningEnvelopeInput
   sharePointFilings?: Prisma.EsigningSharePointFilingUncheckedCreateNestedManyWithoutEnvelopeInput
+  issuedArtifacts?: Prisma.EsigningIssuedArtifactUncheckedCreateNestedManyWithoutEnvelopeInput
 }
 
 export type EsigningEnvelopeCreateOrConnectWithoutDocumentsInput = {
@@ -1879,6 +1945,7 @@ export type EsigningEnvelopeUpdateWithoutDocumentsInput = {
   pdfGenerationAttempts?: Prisma.IntFieldUpdateOperationsInput | number
   pdfGenerationClaimedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   pdfGenerationError?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  currentArtifactVersion?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   autoFilingStatus?: Prisma.EnumEsigningPostCompletionStatusFieldUpdateOperationsInput | $Enums.EsigningPostCompletionStatus
   autoFilingAttempts?: Prisma.IntFieldUpdateOperationsInput | number
   autoFilingAvailableAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -1902,6 +1969,7 @@ export type EsigningEnvelopeUpdateWithoutDocumentsInput = {
   taskStageOutcomes?: Prisma.TaskStageOutcomeUpdateManyWithoutEsigningEnvelopeNestedInput
   taskEsigningPreparations?: Prisma.TaskEsigningPreparationUpdateManyWithoutEsigningEnvelopeNestedInput
   sharePointFilings?: Prisma.EsigningSharePointFilingUpdateManyWithoutEnvelopeNestedInput
+  issuedArtifacts?: Prisma.EsigningIssuedArtifactUpdateManyWithoutEnvelopeNestedInput
 }
 
 export type EsigningEnvelopeUncheckedUpdateWithoutDocumentsInput = {
@@ -1927,6 +1995,7 @@ export type EsigningEnvelopeUncheckedUpdateWithoutDocumentsInput = {
   pdfGenerationAttempts?: Prisma.IntFieldUpdateOperationsInput | number
   pdfGenerationClaimedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   pdfGenerationError?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  currentArtifactVersion?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   autoFilingStatus?: Prisma.EnumEsigningPostCompletionStatusFieldUpdateOperationsInput | $Enums.EsigningPostCompletionStatus
   autoFilingAttempts?: Prisma.IntFieldUpdateOperationsInput | number
   autoFilingAvailableAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -1940,6 +2009,211 @@ export type EsigningEnvelopeUncheckedUpdateWithoutDocumentsInput = {
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  events?: Prisma.EsigningEnvelopeEventUncheckedUpdateManyWithoutEnvelopeNestedInput
+  fieldDefinitions?: Prisma.EsigningDocumentFieldDefinitionUncheckedUpdateManyWithoutEnvelopeNestedInput
+  recipients?: Prisma.EsigningEnvelopeRecipientUncheckedUpdateManyWithoutEnvelopeNestedInput
+  emailDeliveries?: Prisma.EsigningEmailDeliveryUncheckedUpdateManyWithoutEnvelopeNestedInput
+  taskStageOutcomes?: Prisma.TaskStageOutcomeUncheckedUpdateManyWithoutEsigningEnvelopeNestedInput
+  taskEsigningPreparations?: Prisma.TaskEsigningPreparationUncheckedUpdateManyWithoutEsigningEnvelopeNestedInput
+  sharePointFilings?: Prisma.EsigningSharePointFilingUncheckedUpdateManyWithoutEnvelopeNestedInput
+  issuedArtifacts?: Prisma.EsigningIssuedArtifactUncheckedUpdateManyWithoutEnvelopeNestedInput
+}
+
+export type EsigningEnvelopeCreateWithoutIssuedArtifactsInput = {
+  id?: string
+  title: string
+  emailSubject?: string | null
+  message?: string | null
+  completionCopyEmails?: Prisma.EsigningEnvelopeCreatecompletionCopyEmailsInput | string[]
+  status?: $Enums.EsigningEnvelopeStatus
+  signingOrder?: $Enums.EsigningSigningOrder
+  expiresAt?: Date | string | null
+  reminderFrequencyDays?: number | null
+  reminderStartDays?: number | null
+  expiryWarningDays?: number | null
+  certificateId: string
+  completedAt?: Date | string | null
+  voidedAt?: Date | string | null
+  voidReason?: string | null
+  pdfGenerationStatus?: $Enums.EsigningPdfGenerationStatus | null
+  pdfGenerationAttempts?: number
+  pdfGenerationClaimedAt?: Date | string | null
+  pdfGenerationError?: string | null
+  currentArtifactVersion?: number | null
+  autoFilingStatus?: $Enums.EsigningPostCompletionStatus
+  autoFilingAttempts?: number
+  autoFilingAvailableAt?: Date | string | null
+  autoFilingClaimedAt?: Date | string | null
+  autoFilingLeaseExpiresAt?: Date | string | null
+  autoFilingClaimToken?: string | null
+  autoFilingError?: string | null
+  consentVersion?: string
+  consentDisclosureSnapshot?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  deletedAt?: Date | string | null
+  company?: Prisma.CompanyCreateNestedOneWithoutEsigningEnvelopesInput
+  createdBy: Prisma.UserCreateNestedOneWithoutCreatedEsigningEnvelopesInput
+  tenant: Prisma.WorkspaceCreateNestedOneWithoutEsigningEnvelopesInput
+  documents?: Prisma.EsigningEnvelopeDocumentCreateNestedManyWithoutEnvelopeInput
+  events?: Prisma.EsigningEnvelopeEventCreateNestedManyWithoutEnvelopeInput
+  fieldDefinitions?: Prisma.EsigningDocumentFieldDefinitionCreateNestedManyWithoutEnvelopeInput
+  recipients?: Prisma.EsigningEnvelopeRecipientCreateNestedManyWithoutEnvelopeInput
+  emailDeliveries?: Prisma.EsigningEmailDeliveryCreateNestedManyWithoutEnvelopeInput
+  taskStageOutcomes?: Prisma.TaskStageOutcomeCreateNestedManyWithoutEsigningEnvelopeInput
+  taskEsigningPreparations?: Prisma.TaskEsigningPreparationCreateNestedManyWithoutEsigningEnvelopeInput
+  sharePointFilings?: Prisma.EsigningSharePointFilingCreateNestedManyWithoutEnvelopeInput
+}
+
+export type EsigningEnvelopeUncheckedCreateWithoutIssuedArtifactsInput = {
+  id?: string
+  tenantId: string
+  createdById: string
+  title: string
+  emailSubject?: string | null
+  message?: string | null
+  completionCopyEmails?: Prisma.EsigningEnvelopeCreatecompletionCopyEmailsInput | string[]
+  status?: $Enums.EsigningEnvelopeStatus
+  signingOrder?: $Enums.EsigningSigningOrder
+  expiresAt?: Date | string | null
+  reminderFrequencyDays?: number | null
+  reminderStartDays?: number | null
+  expiryWarningDays?: number | null
+  companyId?: string | null
+  certificateId: string
+  completedAt?: Date | string | null
+  voidedAt?: Date | string | null
+  voidReason?: string | null
+  pdfGenerationStatus?: $Enums.EsigningPdfGenerationStatus | null
+  pdfGenerationAttempts?: number
+  pdfGenerationClaimedAt?: Date | string | null
+  pdfGenerationError?: string | null
+  currentArtifactVersion?: number | null
+  autoFilingStatus?: $Enums.EsigningPostCompletionStatus
+  autoFilingAttempts?: number
+  autoFilingAvailableAt?: Date | string | null
+  autoFilingClaimedAt?: Date | string | null
+  autoFilingLeaseExpiresAt?: Date | string | null
+  autoFilingClaimToken?: string | null
+  autoFilingError?: string | null
+  consentVersion?: string
+  consentDisclosureSnapshot?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  deletedAt?: Date | string | null
+  documents?: Prisma.EsigningEnvelopeDocumentUncheckedCreateNestedManyWithoutEnvelopeInput
+  events?: Prisma.EsigningEnvelopeEventUncheckedCreateNestedManyWithoutEnvelopeInput
+  fieldDefinitions?: Prisma.EsigningDocumentFieldDefinitionUncheckedCreateNestedManyWithoutEnvelopeInput
+  recipients?: Prisma.EsigningEnvelopeRecipientUncheckedCreateNestedManyWithoutEnvelopeInput
+  emailDeliveries?: Prisma.EsigningEmailDeliveryUncheckedCreateNestedManyWithoutEnvelopeInput
+  taskStageOutcomes?: Prisma.TaskStageOutcomeUncheckedCreateNestedManyWithoutEsigningEnvelopeInput
+  taskEsigningPreparations?: Prisma.TaskEsigningPreparationUncheckedCreateNestedManyWithoutEsigningEnvelopeInput
+  sharePointFilings?: Prisma.EsigningSharePointFilingUncheckedCreateNestedManyWithoutEnvelopeInput
+}
+
+export type EsigningEnvelopeCreateOrConnectWithoutIssuedArtifactsInput = {
+  where: Prisma.EsigningEnvelopeWhereUniqueInput
+  create: Prisma.XOR<Prisma.EsigningEnvelopeCreateWithoutIssuedArtifactsInput, Prisma.EsigningEnvelopeUncheckedCreateWithoutIssuedArtifactsInput>
+}
+
+export type EsigningEnvelopeUpsertWithoutIssuedArtifactsInput = {
+  update: Prisma.XOR<Prisma.EsigningEnvelopeUpdateWithoutIssuedArtifactsInput, Prisma.EsigningEnvelopeUncheckedUpdateWithoutIssuedArtifactsInput>
+  create: Prisma.XOR<Prisma.EsigningEnvelopeCreateWithoutIssuedArtifactsInput, Prisma.EsigningEnvelopeUncheckedCreateWithoutIssuedArtifactsInput>
+  where?: Prisma.EsigningEnvelopeWhereInput
+}
+
+export type EsigningEnvelopeUpdateToOneWithWhereWithoutIssuedArtifactsInput = {
+  where?: Prisma.EsigningEnvelopeWhereInput
+  data: Prisma.XOR<Prisma.EsigningEnvelopeUpdateWithoutIssuedArtifactsInput, Prisma.EsigningEnvelopeUncheckedUpdateWithoutIssuedArtifactsInput>
+}
+
+export type EsigningEnvelopeUpdateWithoutIssuedArtifactsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  title?: Prisma.StringFieldUpdateOperationsInput | string
+  emailSubject?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  message?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  completionCopyEmails?: Prisma.EsigningEnvelopeUpdatecompletionCopyEmailsInput | string[]
+  status?: Prisma.EnumEsigningEnvelopeStatusFieldUpdateOperationsInput | $Enums.EsigningEnvelopeStatus
+  signingOrder?: Prisma.EnumEsigningSigningOrderFieldUpdateOperationsInput | $Enums.EsigningSigningOrder
+  expiresAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  reminderFrequencyDays?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  reminderStartDays?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  expiryWarningDays?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  certificateId?: Prisma.StringFieldUpdateOperationsInput | string
+  completedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  voidedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  voidReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  pdfGenerationStatus?: Prisma.NullableEnumEsigningPdfGenerationStatusFieldUpdateOperationsInput | $Enums.EsigningPdfGenerationStatus | null
+  pdfGenerationAttempts?: Prisma.IntFieldUpdateOperationsInput | number
+  pdfGenerationClaimedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  pdfGenerationError?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  currentArtifactVersion?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  autoFilingStatus?: Prisma.EnumEsigningPostCompletionStatusFieldUpdateOperationsInput | $Enums.EsigningPostCompletionStatus
+  autoFilingAttempts?: Prisma.IntFieldUpdateOperationsInput | number
+  autoFilingAvailableAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  autoFilingClaimedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  autoFilingLeaseExpiresAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  autoFilingClaimToken?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  autoFilingError?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  consentVersion?: Prisma.StringFieldUpdateOperationsInput | string
+  consentDisclosureSnapshot?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  company?: Prisma.CompanyUpdateOneWithoutEsigningEnvelopesNestedInput
+  createdBy?: Prisma.UserUpdateOneRequiredWithoutCreatedEsigningEnvelopesNestedInput
+  tenant?: Prisma.WorkspaceUpdateOneRequiredWithoutEsigningEnvelopesNestedInput
+  documents?: Prisma.EsigningEnvelopeDocumentUpdateManyWithoutEnvelopeNestedInput
+  events?: Prisma.EsigningEnvelopeEventUpdateManyWithoutEnvelopeNestedInput
+  fieldDefinitions?: Prisma.EsigningDocumentFieldDefinitionUpdateManyWithoutEnvelopeNestedInput
+  recipients?: Prisma.EsigningEnvelopeRecipientUpdateManyWithoutEnvelopeNestedInput
+  emailDeliveries?: Prisma.EsigningEmailDeliveryUpdateManyWithoutEnvelopeNestedInput
+  taskStageOutcomes?: Prisma.TaskStageOutcomeUpdateManyWithoutEsigningEnvelopeNestedInput
+  taskEsigningPreparations?: Prisma.TaskEsigningPreparationUpdateManyWithoutEsigningEnvelopeNestedInput
+  sharePointFilings?: Prisma.EsigningSharePointFilingUpdateManyWithoutEnvelopeNestedInput
+}
+
+export type EsigningEnvelopeUncheckedUpdateWithoutIssuedArtifactsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  tenantId?: Prisma.StringFieldUpdateOperationsInput | string
+  createdById?: Prisma.StringFieldUpdateOperationsInput | string
+  title?: Prisma.StringFieldUpdateOperationsInput | string
+  emailSubject?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  message?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  completionCopyEmails?: Prisma.EsigningEnvelopeUpdatecompletionCopyEmailsInput | string[]
+  status?: Prisma.EnumEsigningEnvelopeStatusFieldUpdateOperationsInput | $Enums.EsigningEnvelopeStatus
+  signingOrder?: Prisma.EnumEsigningSigningOrderFieldUpdateOperationsInput | $Enums.EsigningSigningOrder
+  expiresAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  reminderFrequencyDays?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  reminderStartDays?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  expiryWarningDays?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  companyId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  certificateId?: Prisma.StringFieldUpdateOperationsInput | string
+  completedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  voidedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  voidReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  pdfGenerationStatus?: Prisma.NullableEnumEsigningPdfGenerationStatusFieldUpdateOperationsInput | $Enums.EsigningPdfGenerationStatus | null
+  pdfGenerationAttempts?: Prisma.IntFieldUpdateOperationsInput | number
+  pdfGenerationClaimedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  pdfGenerationError?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  currentArtifactVersion?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  autoFilingStatus?: Prisma.EnumEsigningPostCompletionStatusFieldUpdateOperationsInput | $Enums.EsigningPostCompletionStatus
+  autoFilingAttempts?: Prisma.IntFieldUpdateOperationsInput | number
+  autoFilingAvailableAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  autoFilingClaimedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  autoFilingLeaseExpiresAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  autoFilingClaimToken?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  autoFilingError?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  consentVersion?: Prisma.StringFieldUpdateOperationsInput | string
+  consentDisclosureSnapshot?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  deletedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  documents?: Prisma.EsigningEnvelopeDocumentUncheckedUpdateManyWithoutEnvelopeNestedInput
   events?: Prisma.EsigningEnvelopeEventUncheckedUpdateManyWithoutEnvelopeNestedInput
   fieldDefinitions?: Prisma.EsigningDocumentFieldDefinitionUncheckedUpdateManyWithoutEnvelopeNestedInput
   recipients?: Prisma.EsigningEnvelopeRecipientUncheckedUpdateManyWithoutEnvelopeNestedInput
@@ -1969,6 +2243,7 @@ export type EsigningEnvelopeCreateWithoutSharePointFilingsInput = {
   pdfGenerationAttempts?: number
   pdfGenerationClaimedAt?: Date | string | null
   pdfGenerationError?: string | null
+  currentArtifactVersion?: number | null
   autoFilingStatus?: $Enums.EsigningPostCompletionStatus
   autoFilingAttempts?: number
   autoFilingAvailableAt?: Date | string | null
@@ -1992,6 +2267,7 @@ export type EsigningEnvelopeCreateWithoutSharePointFilingsInput = {
   emailDeliveries?: Prisma.EsigningEmailDeliveryCreateNestedManyWithoutEnvelopeInput
   taskStageOutcomes?: Prisma.TaskStageOutcomeCreateNestedManyWithoutEsigningEnvelopeInput
   taskEsigningPreparations?: Prisma.TaskEsigningPreparationCreateNestedManyWithoutEsigningEnvelopeInput
+  issuedArtifacts?: Prisma.EsigningIssuedArtifactCreateNestedManyWithoutEnvelopeInput
 }
 
 export type EsigningEnvelopeUncheckedCreateWithoutSharePointFilingsInput = {
@@ -2017,6 +2293,7 @@ export type EsigningEnvelopeUncheckedCreateWithoutSharePointFilingsInput = {
   pdfGenerationAttempts?: number
   pdfGenerationClaimedAt?: Date | string | null
   pdfGenerationError?: string | null
+  currentArtifactVersion?: number | null
   autoFilingStatus?: $Enums.EsigningPostCompletionStatus
   autoFilingAttempts?: number
   autoFilingAvailableAt?: Date | string | null
@@ -2037,6 +2314,7 @@ export type EsigningEnvelopeUncheckedCreateWithoutSharePointFilingsInput = {
   emailDeliveries?: Prisma.EsigningEmailDeliveryUncheckedCreateNestedManyWithoutEnvelopeInput
   taskStageOutcomes?: Prisma.TaskStageOutcomeUncheckedCreateNestedManyWithoutEsigningEnvelopeInput
   taskEsigningPreparations?: Prisma.TaskEsigningPreparationUncheckedCreateNestedManyWithoutEsigningEnvelopeInput
+  issuedArtifacts?: Prisma.EsigningIssuedArtifactUncheckedCreateNestedManyWithoutEnvelopeInput
 }
 
 export type EsigningEnvelopeCreateOrConnectWithoutSharePointFilingsInput = {
@@ -2075,6 +2353,7 @@ export type EsigningEnvelopeUpdateWithoutSharePointFilingsInput = {
   pdfGenerationAttempts?: Prisma.IntFieldUpdateOperationsInput | number
   pdfGenerationClaimedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   pdfGenerationError?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  currentArtifactVersion?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   autoFilingStatus?: Prisma.EnumEsigningPostCompletionStatusFieldUpdateOperationsInput | $Enums.EsigningPostCompletionStatus
   autoFilingAttempts?: Prisma.IntFieldUpdateOperationsInput | number
   autoFilingAvailableAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -2098,6 +2377,7 @@ export type EsigningEnvelopeUpdateWithoutSharePointFilingsInput = {
   emailDeliveries?: Prisma.EsigningEmailDeliveryUpdateManyWithoutEnvelopeNestedInput
   taskStageOutcomes?: Prisma.TaskStageOutcomeUpdateManyWithoutEsigningEnvelopeNestedInput
   taskEsigningPreparations?: Prisma.TaskEsigningPreparationUpdateManyWithoutEsigningEnvelopeNestedInput
+  issuedArtifacts?: Prisma.EsigningIssuedArtifactUpdateManyWithoutEnvelopeNestedInput
 }
 
 export type EsigningEnvelopeUncheckedUpdateWithoutSharePointFilingsInput = {
@@ -2123,6 +2403,7 @@ export type EsigningEnvelopeUncheckedUpdateWithoutSharePointFilingsInput = {
   pdfGenerationAttempts?: Prisma.IntFieldUpdateOperationsInput | number
   pdfGenerationClaimedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   pdfGenerationError?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  currentArtifactVersion?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   autoFilingStatus?: Prisma.EnumEsigningPostCompletionStatusFieldUpdateOperationsInput | $Enums.EsigningPostCompletionStatus
   autoFilingAttempts?: Prisma.IntFieldUpdateOperationsInput | number
   autoFilingAvailableAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -2143,6 +2424,7 @@ export type EsigningEnvelopeUncheckedUpdateWithoutSharePointFilingsInput = {
   emailDeliveries?: Prisma.EsigningEmailDeliveryUncheckedUpdateManyWithoutEnvelopeNestedInput
   taskStageOutcomes?: Prisma.TaskStageOutcomeUncheckedUpdateManyWithoutEsigningEnvelopeNestedInput
   taskEsigningPreparations?: Prisma.TaskEsigningPreparationUncheckedUpdateManyWithoutEsigningEnvelopeNestedInput
+  issuedArtifacts?: Prisma.EsigningIssuedArtifactUncheckedUpdateManyWithoutEnvelopeNestedInput
 }
 
 export type EsigningEnvelopeCreateWithoutRecipientsInput = {
@@ -2165,6 +2447,7 @@ export type EsigningEnvelopeCreateWithoutRecipientsInput = {
   pdfGenerationAttempts?: number
   pdfGenerationClaimedAt?: Date | string | null
   pdfGenerationError?: string | null
+  currentArtifactVersion?: number | null
   autoFilingStatus?: $Enums.EsigningPostCompletionStatus
   autoFilingAttempts?: number
   autoFilingAvailableAt?: Date | string | null
@@ -2188,6 +2471,7 @@ export type EsigningEnvelopeCreateWithoutRecipientsInput = {
   taskStageOutcomes?: Prisma.TaskStageOutcomeCreateNestedManyWithoutEsigningEnvelopeInput
   taskEsigningPreparations?: Prisma.TaskEsigningPreparationCreateNestedManyWithoutEsigningEnvelopeInput
   sharePointFilings?: Prisma.EsigningSharePointFilingCreateNestedManyWithoutEnvelopeInput
+  issuedArtifacts?: Prisma.EsigningIssuedArtifactCreateNestedManyWithoutEnvelopeInput
 }
 
 export type EsigningEnvelopeUncheckedCreateWithoutRecipientsInput = {
@@ -2213,6 +2497,7 @@ export type EsigningEnvelopeUncheckedCreateWithoutRecipientsInput = {
   pdfGenerationAttempts?: number
   pdfGenerationClaimedAt?: Date | string | null
   pdfGenerationError?: string | null
+  currentArtifactVersion?: number | null
   autoFilingStatus?: $Enums.EsigningPostCompletionStatus
   autoFilingAttempts?: number
   autoFilingAvailableAt?: Date | string | null
@@ -2233,6 +2518,7 @@ export type EsigningEnvelopeUncheckedCreateWithoutRecipientsInput = {
   taskStageOutcomes?: Prisma.TaskStageOutcomeUncheckedCreateNestedManyWithoutEsigningEnvelopeInput
   taskEsigningPreparations?: Prisma.TaskEsigningPreparationUncheckedCreateNestedManyWithoutEsigningEnvelopeInput
   sharePointFilings?: Prisma.EsigningSharePointFilingUncheckedCreateNestedManyWithoutEnvelopeInput
+  issuedArtifacts?: Prisma.EsigningIssuedArtifactUncheckedCreateNestedManyWithoutEnvelopeInput
 }
 
 export type EsigningEnvelopeCreateOrConnectWithoutRecipientsInput = {
@@ -2271,6 +2557,7 @@ export type EsigningEnvelopeUpdateWithoutRecipientsInput = {
   pdfGenerationAttempts?: Prisma.IntFieldUpdateOperationsInput | number
   pdfGenerationClaimedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   pdfGenerationError?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  currentArtifactVersion?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   autoFilingStatus?: Prisma.EnumEsigningPostCompletionStatusFieldUpdateOperationsInput | $Enums.EsigningPostCompletionStatus
   autoFilingAttempts?: Prisma.IntFieldUpdateOperationsInput | number
   autoFilingAvailableAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -2294,6 +2581,7 @@ export type EsigningEnvelopeUpdateWithoutRecipientsInput = {
   taskStageOutcomes?: Prisma.TaskStageOutcomeUpdateManyWithoutEsigningEnvelopeNestedInput
   taskEsigningPreparations?: Prisma.TaskEsigningPreparationUpdateManyWithoutEsigningEnvelopeNestedInput
   sharePointFilings?: Prisma.EsigningSharePointFilingUpdateManyWithoutEnvelopeNestedInput
+  issuedArtifacts?: Prisma.EsigningIssuedArtifactUpdateManyWithoutEnvelopeNestedInput
 }
 
 export type EsigningEnvelopeUncheckedUpdateWithoutRecipientsInput = {
@@ -2319,6 +2607,7 @@ export type EsigningEnvelopeUncheckedUpdateWithoutRecipientsInput = {
   pdfGenerationAttempts?: Prisma.IntFieldUpdateOperationsInput | number
   pdfGenerationClaimedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   pdfGenerationError?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  currentArtifactVersion?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   autoFilingStatus?: Prisma.EnumEsigningPostCompletionStatusFieldUpdateOperationsInput | $Enums.EsigningPostCompletionStatus
   autoFilingAttempts?: Prisma.IntFieldUpdateOperationsInput | number
   autoFilingAvailableAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -2339,6 +2628,7 @@ export type EsigningEnvelopeUncheckedUpdateWithoutRecipientsInput = {
   taskStageOutcomes?: Prisma.TaskStageOutcomeUncheckedUpdateManyWithoutEsigningEnvelopeNestedInput
   taskEsigningPreparations?: Prisma.TaskEsigningPreparationUncheckedUpdateManyWithoutEsigningEnvelopeNestedInput
   sharePointFilings?: Prisma.EsigningSharePointFilingUncheckedUpdateManyWithoutEnvelopeNestedInput
+  issuedArtifacts?: Prisma.EsigningIssuedArtifactUncheckedUpdateManyWithoutEnvelopeNestedInput
 }
 
 export type EsigningEnvelopeCreateWithoutFieldDefinitionsInput = {
@@ -2361,6 +2651,7 @@ export type EsigningEnvelopeCreateWithoutFieldDefinitionsInput = {
   pdfGenerationAttempts?: number
   pdfGenerationClaimedAt?: Date | string | null
   pdfGenerationError?: string | null
+  currentArtifactVersion?: number | null
   autoFilingStatus?: $Enums.EsigningPostCompletionStatus
   autoFilingAttempts?: number
   autoFilingAvailableAt?: Date | string | null
@@ -2384,6 +2675,7 @@ export type EsigningEnvelopeCreateWithoutFieldDefinitionsInput = {
   taskStageOutcomes?: Prisma.TaskStageOutcomeCreateNestedManyWithoutEsigningEnvelopeInput
   taskEsigningPreparations?: Prisma.TaskEsigningPreparationCreateNestedManyWithoutEsigningEnvelopeInput
   sharePointFilings?: Prisma.EsigningSharePointFilingCreateNestedManyWithoutEnvelopeInput
+  issuedArtifacts?: Prisma.EsigningIssuedArtifactCreateNestedManyWithoutEnvelopeInput
 }
 
 export type EsigningEnvelopeUncheckedCreateWithoutFieldDefinitionsInput = {
@@ -2409,6 +2701,7 @@ export type EsigningEnvelopeUncheckedCreateWithoutFieldDefinitionsInput = {
   pdfGenerationAttempts?: number
   pdfGenerationClaimedAt?: Date | string | null
   pdfGenerationError?: string | null
+  currentArtifactVersion?: number | null
   autoFilingStatus?: $Enums.EsigningPostCompletionStatus
   autoFilingAttempts?: number
   autoFilingAvailableAt?: Date | string | null
@@ -2429,6 +2722,7 @@ export type EsigningEnvelopeUncheckedCreateWithoutFieldDefinitionsInput = {
   taskStageOutcomes?: Prisma.TaskStageOutcomeUncheckedCreateNestedManyWithoutEsigningEnvelopeInput
   taskEsigningPreparations?: Prisma.TaskEsigningPreparationUncheckedCreateNestedManyWithoutEsigningEnvelopeInput
   sharePointFilings?: Prisma.EsigningSharePointFilingUncheckedCreateNestedManyWithoutEnvelopeInput
+  issuedArtifacts?: Prisma.EsigningIssuedArtifactUncheckedCreateNestedManyWithoutEnvelopeInput
 }
 
 export type EsigningEnvelopeCreateOrConnectWithoutFieldDefinitionsInput = {
@@ -2467,6 +2761,7 @@ export type EsigningEnvelopeUpdateWithoutFieldDefinitionsInput = {
   pdfGenerationAttempts?: Prisma.IntFieldUpdateOperationsInput | number
   pdfGenerationClaimedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   pdfGenerationError?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  currentArtifactVersion?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   autoFilingStatus?: Prisma.EnumEsigningPostCompletionStatusFieldUpdateOperationsInput | $Enums.EsigningPostCompletionStatus
   autoFilingAttempts?: Prisma.IntFieldUpdateOperationsInput | number
   autoFilingAvailableAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -2490,6 +2785,7 @@ export type EsigningEnvelopeUpdateWithoutFieldDefinitionsInput = {
   taskStageOutcomes?: Prisma.TaskStageOutcomeUpdateManyWithoutEsigningEnvelopeNestedInput
   taskEsigningPreparations?: Prisma.TaskEsigningPreparationUpdateManyWithoutEsigningEnvelopeNestedInput
   sharePointFilings?: Prisma.EsigningSharePointFilingUpdateManyWithoutEnvelopeNestedInput
+  issuedArtifacts?: Prisma.EsigningIssuedArtifactUpdateManyWithoutEnvelopeNestedInput
 }
 
 export type EsigningEnvelopeUncheckedUpdateWithoutFieldDefinitionsInput = {
@@ -2515,6 +2811,7 @@ export type EsigningEnvelopeUncheckedUpdateWithoutFieldDefinitionsInput = {
   pdfGenerationAttempts?: Prisma.IntFieldUpdateOperationsInput | number
   pdfGenerationClaimedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   pdfGenerationError?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  currentArtifactVersion?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   autoFilingStatus?: Prisma.EnumEsigningPostCompletionStatusFieldUpdateOperationsInput | $Enums.EsigningPostCompletionStatus
   autoFilingAttempts?: Prisma.IntFieldUpdateOperationsInput | number
   autoFilingAvailableAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -2535,6 +2832,7 @@ export type EsigningEnvelopeUncheckedUpdateWithoutFieldDefinitionsInput = {
   taskStageOutcomes?: Prisma.TaskStageOutcomeUncheckedUpdateManyWithoutEsigningEnvelopeNestedInput
   taskEsigningPreparations?: Prisma.TaskEsigningPreparationUncheckedUpdateManyWithoutEsigningEnvelopeNestedInput
   sharePointFilings?: Prisma.EsigningSharePointFilingUncheckedUpdateManyWithoutEnvelopeNestedInput
+  issuedArtifacts?: Prisma.EsigningIssuedArtifactUncheckedUpdateManyWithoutEnvelopeNestedInput
 }
 
 export type EsigningEnvelopeCreateWithoutEventsInput = {
@@ -2557,6 +2855,7 @@ export type EsigningEnvelopeCreateWithoutEventsInput = {
   pdfGenerationAttempts?: number
   pdfGenerationClaimedAt?: Date | string | null
   pdfGenerationError?: string | null
+  currentArtifactVersion?: number | null
   autoFilingStatus?: $Enums.EsigningPostCompletionStatus
   autoFilingAttempts?: number
   autoFilingAvailableAt?: Date | string | null
@@ -2580,6 +2879,7 @@ export type EsigningEnvelopeCreateWithoutEventsInput = {
   taskStageOutcomes?: Prisma.TaskStageOutcomeCreateNestedManyWithoutEsigningEnvelopeInput
   taskEsigningPreparations?: Prisma.TaskEsigningPreparationCreateNestedManyWithoutEsigningEnvelopeInput
   sharePointFilings?: Prisma.EsigningSharePointFilingCreateNestedManyWithoutEnvelopeInput
+  issuedArtifacts?: Prisma.EsigningIssuedArtifactCreateNestedManyWithoutEnvelopeInput
 }
 
 export type EsigningEnvelopeUncheckedCreateWithoutEventsInput = {
@@ -2605,6 +2905,7 @@ export type EsigningEnvelopeUncheckedCreateWithoutEventsInput = {
   pdfGenerationAttempts?: number
   pdfGenerationClaimedAt?: Date | string | null
   pdfGenerationError?: string | null
+  currentArtifactVersion?: number | null
   autoFilingStatus?: $Enums.EsigningPostCompletionStatus
   autoFilingAttempts?: number
   autoFilingAvailableAt?: Date | string | null
@@ -2625,6 +2926,7 @@ export type EsigningEnvelopeUncheckedCreateWithoutEventsInput = {
   taskStageOutcomes?: Prisma.TaskStageOutcomeUncheckedCreateNestedManyWithoutEsigningEnvelopeInput
   taskEsigningPreparations?: Prisma.TaskEsigningPreparationUncheckedCreateNestedManyWithoutEsigningEnvelopeInput
   sharePointFilings?: Prisma.EsigningSharePointFilingUncheckedCreateNestedManyWithoutEnvelopeInput
+  issuedArtifacts?: Prisma.EsigningIssuedArtifactUncheckedCreateNestedManyWithoutEnvelopeInput
 }
 
 export type EsigningEnvelopeCreateOrConnectWithoutEventsInput = {
@@ -2663,6 +2965,7 @@ export type EsigningEnvelopeUpdateWithoutEventsInput = {
   pdfGenerationAttempts?: Prisma.IntFieldUpdateOperationsInput | number
   pdfGenerationClaimedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   pdfGenerationError?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  currentArtifactVersion?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   autoFilingStatus?: Prisma.EnumEsigningPostCompletionStatusFieldUpdateOperationsInput | $Enums.EsigningPostCompletionStatus
   autoFilingAttempts?: Prisma.IntFieldUpdateOperationsInput | number
   autoFilingAvailableAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -2686,6 +2989,7 @@ export type EsigningEnvelopeUpdateWithoutEventsInput = {
   taskStageOutcomes?: Prisma.TaskStageOutcomeUpdateManyWithoutEsigningEnvelopeNestedInput
   taskEsigningPreparations?: Prisma.TaskEsigningPreparationUpdateManyWithoutEsigningEnvelopeNestedInput
   sharePointFilings?: Prisma.EsigningSharePointFilingUpdateManyWithoutEnvelopeNestedInput
+  issuedArtifacts?: Prisma.EsigningIssuedArtifactUpdateManyWithoutEnvelopeNestedInput
 }
 
 export type EsigningEnvelopeUncheckedUpdateWithoutEventsInput = {
@@ -2711,6 +3015,7 @@ export type EsigningEnvelopeUncheckedUpdateWithoutEventsInput = {
   pdfGenerationAttempts?: Prisma.IntFieldUpdateOperationsInput | number
   pdfGenerationClaimedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   pdfGenerationError?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  currentArtifactVersion?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   autoFilingStatus?: Prisma.EnumEsigningPostCompletionStatusFieldUpdateOperationsInput | $Enums.EsigningPostCompletionStatus
   autoFilingAttempts?: Prisma.IntFieldUpdateOperationsInput | number
   autoFilingAvailableAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -2731,6 +3036,7 @@ export type EsigningEnvelopeUncheckedUpdateWithoutEventsInput = {
   taskStageOutcomes?: Prisma.TaskStageOutcomeUncheckedUpdateManyWithoutEsigningEnvelopeNestedInput
   taskEsigningPreparations?: Prisma.TaskEsigningPreparationUncheckedUpdateManyWithoutEsigningEnvelopeNestedInput
   sharePointFilings?: Prisma.EsigningSharePointFilingUncheckedUpdateManyWithoutEnvelopeNestedInput
+  issuedArtifacts?: Prisma.EsigningIssuedArtifactUncheckedUpdateManyWithoutEnvelopeNestedInput
 }
 
 export type EsigningEnvelopeCreateWithoutEmailDeliveriesInput = {
@@ -2753,6 +3059,7 @@ export type EsigningEnvelopeCreateWithoutEmailDeliveriesInput = {
   pdfGenerationAttempts?: number
   pdfGenerationClaimedAt?: Date | string | null
   pdfGenerationError?: string | null
+  currentArtifactVersion?: number | null
   autoFilingStatus?: $Enums.EsigningPostCompletionStatus
   autoFilingAttempts?: number
   autoFilingAvailableAt?: Date | string | null
@@ -2776,6 +3083,7 @@ export type EsigningEnvelopeCreateWithoutEmailDeliveriesInput = {
   taskStageOutcomes?: Prisma.TaskStageOutcomeCreateNestedManyWithoutEsigningEnvelopeInput
   taskEsigningPreparations?: Prisma.TaskEsigningPreparationCreateNestedManyWithoutEsigningEnvelopeInput
   sharePointFilings?: Prisma.EsigningSharePointFilingCreateNestedManyWithoutEnvelopeInput
+  issuedArtifacts?: Prisma.EsigningIssuedArtifactCreateNestedManyWithoutEnvelopeInput
 }
 
 export type EsigningEnvelopeUncheckedCreateWithoutEmailDeliveriesInput = {
@@ -2801,6 +3109,7 @@ export type EsigningEnvelopeUncheckedCreateWithoutEmailDeliveriesInput = {
   pdfGenerationAttempts?: number
   pdfGenerationClaimedAt?: Date | string | null
   pdfGenerationError?: string | null
+  currentArtifactVersion?: number | null
   autoFilingStatus?: $Enums.EsigningPostCompletionStatus
   autoFilingAttempts?: number
   autoFilingAvailableAt?: Date | string | null
@@ -2821,6 +3130,7 @@ export type EsigningEnvelopeUncheckedCreateWithoutEmailDeliveriesInput = {
   taskStageOutcomes?: Prisma.TaskStageOutcomeUncheckedCreateNestedManyWithoutEsigningEnvelopeInput
   taskEsigningPreparations?: Prisma.TaskEsigningPreparationUncheckedCreateNestedManyWithoutEsigningEnvelopeInput
   sharePointFilings?: Prisma.EsigningSharePointFilingUncheckedCreateNestedManyWithoutEnvelopeInput
+  issuedArtifacts?: Prisma.EsigningIssuedArtifactUncheckedCreateNestedManyWithoutEnvelopeInput
 }
 
 export type EsigningEnvelopeCreateOrConnectWithoutEmailDeliveriesInput = {
@@ -2859,6 +3169,7 @@ export type EsigningEnvelopeUpdateWithoutEmailDeliveriesInput = {
   pdfGenerationAttempts?: Prisma.IntFieldUpdateOperationsInput | number
   pdfGenerationClaimedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   pdfGenerationError?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  currentArtifactVersion?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   autoFilingStatus?: Prisma.EnumEsigningPostCompletionStatusFieldUpdateOperationsInput | $Enums.EsigningPostCompletionStatus
   autoFilingAttempts?: Prisma.IntFieldUpdateOperationsInput | number
   autoFilingAvailableAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -2882,6 +3193,7 @@ export type EsigningEnvelopeUpdateWithoutEmailDeliveriesInput = {
   taskStageOutcomes?: Prisma.TaskStageOutcomeUpdateManyWithoutEsigningEnvelopeNestedInput
   taskEsigningPreparations?: Prisma.TaskEsigningPreparationUpdateManyWithoutEsigningEnvelopeNestedInput
   sharePointFilings?: Prisma.EsigningSharePointFilingUpdateManyWithoutEnvelopeNestedInput
+  issuedArtifacts?: Prisma.EsigningIssuedArtifactUpdateManyWithoutEnvelopeNestedInput
 }
 
 export type EsigningEnvelopeUncheckedUpdateWithoutEmailDeliveriesInput = {
@@ -2907,6 +3219,7 @@ export type EsigningEnvelopeUncheckedUpdateWithoutEmailDeliveriesInput = {
   pdfGenerationAttempts?: Prisma.IntFieldUpdateOperationsInput | number
   pdfGenerationClaimedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   pdfGenerationError?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  currentArtifactVersion?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   autoFilingStatus?: Prisma.EnumEsigningPostCompletionStatusFieldUpdateOperationsInput | $Enums.EsigningPostCompletionStatus
   autoFilingAttempts?: Prisma.IntFieldUpdateOperationsInput | number
   autoFilingAvailableAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -2927,6 +3240,7 @@ export type EsigningEnvelopeUncheckedUpdateWithoutEmailDeliveriesInput = {
   taskStageOutcomes?: Prisma.TaskStageOutcomeUncheckedUpdateManyWithoutEsigningEnvelopeNestedInput
   taskEsigningPreparations?: Prisma.TaskEsigningPreparationUncheckedUpdateManyWithoutEsigningEnvelopeNestedInput
   sharePointFilings?: Prisma.EsigningSharePointFilingUncheckedUpdateManyWithoutEnvelopeNestedInput
+  issuedArtifacts?: Prisma.EsigningIssuedArtifactUncheckedUpdateManyWithoutEnvelopeNestedInput
 }
 
 export type EsigningEnvelopeCreateWithoutTaskStageOutcomesInput = {
@@ -2949,6 +3263,7 @@ export type EsigningEnvelopeCreateWithoutTaskStageOutcomesInput = {
   pdfGenerationAttempts?: number
   pdfGenerationClaimedAt?: Date | string | null
   pdfGenerationError?: string | null
+  currentArtifactVersion?: number | null
   autoFilingStatus?: $Enums.EsigningPostCompletionStatus
   autoFilingAttempts?: number
   autoFilingAvailableAt?: Date | string | null
@@ -2972,6 +3287,7 @@ export type EsigningEnvelopeCreateWithoutTaskStageOutcomesInput = {
   emailDeliveries?: Prisma.EsigningEmailDeliveryCreateNestedManyWithoutEnvelopeInput
   taskEsigningPreparations?: Prisma.TaskEsigningPreparationCreateNestedManyWithoutEsigningEnvelopeInput
   sharePointFilings?: Prisma.EsigningSharePointFilingCreateNestedManyWithoutEnvelopeInput
+  issuedArtifacts?: Prisma.EsigningIssuedArtifactCreateNestedManyWithoutEnvelopeInput
 }
 
 export type EsigningEnvelopeUncheckedCreateWithoutTaskStageOutcomesInput = {
@@ -2997,6 +3313,7 @@ export type EsigningEnvelopeUncheckedCreateWithoutTaskStageOutcomesInput = {
   pdfGenerationAttempts?: number
   pdfGenerationClaimedAt?: Date | string | null
   pdfGenerationError?: string | null
+  currentArtifactVersion?: number | null
   autoFilingStatus?: $Enums.EsigningPostCompletionStatus
   autoFilingAttempts?: number
   autoFilingAvailableAt?: Date | string | null
@@ -3017,6 +3334,7 @@ export type EsigningEnvelopeUncheckedCreateWithoutTaskStageOutcomesInput = {
   emailDeliveries?: Prisma.EsigningEmailDeliveryUncheckedCreateNestedManyWithoutEnvelopeInput
   taskEsigningPreparations?: Prisma.TaskEsigningPreparationUncheckedCreateNestedManyWithoutEsigningEnvelopeInput
   sharePointFilings?: Prisma.EsigningSharePointFilingUncheckedCreateNestedManyWithoutEnvelopeInput
+  issuedArtifacts?: Prisma.EsigningIssuedArtifactUncheckedCreateNestedManyWithoutEnvelopeInput
 }
 
 export type EsigningEnvelopeCreateOrConnectWithoutTaskStageOutcomesInput = {
@@ -3055,6 +3373,7 @@ export type EsigningEnvelopeUpdateWithoutTaskStageOutcomesInput = {
   pdfGenerationAttempts?: Prisma.IntFieldUpdateOperationsInput | number
   pdfGenerationClaimedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   pdfGenerationError?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  currentArtifactVersion?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   autoFilingStatus?: Prisma.EnumEsigningPostCompletionStatusFieldUpdateOperationsInput | $Enums.EsigningPostCompletionStatus
   autoFilingAttempts?: Prisma.IntFieldUpdateOperationsInput | number
   autoFilingAvailableAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -3078,6 +3397,7 @@ export type EsigningEnvelopeUpdateWithoutTaskStageOutcomesInput = {
   emailDeliveries?: Prisma.EsigningEmailDeliveryUpdateManyWithoutEnvelopeNestedInput
   taskEsigningPreparations?: Prisma.TaskEsigningPreparationUpdateManyWithoutEsigningEnvelopeNestedInput
   sharePointFilings?: Prisma.EsigningSharePointFilingUpdateManyWithoutEnvelopeNestedInput
+  issuedArtifacts?: Prisma.EsigningIssuedArtifactUpdateManyWithoutEnvelopeNestedInput
 }
 
 export type EsigningEnvelopeUncheckedUpdateWithoutTaskStageOutcomesInput = {
@@ -3103,6 +3423,7 @@ export type EsigningEnvelopeUncheckedUpdateWithoutTaskStageOutcomesInput = {
   pdfGenerationAttempts?: Prisma.IntFieldUpdateOperationsInput | number
   pdfGenerationClaimedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   pdfGenerationError?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  currentArtifactVersion?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   autoFilingStatus?: Prisma.EnumEsigningPostCompletionStatusFieldUpdateOperationsInput | $Enums.EsigningPostCompletionStatus
   autoFilingAttempts?: Prisma.IntFieldUpdateOperationsInput | number
   autoFilingAvailableAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -3123,6 +3444,7 @@ export type EsigningEnvelopeUncheckedUpdateWithoutTaskStageOutcomesInput = {
   emailDeliveries?: Prisma.EsigningEmailDeliveryUncheckedUpdateManyWithoutEnvelopeNestedInput
   taskEsigningPreparations?: Prisma.TaskEsigningPreparationUncheckedUpdateManyWithoutEsigningEnvelopeNestedInput
   sharePointFilings?: Prisma.EsigningSharePointFilingUncheckedUpdateManyWithoutEnvelopeNestedInput
+  issuedArtifacts?: Prisma.EsigningIssuedArtifactUncheckedUpdateManyWithoutEnvelopeNestedInput
 }
 
 export type EsigningEnvelopeCreateWithoutTaskEsigningPreparationsInput = {
@@ -3145,6 +3467,7 @@ export type EsigningEnvelopeCreateWithoutTaskEsigningPreparationsInput = {
   pdfGenerationAttempts?: number
   pdfGenerationClaimedAt?: Date | string | null
   pdfGenerationError?: string | null
+  currentArtifactVersion?: number | null
   autoFilingStatus?: $Enums.EsigningPostCompletionStatus
   autoFilingAttempts?: number
   autoFilingAvailableAt?: Date | string | null
@@ -3168,6 +3491,7 @@ export type EsigningEnvelopeCreateWithoutTaskEsigningPreparationsInput = {
   emailDeliveries?: Prisma.EsigningEmailDeliveryCreateNestedManyWithoutEnvelopeInput
   taskStageOutcomes?: Prisma.TaskStageOutcomeCreateNestedManyWithoutEsigningEnvelopeInput
   sharePointFilings?: Prisma.EsigningSharePointFilingCreateNestedManyWithoutEnvelopeInput
+  issuedArtifacts?: Prisma.EsigningIssuedArtifactCreateNestedManyWithoutEnvelopeInput
 }
 
 export type EsigningEnvelopeUncheckedCreateWithoutTaskEsigningPreparationsInput = {
@@ -3193,6 +3517,7 @@ export type EsigningEnvelopeUncheckedCreateWithoutTaskEsigningPreparationsInput 
   pdfGenerationAttempts?: number
   pdfGenerationClaimedAt?: Date | string | null
   pdfGenerationError?: string | null
+  currentArtifactVersion?: number | null
   autoFilingStatus?: $Enums.EsigningPostCompletionStatus
   autoFilingAttempts?: number
   autoFilingAvailableAt?: Date | string | null
@@ -3213,6 +3538,7 @@ export type EsigningEnvelopeUncheckedCreateWithoutTaskEsigningPreparationsInput 
   emailDeliveries?: Prisma.EsigningEmailDeliveryUncheckedCreateNestedManyWithoutEnvelopeInput
   taskStageOutcomes?: Prisma.TaskStageOutcomeUncheckedCreateNestedManyWithoutEsigningEnvelopeInput
   sharePointFilings?: Prisma.EsigningSharePointFilingUncheckedCreateNestedManyWithoutEnvelopeInput
+  issuedArtifacts?: Prisma.EsigningIssuedArtifactUncheckedCreateNestedManyWithoutEnvelopeInput
 }
 
 export type EsigningEnvelopeCreateOrConnectWithoutTaskEsigningPreparationsInput = {
@@ -3251,6 +3577,7 @@ export type EsigningEnvelopeUpdateWithoutTaskEsigningPreparationsInput = {
   pdfGenerationAttempts?: Prisma.IntFieldUpdateOperationsInput | number
   pdfGenerationClaimedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   pdfGenerationError?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  currentArtifactVersion?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   autoFilingStatus?: Prisma.EnumEsigningPostCompletionStatusFieldUpdateOperationsInput | $Enums.EsigningPostCompletionStatus
   autoFilingAttempts?: Prisma.IntFieldUpdateOperationsInput | number
   autoFilingAvailableAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -3274,6 +3601,7 @@ export type EsigningEnvelopeUpdateWithoutTaskEsigningPreparationsInput = {
   emailDeliveries?: Prisma.EsigningEmailDeliveryUpdateManyWithoutEnvelopeNestedInput
   taskStageOutcomes?: Prisma.TaskStageOutcomeUpdateManyWithoutEsigningEnvelopeNestedInput
   sharePointFilings?: Prisma.EsigningSharePointFilingUpdateManyWithoutEnvelopeNestedInput
+  issuedArtifacts?: Prisma.EsigningIssuedArtifactUpdateManyWithoutEnvelopeNestedInput
 }
 
 export type EsigningEnvelopeUncheckedUpdateWithoutTaskEsigningPreparationsInput = {
@@ -3299,6 +3627,7 @@ export type EsigningEnvelopeUncheckedUpdateWithoutTaskEsigningPreparationsInput 
   pdfGenerationAttempts?: Prisma.IntFieldUpdateOperationsInput | number
   pdfGenerationClaimedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   pdfGenerationError?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  currentArtifactVersion?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   autoFilingStatus?: Prisma.EnumEsigningPostCompletionStatusFieldUpdateOperationsInput | $Enums.EsigningPostCompletionStatus
   autoFilingAttempts?: Prisma.IntFieldUpdateOperationsInput | number
   autoFilingAvailableAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -3319,6 +3648,7 @@ export type EsigningEnvelopeUncheckedUpdateWithoutTaskEsigningPreparationsInput 
   emailDeliveries?: Prisma.EsigningEmailDeliveryUncheckedUpdateManyWithoutEnvelopeNestedInput
   taskStageOutcomes?: Prisma.TaskStageOutcomeUncheckedUpdateManyWithoutEsigningEnvelopeNestedInput
   sharePointFilings?: Prisma.EsigningSharePointFilingUncheckedUpdateManyWithoutEnvelopeNestedInput
+  issuedArtifacts?: Prisma.EsigningIssuedArtifactUncheckedUpdateManyWithoutEnvelopeNestedInput
 }
 
 export type EsigningEnvelopeCreateManyTenantInput = {
@@ -3343,6 +3673,7 @@ export type EsigningEnvelopeCreateManyTenantInput = {
   pdfGenerationAttempts?: number
   pdfGenerationClaimedAt?: Date | string | null
   pdfGenerationError?: string | null
+  currentArtifactVersion?: number | null
   autoFilingStatus?: $Enums.EsigningPostCompletionStatus
   autoFilingAttempts?: number
   autoFilingAvailableAt?: Date | string | null
@@ -3378,6 +3709,7 @@ export type EsigningEnvelopeUpdateWithoutTenantInput = {
   pdfGenerationAttempts?: Prisma.IntFieldUpdateOperationsInput | number
   pdfGenerationClaimedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   pdfGenerationError?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  currentArtifactVersion?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   autoFilingStatus?: Prisma.EnumEsigningPostCompletionStatusFieldUpdateOperationsInput | $Enums.EsigningPostCompletionStatus
   autoFilingAttempts?: Prisma.IntFieldUpdateOperationsInput | number
   autoFilingAvailableAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -3401,6 +3733,7 @@ export type EsigningEnvelopeUpdateWithoutTenantInput = {
   taskStageOutcomes?: Prisma.TaskStageOutcomeUpdateManyWithoutEsigningEnvelopeNestedInput
   taskEsigningPreparations?: Prisma.TaskEsigningPreparationUpdateManyWithoutEsigningEnvelopeNestedInput
   sharePointFilings?: Prisma.EsigningSharePointFilingUpdateManyWithoutEnvelopeNestedInput
+  issuedArtifacts?: Prisma.EsigningIssuedArtifactUpdateManyWithoutEnvelopeNestedInput
 }
 
 export type EsigningEnvelopeUncheckedUpdateWithoutTenantInput = {
@@ -3425,6 +3758,7 @@ export type EsigningEnvelopeUncheckedUpdateWithoutTenantInput = {
   pdfGenerationAttempts?: Prisma.IntFieldUpdateOperationsInput | number
   pdfGenerationClaimedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   pdfGenerationError?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  currentArtifactVersion?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   autoFilingStatus?: Prisma.EnumEsigningPostCompletionStatusFieldUpdateOperationsInput | $Enums.EsigningPostCompletionStatus
   autoFilingAttempts?: Prisma.IntFieldUpdateOperationsInput | number
   autoFilingAvailableAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -3446,6 +3780,7 @@ export type EsigningEnvelopeUncheckedUpdateWithoutTenantInput = {
   taskStageOutcomes?: Prisma.TaskStageOutcomeUncheckedUpdateManyWithoutEsigningEnvelopeNestedInput
   taskEsigningPreparations?: Prisma.TaskEsigningPreparationUncheckedUpdateManyWithoutEsigningEnvelopeNestedInput
   sharePointFilings?: Prisma.EsigningSharePointFilingUncheckedUpdateManyWithoutEnvelopeNestedInput
+  issuedArtifacts?: Prisma.EsigningIssuedArtifactUncheckedUpdateManyWithoutEnvelopeNestedInput
 }
 
 export type EsigningEnvelopeUncheckedUpdateManyWithoutTenantInput = {
@@ -3470,6 +3805,7 @@ export type EsigningEnvelopeUncheckedUpdateManyWithoutTenantInput = {
   pdfGenerationAttempts?: Prisma.IntFieldUpdateOperationsInput | number
   pdfGenerationClaimedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   pdfGenerationError?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  currentArtifactVersion?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   autoFilingStatus?: Prisma.EnumEsigningPostCompletionStatusFieldUpdateOperationsInput | $Enums.EsigningPostCompletionStatus
   autoFilingAttempts?: Prisma.IntFieldUpdateOperationsInput | number
   autoFilingAvailableAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -3507,6 +3843,7 @@ export type EsigningEnvelopeCreateManyCreatedByInput = {
   pdfGenerationAttempts?: number
   pdfGenerationClaimedAt?: Date | string | null
   pdfGenerationError?: string | null
+  currentArtifactVersion?: number | null
   autoFilingStatus?: $Enums.EsigningPostCompletionStatus
   autoFilingAttempts?: number
   autoFilingAvailableAt?: Date | string | null
@@ -3542,6 +3879,7 @@ export type EsigningEnvelopeUpdateWithoutCreatedByInput = {
   pdfGenerationAttempts?: Prisma.IntFieldUpdateOperationsInput | number
   pdfGenerationClaimedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   pdfGenerationError?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  currentArtifactVersion?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   autoFilingStatus?: Prisma.EnumEsigningPostCompletionStatusFieldUpdateOperationsInput | $Enums.EsigningPostCompletionStatus
   autoFilingAttempts?: Prisma.IntFieldUpdateOperationsInput | number
   autoFilingAvailableAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -3565,6 +3903,7 @@ export type EsigningEnvelopeUpdateWithoutCreatedByInput = {
   taskStageOutcomes?: Prisma.TaskStageOutcomeUpdateManyWithoutEsigningEnvelopeNestedInput
   taskEsigningPreparations?: Prisma.TaskEsigningPreparationUpdateManyWithoutEsigningEnvelopeNestedInput
   sharePointFilings?: Prisma.EsigningSharePointFilingUpdateManyWithoutEnvelopeNestedInput
+  issuedArtifacts?: Prisma.EsigningIssuedArtifactUpdateManyWithoutEnvelopeNestedInput
 }
 
 export type EsigningEnvelopeUncheckedUpdateWithoutCreatedByInput = {
@@ -3589,6 +3928,7 @@ export type EsigningEnvelopeUncheckedUpdateWithoutCreatedByInput = {
   pdfGenerationAttempts?: Prisma.IntFieldUpdateOperationsInput | number
   pdfGenerationClaimedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   pdfGenerationError?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  currentArtifactVersion?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   autoFilingStatus?: Prisma.EnumEsigningPostCompletionStatusFieldUpdateOperationsInput | $Enums.EsigningPostCompletionStatus
   autoFilingAttempts?: Prisma.IntFieldUpdateOperationsInput | number
   autoFilingAvailableAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -3610,6 +3950,7 @@ export type EsigningEnvelopeUncheckedUpdateWithoutCreatedByInput = {
   taskStageOutcomes?: Prisma.TaskStageOutcomeUncheckedUpdateManyWithoutEsigningEnvelopeNestedInput
   taskEsigningPreparations?: Prisma.TaskEsigningPreparationUncheckedUpdateManyWithoutEsigningEnvelopeNestedInput
   sharePointFilings?: Prisma.EsigningSharePointFilingUncheckedUpdateManyWithoutEnvelopeNestedInput
+  issuedArtifacts?: Prisma.EsigningIssuedArtifactUncheckedUpdateManyWithoutEnvelopeNestedInput
 }
 
 export type EsigningEnvelopeUncheckedUpdateManyWithoutCreatedByInput = {
@@ -3634,6 +3975,7 @@ export type EsigningEnvelopeUncheckedUpdateManyWithoutCreatedByInput = {
   pdfGenerationAttempts?: Prisma.IntFieldUpdateOperationsInput | number
   pdfGenerationClaimedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   pdfGenerationError?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  currentArtifactVersion?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   autoFilingStatus?: Prisma.EnumEsigningPostCompletionStatusFieldUpdateOperationsInput | $Enums.EsigningPostCompletionStatus
   autoFilingAttempts?: Prisma.IntFieldUpdateOperationsInput | number
   autoFilingAvailableAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -3671,6 +4013,7 @@ export type EsigningEnvelopeCreateManyCompanyInput = {
   pdfGenerationAttempts?: number
   pdfGenerationClaimedAt?: Date | string | null
   pdfGenerationError?: string | null
+  currentArtifactVersion?: number | null
   autoFilingStatus?: $Enums.EsigningPostCompletionStatus
   autoFilingAttempts?: number
   autoFilingAvailableAt?: Date | string | null
@@ -3706,6 +4049,7 @@ export type EsigningEnvelopeUpdateWithoutCompanyInput = {
   pdfGenerationAttempts?: Prisma.IntFieldUpdateOperationsInput | number
   pdfGenerationClaimedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   pdfGenerationError?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  currentArtifactVersion?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   autoFilingStatus?: Prisma.EnumEsigningPostCompletionStatusFieldUpdateOperationsInput | $Enums.EsigningPostCompletionStatus
   autoFilingAttempts?: Prisma.IntFieldUpdateOperationsInput | number
   autoFilingAvailableAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -3729,6 +4073,7 @@ export type EsigningEnvelopeUpdateWithoutCompanyInput = {
   taskStageOutcomes?: Prisma.TaskStageOutcomeUpdateManyWithoutEsigningEnvelopeNestedInput
   taskEsigningPreparations?: Prisma.TaskEsigningPreparationUpdateManyWithoutEsigningEnvelopeNestedInput
   sharePointFilings?: Prisma.EsigningSharePointFilingUpdateManyWithoutEnvelopeNestedInput
+  issuedArtifacts?: Prisma.EsigningIssuedArtifactUpdateManyWithoutEnvelopeNestedInput
 }
 
 export type EsigningEnvelopeUncheckedUpdateWithoutCompanyInput = {
@@ -3753,6 +4098,7 @@ export type EsigningEnvelopeUncheckedUpdateWithoutCompanyInput = {
   pdfGenerationAttempts?: Prisma.IntFieldUpdateOperationsInput | number
   pdfGenerationClaimedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   pdfGenerationError?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  currentArtifactVersion?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   autoFilingStatus?: Prisma.EnumEsigningPostCompletionStatusFieldUpdateOperationsInput | $Enums.EsigningPostCompletionStatus
   autoFilingAttempts?: Prisma.IntFieldUpdateOperationsInput | number
   autoFilingAvailableAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -3774,6 +4120,7 @@ export type EsigningEnvelopeUncheckedUpdateWithoutCompanyInput = {
   taskStageOutcomes?: Prisma.TaskStageOutcomeUncheckedUpdateManyWithoutEsigningEnvelopeNestedInput
   taskEsigningPreparations?: Prisma.TaskEsigningPreparationUncheckedUpdateManyWithoutEsigningEnvelopeNestedInput
   sharePointFilings?: Prisma.EsigningSharePointFilingUncheckedUpdateManyWithoutEnvelopeNestedInput
+  issuedArtifacts?: Prisma.EsigningIssuedArtifactUncheckedUpdateManyWithoutEnvelopeNestedInput
 }
 
 export type EsigningEnvelopeUncheckedUpdateManyWithoutCompanyInput = {
@@ -3798,6 +4145,7 @@ export type EsigningEnvelopeUncheckedUpdateManyWithoutCompanyInput = {
   pdfGenerationAttempts?: Prisma.IntFieldUpdateOperationsInput | number
   pdfGenerationClaimedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   pdfGenerationError?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  currentArtifactVersion?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   autoFilingStatus?: Prisma.EnumEsigningPostCompletionStatusFieldUpdateOperationsInput | $Enums.EsigningPostCompletionStatus
   autoFilingAttempts?: Prisma.IntFieldUpdateOperationsInput | number
   autoFilingAvailableAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -3827,6 +4175,7 @@ export type EsigningEnvelopeCountOutputType = {
   taskStageOutcomes: number
   taskEsigningPreparations: number
   sharePointFilings: number
+  issuedArtifacts: number
 }
 
 export type EsigningEnvelopeCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
@@ -3838,6 +4187,7 @@ export type EsigningEnvelopeCountOutputTypeSelect<ExtArgs extends runtime.Types.
   taskStageOutcomes?: boolean | EsigningEnvelopeCountOutputTypeCountTaskStageOutcomesArgs
   taskEsigningPreparations?: boolean | EsigningEnvelopeCountOutputTypeCountTaskEsigningPreparationsArgs
   sharePointFilings?: boolean | EsigningEnvelopeCountOutputTypeCountSharePointFilingsArgs
+  issuedArtifacts?: boolean | EsigningEnvelopeCountOutputTypeCountIssuedArtifactsArgs
 }
 
 /**
@@ -3906,6 +4256,13 @@ export type EsigningEnvelopeCountOutputTypeCountSharePointFilingsArgs<ExtArgs ex
   where?: Prisma.EsigningSharePointFilingWhereInput
 }
 
+/**
+ * EsigningEnvelopeCountOutputType without action
+ */
+export type EsigningEnvelopeCountOutputTypeCountIssuedArtifactsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.EsigningIssuedArtifactWhereInput
+}
+
 
 export type EsigningEnvelopeSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   id?: boolean
@@ -3930,6 +4287,7 @@ export type EsigningEnvelopeSelect<ExtArgs extends runtime.Types.Extensions.Inte
   pdfGenerationAttempts?: boolean
   pdfGenerationClaimedAt?: boolean
   pdfGenerationError?: boolean
+  currentArtifactVersion?: boolean
   autoFilingStatus?: boolean
   autoFilingAttempts?: boolean
   autoFilingAvailableAt?: boolean
@@ -3954,6 +4312,7 @@ export type EsigningEnvelopeSelect<ExtArgs extends runtime.Types.Extensions.Inte
   taskStageOutcomes?: boolean | Prisma.EsigningEnvelope$taskStageOutcomesArgs<ExtArgs>
   taskEsigningPreparations?: boolean | Prisma.EsigningEnvelope$taskEsigningPreparationsArgs<ExtArgs>
   sharePointFilings?: boolean | Prisma.EsigningEnvelope$sharePointFilingsArgs<ExtArgs>
+  issuedArtifacts?: boolean | Prisma.EsigningEnvelope$issuedArtifactsArgs<ExtArgs>
   _count?: boolean | Prisma.EsigningEnvelopeCountOutputTypeDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["esigningEnvelope"]>
 
@@ -3980,6 +4339,7 @@ export type EsigningEnvelopeSelectCreateManyAndReturn<ExtArgs extends runtime.Ty
   pdfGenerationAttempts?: boolean
   pdfGenerationClaimedAt?: boolean
   pdfGenerationError?: boolean
+  currentArtifactVersion?: boolean
   autoFilingStatus?: boolean
   autoFilingAttempts?: boolean
   autoFilingAvailableAt?: boolean
@@ -4021,6 +4381,7 @@ export type EsigningEnvelopeSelectUpdateManyAndReturn<ExtArgs extends runtime.Ty
   pdfGenerationAttempts?: boolean
   pdfGenerationClaimedAt?: boolean
   pdfGenerationError?: boolean
+  currentArtifactVersion?: boolean
   autoFilingStatus?: boolean
   autoFilingAttempts?: boolean
   autoFilingAvailableAt?: boolean
@@ -4062,6 +4423,7 @@ export type EsigningEnvelopeSelectScalar = {
   pdfGenerationAttempts?: boolean
   pdfGenerationClaimedAt?: boolean
   pdfGenerationError?: boolean
+  currentArtifactVersion?: boolean
   autoFilingStatus?: boolean
   autoFilingAttempts?: boolean
   autoFilingAvailableAt?: boolean
@@ -4077,7 +4439,7 @@ export type EsigningEnvelopeSelectScalar = {
   deletedAt?: boolean
 }
 
-export type EsigningEnvelopeOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "tenantId" | "createdById" | "title" | "emailSubject" | "message" | "completionCopyEmails" | "status" | "signingOrder" | "expiresAt" | "reminderFrequencyDays" | "reminderStartDays" | "expiryWarningDays" | "companyId" | "certificateId" | "completedAt" | "voidedAt" | "voidReason" | "pdfGenerationStatus" | "pdfGenerationAttempts" | "pdfGenerationClaimedAt" | "pdfGenerationError" | "autoFilingStatus" | "autoFilingAttempts" | "autoFilingAvailableAt" | "autoFilingClaimedAt" | "autoFilingLeaseExpiresAt" | "autoFilingClaimToken" | "autoFilingError" | "consentVersion" | "consentDisclosureSnapshot" | "metadata" | "createdAt" | "updatedAt" | "deletedAt", ExtArgs["result"]["esigningEnvelope"]>
+export type EsigningEnvelopeOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "tenantId" | "createdById" | "title" | "emailSubject" | "message" | "completionCopyEmails" | "status" | "signingOrder" | "expiresAt" | "reminderFrequencyDays" | "reminderStartDays" | "expiryWarningDays" | "companyId" | "certificateId" | "completedAt" | "voidedAt" | "voidReason" | "pdfGenerationStatus" | "pdfGenerationAttempts" | "pdfGenerationClaimedAt" | "pdfGenerationError" | "currentArtifactVersion" | "autoFilingStatus" | "autoFilingAttempts" | "autoFilingAvailableAt" | "autoFilingClaimedAt" | "autoFilingLeaseExpiresAt" | "autoFilingClaimToken" | "autoFilingError" | "consentVersion" | "consentDisclosureSnapshot" | "metadata" | "createdAt" | "updatedAt" | "deletedAt", ExtArgs["result"]["esigningEnvelope"]>
 export type EsigningEnvelopeInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   company?: boolean | Prisma.EsigningEnvelope$companyArgs<ExtArgs>
   createdBy?: boolean | Prisma.UserDefaultArgs<ExtArgs>
@@ -4090,6 +4452,7 @@ export type EsigningEnvelopeInclude<ExtArgs extends runtime.Types.Extensions.Int
   taskStageOutcomes?: boolean | Prisma.EsigningEnvelope$taskStageOutcomesArgs<ExtArgs>
   taskEsigningPreparations?: boolean | Prisma.EsigningEnvelope$taskEsigningPreparationsArgs<ExtArgs>
   sharePointFilings?: boolean | Prisma.EsigningEnvelope$sharePointFilingsArgs<ExtArgs>
+  issuedArtifacts?: boolean | Prisma.EsigningEnvelope$issuedArtifactsArgs<ExtArgs>
   _count?: boolean | Prisma.EsigningEnvelopeCountOutputTypeDefaultArgs<ExtArgs>
 }
 export type EsigningEnvelopeIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
@@ -4117,6 +4480,7 @@ export type $EsigningEnvelopePayload<ExtArgs extends runtime.Types.Extensions.In
     taskStageOutcomes: Prisma.$TaskStageOutcomePayload<ExtArgs>[]
     taskEsigningPreparations: Prisma.$TaskEsigningPreparationPayload<ExtArgs>[]
     sharePointFilings: Prisma.$EsigningSharePointFilingPayload<ExtArgs>[]
+    issuedArtifacts: Prisma.$EsigningIssuedArtifactPayload<ExtArgs>[]
   }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     id: string
@@ -4141,6 +4505,7 @@ export type $EsigningEnvelopePayload<ExtArgs extends runtime.Types.Extensions.In
     pdfGenerationAttempts: number
     pdfGenerationClaimedAt: Date | null
     pdfGenerationError: string | null
+    currentArtifactVersion: number | null
     autoFilingStatus: $Enums.EsigningPostCompletionStatus
     autoFilingAttempts: number
     autoFilingAvailableAt: Date | null
@@ -4559,6 +4924,7 @@ export interface Prisma__EsigningEnvelopeClient<T, Null = never, ExtArgs extends
   taskStageOutcomes<T extends Prisma.EsigningEnvelope$taskStageOutcomesArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.EsigningEnvelope$taskStageOutcomesArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$TaskStageOutcomePayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   taskEsigningPreparations<T extends Prisma.EsigningEnvelope$taskEsigningPreparationsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.EsigningEnvelope$taskEsigningPreparationsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$TaskEsigningPreparationPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   sharePointFilings<T extends Prisma.EsigningEnvelope$sharePointFilingsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.EsigningEnvelope$sharePointFilingsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$EsigningSharePointFilingPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  issuedArtifacts<T extends Prisma.EsigningEnvelope$issuedArtifactsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.EsigningEnvelope$issuedArtifactsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$EsigningIssuedArtifactPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   /**
    * Attaches callbacks for the resolution and/or rejection of the Promise.
    * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -4610,6 +4976,7 @@ export interface EsigningEnvelopeFieldRefs {
   readonly pdfGenerationAttempts: Prisma.FieldRef<"EsigningEnvelope", 'Int'>
   readonly pdfGenerationClaimedAt: Prisma.FieldRef<"EsigningEnvelope", 'DateTime'>
   readonly pdfGenerationError: Prisma.FieldRef<"EsigningEnvelope", 'String'>
+  readonly currentArtifactVersion: Prisma.FieldRef<"EsigningEnvelope", 'Int'>
   readonly autoFilingStatus: Prisma.FieldRef<"EsigningEnvelope", 'EsigningPostCompletionStatus'>
   readonly autoFilingAttempts: Prisma.FieldRef<"EsigningEnvelope", 'Int'>
   readonly autoFilingAvailableAt: Prisma.FieldRef<"EsigningEnvelope", 'DateTime'>
@@ -5232,6 +5599,30 @@ export type EsigningEnvelope$sharePointFilingsArgs<ExtArgs extends runtime.Types
   take?: number
   skip?: number
   distinct?: Prisma.EsigningSharePointFilingScalarFieldEnum | Prisma.EsigningSharePointFilingScalarFieldEnum[]
+}
+
+/**
+ * EsigningEnvelope.issuedArtifacts
+ */
+export type EsigningEnvelope$issuedArtifactsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the EsigningIssuedArtifact
+   */
+  select?: Prisma.EsigningIssuedArtifactSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the EsigningIssuedArtifact
+   */
+  omit?: Prisma.EsigningIssuedArtifactOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.EsigningIssuedArtifactInclude<ExtArgs> | null
+  where?: Prisma.EsigningIssuedArtifactWhereInput
+  orderBy?: Prisma.EsigningIssuedArtifactOrderByWithRelationInput | Prisma.EsigningIssuedArtifactOrderByWithRelationInput[]
+  cursor?: Prisma.EsigningIssuedArtifactWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.EsigningIssuedArtifactScalarFieldEnum | Prisma.EsigningIssuedArtifactScalarFieldEnum[]
 }
 
 /**

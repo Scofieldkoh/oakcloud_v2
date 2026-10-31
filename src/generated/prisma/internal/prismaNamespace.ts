@@ -468,6 +468,7 @@ export const ModelName = {
   AiConversation: 'AiConversation',
   EsigningEnvelope: 'EsigningEnvelope',
   EsigningEnvelopeDocument: 'EsigningEnvelopeDocument',
+  EsigningIssuedArtifact: 'EsigningIssuedArtifact',
   EsigningSharePointFiling: 'EsigningSharePointFiling',
   EsigningEnvelopeRecipient: 'EsigningEnvelopeRecipient',
   EsigningDocumentFieldDefinition: 'EsigningDocumentFieldDefinition',
@@ -563,7 +564,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "workspace" | "role" | "permission" | "rolePermission" | "userRoleAssignment" | "user" | "userPreference" | "performanceMeasurement" | "userCompanyAssignment" | "company" | "companySharePointFolder" | "companyFormerName" | "companyAddress" | "contact" | "companyContact" | "contactDetail" | "companyOfficer" | "shareCapital" | "companyAuditor" | "companyShareholder" | "companyCharge" | "document" | "auditLog" | "connector" | "workspaceConnectorAccess" | "connectorUsageLog" | "connectorModelConfig" | "noteTab" | "documentTemplate" | "generatedDocument" | "documentGenerationBatch" | "documentGenerationBatchItem" | "documentSection" | "workspaceLetterhead" | "documentComment" | "documentDraft" | "templatePartial" | "serviceFamily" | "serviceVariant" | "serviceVariantFeeTemplate" | "serviceAgreement" | "serviceAgreementEntity" | "serviceAgreementItem" | "serviceAgreementItemEntity" | "serviceAgreementFeeLine" | "clientService" | "clientServiceFeeLine" | "billingOccurrence" | "billingCoverageIssue" | "deadlineRule" | "deadlineRuleVersion" | "deadlineRuleParameterDefinition" | "deadlineMilestoneTemplate" | "serviceVariantDeadlineRule" | "clientServiceDeadlineRule" | "businessCalendar" | "businessHoliday" | "publicHolidaySourceRecord" | "publicHolidaySyncState" | "serviceCycle" | "deadlineOccurrence" | "companyFinancialPeriod" | "companyMonitoringCoverage" | "clientServiceObligationScope" | "deadlineOccurrenceCoverageLink" | "deadlineResponsibilityChange" | "companyComplianceIssue" | "serviceScheduleReconciliationRequest" | "aiConversation" | "esigningEnvelope" | "esigningEnvelopeDocument" | "esigningSharePointFiling" | "esigningEnvelopeRecipient" | "esigningDocumentFieldDefinition" | "esigningDocumentFieldValue" | "esigningEnvelopeEvent" | "esigningEmailDelivery" | "esigningEmailDeliveryAttempt" | "processingDocument" | "documentLink" | "documentTag" | "processingDocumentTag" | "documentPage" | "documentExtraction" | "documentRevision" | "documentRevisionLineItem" | "vendorAlias" | "customerAlias" | "contactDuplicateDecision" | "contactMergeOperation" | "duplicateDecision" | "processingAttempt" | "processingCheckpoint" | "splitPlan" | "documentStateEvent" | "documentDerivedFile" | "idempotencyRecord" | "webhookSubscription" | "exchangeRate" | "bankAccount" | "bankTransaction" | "matchGroup" | "matchGroupItem" | "reconciliationPeriod" | "form" | "formField" | "formOptionPreset" | "formUrlHealth" | "formSubmission" | "formDraft" | "formUpload" | "clientPortalUser" | "clientRequest" | "communication" | "accountingIntegration" | "externalPosting" | "fieldMapping" | "workspaceBackup" | "backupSchedule" | "systemBackup" | "backupSettings" | "chartOfAccount" | "chartOfAccountsMapping" | "taskPipeline" | "taskPipelineVersion" | "taskPipelineStage" | "task" | "taskStage" | "taskStageChecklistItem" | "taskStageOutcome" | "taskEsigningPreparation" | "taskCompanyRecoveryContext" | "acraEntity" | "acraSyncState" | "businessAssistantConversation" | "businessAssistantMessage" | "businessAssistantRun" | "businessAssistantRunItem" | "businessAssistantRunStep" | "businessAssistantProposal" | "businessAssistantApproval" | "businessAssistantReview" | "businessAssistantFeedback" | "businessAssistantMemory" | "businessAssistantLearningChange" | "businessAssistantLearningActiveTarget" | "businessAssistantActionRequest" | "businessAssistantCapacitySlot" | "bizFileOperationReceipt" | "bizFileOperationEvidence" | "bizFileOperationEffectIntent"
+    modelProps: "workspace" | "role" | "permission" | "rolePermission" | "userRoleAssignment" | "user" | "userPreference" | "performanceMeasurement" | "userCompanyAssignment" | "company" | "companySharePointFolder" | "companyFormerName" | "companyAddress" | "contact" | "companyContact" | "contactDetail" | "companyOfficer" | "shareCapital" | "companyAuditor" | "companyShareholder" | "companyCharge" | "document" | "auditLog" | "connector" | "workspaceConnectorAccess" | "connectorUsageLog" | "connectorModelConfig" | "noteTab" | "documentTemplate" | "generatedDocument" | "documentGenerationBatch" | "documentGenerationBatchItem" | "documentSection" | "workspaceLetterhead" | "documentComment" | "documentDraft" | "templatePartial" | "serviceFamily" | "serviceVariant" | "serviceVariantFeeTemplate" | "serviceAgreement" | "serviceAgreementEntity" | "serviceAgreementItem" | "serviceAgreementItemEntity" | "serviceAgreementFeeLine" | "clientService" | "clientServiceFeeLine" | "billingOccurrence" | "billingCoverageIssue" | "deadlineRule" | "deadlineRuleVersion" | "deadlineRuleParameterDefinition" | "deadlineMilestoneTemplate" | "serviceVariantDeadlineRule" | "clientServiceDeadlineRule" | "businessCalendar" | "businessHoliday" | "publicHolidaySourceRecord" | "publicHolidaySyncState" | "serviceCycle" | "deadlineOccurrence" | "companyFinancialPeriod" | "companyMonitoringCoverage" | "clientServiceObligationScope" | "deadlineOccurrenceCoverageLink" | "deadlineResponsibilityChange" | "companyComplianceIssue" | "serviceScheduleReconciliationRequest" | "aiConversation" | "esigningEnvelope" | "esigningEnvelopeDocument" | "esigningIssuedArtifact" | "esigningSharePointFiling" | "esigningEnvelopeRecipient" | "esigningDocumentFieldDefinition" | "esigningDocumentFieldValue" | "esigningEnvelopeEvent" | "esigningEmailDelivery" | "esigningEmailDeliveryAttempt" | "processingDocument" | "documentLink" | "documentTag" | "processingDocumentTag" | "documentPage" | "documentExtraction" | "documentRevision" | "documentRevisionLineItem" | "vendorAlias" | "customerAlias" | "contactDuplicateDecision" | "contactMergeOperation" | "duplicateDecision" | "processingAttempt" | "processingCheckpoint" | "splitPlan" | "documentStateEvent" | "documentDerivedFile" | "idempotencyRecord" | "webhookSubscription" | "exchangeRate" | "bankAccount" | "bankTransaction" | "matchGroup" | "matchGroupItem" | "reconciliationPeriod" | "form" | "formField" | "formOptionPreset" | "formUrlHealth" | "formSubmission" | "formDraft" | "formUpload" | "clientPortalUser" | "clientRequest" | "communication" | "accountingIntegration" | "externalPosting" | "fieldMapping" | "workspaceBackup" | "backupSchedule" | "systemBackup" | "backupSettings" | "chartOfAccount" | "chartOfAccountsMapping" | "taskPipeline" | "taskPipelineVersion" | "taskPipelineStage" | "task" | "taskStage" | "taskStageChecklistItem" | "taskStageOutcome" | "taskEsigningPreparation" | "taskCompanyRecoveryContext" | "acraEntity" | "acraSyncState" | "businessAssistantConversation" | "businessAssistantMessage" | "businessAssistantRun" | "businessAssistantRunItem" | "businessAssistantRunStep" | "businessAssistantProposal" | "businessAssistantApproval" | "businessAssistantReview" | "businessAssistantFeedback" | "businessAssistantMemory" | "businessAssistantLearningChange" | "businessAssistantLearningActiveTarget" | "businessAssistantActionRequest" | "businessAssistantCapacitySlot" | "bizFileOperationReceipt" | "bizFileOperationEvidence" | "bizFileOperationEffectIntent"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -5818,6 +5819,80 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         count: {
           args: Prisma.EsigningEnvelopeDocumentCountArgs<ExtArgs>
           result: runtime.Types.Utils.Optional<Prisma.EsigningEnvelopeDocumentCountAggregateOutputType> | number
+        }
+      }
+    }
+    EsigningIssuedArtifact: {
+      payload: Prisma.$EsigningIssuedArtifactPayload<ExtArgs>
+      fields: Prisma.EsigningIssuedArtifactFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.EsigningIssuedArtifactFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$EsigningIssuedArtifactPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.EsigningIssuedArtifactFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$EsigningIssuedArtifactPayload>
+        }
+        findFirst: {
+          args: Prisma.EsigningIssuedArtifactFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$EsigningIssuedArtifactPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.EsigningIssuedArtifactFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$EsigningIssuedArtifactPayload>
+        }
+        findMany: {
+          args: Prisma.EsigningIssuedArtifactFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$EsigningIssuedArtifactPayload>[]
+        }
+        create: {
+          args: Prisma.EsigningIssuedArtifactCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$EsigningIssuedArtifactPayload>
+        }
+        createMany: {
+          args: Prisma.EsigningIssuedArtifactCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.EsigningIssuedArtifactCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$EsigningIssuedArtifactPayload>[]
+        }
+        delete: {
+          args: Prisma.EsigningIssuedArtifactDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$EsigningIssuedArtifactPayload>
+        }
+        update: {
+          args: Prisma.EsigningIssuedArtifactUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$EsigningIssuedArtifactPayload>
+        }
+        deleteMany: {
+          args: Prisma.EsigningIssuedArtifactDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.EsigningIssuedArtifactUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.EsigningIssuedArtifactUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$EsigningIssuedArtifactPayload>[]
+        }
+        upsert: {
+          args: Prisma.EsigningIssuedArtifactUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$EsigningIssuedArtifactPayload>
+        }
+        aggregate: {
+          args: Prisma.EsigningIssuedArtifactAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateEsigningIssuedArtifact>
+        }
+        groupBy: {
+          args: Prisma.EsigningIssuedArtifactGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.EsigningIssuedArtifactGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.EsigningIssuedArtifactCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.EsigningIssuedArtifactCountAggregateOutputType> | number
         }
       }
     }
@@ -13232,6 +13307,7 @@ export const EsigningEnvelopeScalarFieldEnum = {
   pdfGenerationAttempts: 'pdfGenerationAttempts',
   pdfGenerationClaimedAt: 'pdfGenerationClaimedAt',
   pdfGenerationError: 'pdfGenerationError',
+  currentArtifactVersion: 'currentArtifactVersion',
   autoFilingStatus: 'autoFilingStatus',
   autoFilingAttempts: 'autoFilingAttempts',
   autoFilingAvailableAt: 'autoFilingAvailableAt',
@@ -13269,6 +13345,24 @@ export const EsigningEnvelopeDocumentScalarFieldEnum = {
 } as const
 
 export type EsigningEnvelopeDocumentScalarFieldEnum = (typeof EsigningEnvelopeDocumentScalarFieldEnum)[keyof typeof EsigningEnvelopeDocumentScalarFieldEnum]
+
+
+export const EsigningIssuedArtifactScalarFieldEnum = {
+  id: 'id',
+  tenantId: 'tenantId',
+  envelopeId: 'envelopeId',
+  documentId: 'documentId',
+  version: 'version',
+  kind: 'kind',
+  storagePath: 'storagePath',
+  blake3: 'blake3',
+  byteSize: 'byteSize',
+  rendererVersion: 'rendererVersion',
+  sourceDigests: 'sourceDigests',
+  createdAt: 'createdAt'
+} as const
+
+export type EsigningIssuedArtifactScalarFieldEnum = (typeof EsigningIssuedArtifactScalarFieldEnum)[keyof typeof EsigningIssuedArtifactScalarFieldEnum]
 
 
 export const EsigningSharePointFilingScalarFieldEnum = {
@@ -15859,6 +15953,20 @@ export type ListEnumEsigningPostCompletionStatusFieldRefInput<$PrismaModel> = Fi
 
 
 /**
+ * Reference to a field of type 'EsigningIssuedArtifactKind'
+ */
+export type EnumEsigningIssuedArtifactKindFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'EsigningIssuedArtifactKind'>
+
+
+
+/**
+ * Reference to a field of type 'EsigningIssuedArtifactKind[]'
+ */
+export type ListEnumEsigningIssuedArtifactKindFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'EsigningIssuedArtifactKind[]'>
+
+
+
+/**
  * Reference to a field of type 'EsigningSharePointDestinationKind'
  */
 export type EnumEsigningSharePointDestinationKindFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'EsigningSharePointDestinationKind'>
@@ -17381,6 +17489,7 @@ export type GlobalOmitConfig = {
   aiConversation?: Prisma.AiConversationOmit
   esigningEnvelope?: Prisma.EsigningEnvelopeOmit
   esigningEnvelopeDocument?: Prisma.EsigningEnvelopeDocumentOmit
+  esigningIssuedArtifact?: Prisma.EsigningIssuedArtifactOmit
   esigningSharePointFiling?: Prisma.EsigningSharePointFilingOmit
   esigningEnvelopeRecipient?: Prisma.EsigningEnvelopeRecipientOmit
   esigningDocumentFieldDefinition?: Prisma.EsigningDocumentFieldDefinitionOmit
@@ -17523,3 +17632,4 @@ export type PrismaAction =
  * `PrismaClient` proxy available in interactive transactions.
  */
 export type TransactionClient = Omit<DefaultPrismaClient, runtime.ITXClientDenyList>
+

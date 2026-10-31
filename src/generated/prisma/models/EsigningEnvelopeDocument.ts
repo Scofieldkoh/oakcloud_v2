@@ -309,6 +309,7 @@ export type EsigningEnvelopeDocumentWhereInput = {
   generatedDocument?: Prisma.XOR<Prisma.GeneratedDocumentNullableScalarRelationFilter, Prisma.GeneratedDocumentWhereInput> | null
   taskEsigningPreparations?: Prisma.TaskEsigningPreparationListRelationFilter
   sharePointFiling?: Prisma.XOR<Prisma.EsigningSharePointFilingNullableScalarRelationFilter, Prisma.EsigningSharePointFilingWhereInput> | null
+  issuedArtifacts?: Prisma.EsigningIssuedArtifactListRelationFilter
 }
 
 export type EsigningEnvelopeDocumentOrderByWithRelationInput = {
@@ -332,6 +333,7 @@ export type EsigningEnvelopeDocumentOrderByWithRelationInput = {
   generatedDocument?: Prisma.GeneratedDocumentOrderByWithRelationInput
   taskEsigningPreparations?: Prisma.TaskEsigningPreparationOrderByRelationAggregateInput
   sharePointFiling?: Prisma.EsigningSharePointFilingOrderByWithRelationInput
+  issuedArtifacts?: Prisma.EsigningIssuedArtifactOrderByRelationAggregateInput
 }
 
 export type EsigningEnvelopeDocumentWhereUniqueInput = Prisma.AtLeast<{
@@ -359,6 +361,7 @@ export type EsigningEnvelopeDocumentWhereUniqueInput = Prisma.AtLeast<{
   generatedDocument?: Prisma.XOR<Prisma.GeneratedDocumentNullableScalarRelationFilter, Prisma.GeneratedDocumentWhereInput> | null
   taskEsigningPreparations?: Prisma.TaskEsigningPreparationListRelationFilter
   sharePointFiling?: Prisma.XOR<Prisma.EsigningSharePointFilingNullableScalarRelationFilter, Prisma.EsigningSharePointFilingWhereInput> | null
+  issuedArtifacts?: Prisma.EsigningIssuedArtifactListRelationFilter
 }, "id" | "envelopeId_generatedDocumentId">
 
 export type EsigningEnvelopeDocumentOrderByWithAggregationInput = {
@@ -424,6 +427,7 @@ export type EsigningEnvelopeDocumentCreateInput = {
   generatedDocument?: Prisma.GeneratedDocumentCreateNestedOneWithoutEsigningEnvelopeDocumentsInput
   taskEsigningPreparations?: Prisma.TaskEsigningPreparationCreateNestedManyWithoutEnvelopeDocumentInput
   sharePointFiling?: Prisma.EsigningSharePointFilingCreateNestedOneWithoutEnvelopeDocumentInput
+  issuedArtifacts?: Prisma.EsigningIssuedArtifactCreateNestedManyWithoutDocumentInput
 }
 
 export type EsigningEnvelopeDocumentUncheckedCreateInput = {
@@ -445,6 +449,7 @@ export type EsigningEnvelopeDocumentUncheckedCreateInput = {
   fieldDefinitions?: Prisma.EsigningDocumentFieldDefinitionUncheckedCreateNestedManyWithoutDocumentInput
   taskEsigningPreparations?: Prisma.TaskEsigningPreparationUncheckedCreateNestedManyWithoutEnvelopeDocumentInput
   sharePointFiling?: Prisma.EsigningSharePointFilingUncheckedCreateNestedOneWithoutEnvelopeDocumentInput
+  issuedArtifacts?: Prisma.EsigningIssuedArtifactUncheckedCreateNestedManyWithoutDocumentInput
 }
 
 export type EsigningEnvelopeDocumentUpdateInput = {
@@ -466,6 +471,7 @@ export type EsigningEnvelopeDocumentUpdateInput = {
   generatedDocument?: Prisma.GeneratedDocumentUpdateOneWithoutEsigningEnvelopeDocumentsNestedInput
   taskEsigningPreparations?: Prisma.TaskEsigningPreparationUpdateManyWithoutEnvelopeDocumentNestedInput
   sharePointFiling?: Prisma.EsigningSharePointFilingUpdateOneWithoutEnvelopeDocumentNestedInput
+  issuedArtifacts?: Prisma.EsigningIssuedArtifactUpdateManyWithoutDocumentNestedInput
 }
 
 export type EsigningEnvelopeDocumentUncheckedUpdateInput = {
@@ -487,6 +493,7 @@ export type EsigningEnvelopeDocumentUncheckedUpdateInput = {
   fieldDefinitions?: Prisma.EsigningDocumentFieldDefinitionUncheckedUpdateManyWithoutDocumentNestedInput
   taskEsigningPreparations?: Prisma.TaskEsigningPreparationUncheckedUpdateManyWithoutEnvelopeDocumentNestedInput
   sharePointFiling?: Prisma.EsigningSharePointFilingUncheckedUpdateOneWithoutEnvelopeDocumentNestedInput
+  issuedArtifacts?: Prisma.EsigningIssuedArtifactUncheckedUpdateManyWithoutDocumentNestedInput
 }
 
 export type EsigningEnvelopeDocumentCreateManyInput = {
@@ -622,14 +629,14 @@ export type EsigningEnvelopeDocumentSumOrderByAggregateInput = {
   fileSize?: Prisma.SortOrder
 }
 
-export type EsigningEnvelopeDocumentScalarRelationFilter = {
-  is?: Prisma.EsigningEnvelopeDocumentWhereInput
-  isNot?: Prisma.EsigningEnvelopeDocumentWhereInput
-}
-
 export type EsigningEnvelopeDocumentNullableScalarRelationFilter = {
   is?: Prisma.EsigningEnvelopeDocumentWhereInput | null
   isNot?: Prisma.EsigningEnvelopeDocumentWhereInput | null
+}
+
+export type EsigningEnvelopeDocumentScalarRelationFilter = {
+  is?: Prisma.EsigningEnvelopeDocumentWhereInput
+  isNot?: Prisma.EsigningEnvelopeDocumentWhereInput
 }
 
 export type EsigningEnvelopeDocumentCreateNestedManyWithoutGeneratedDocumentInput = {
@@ -716,6 +723,22 @@ export type EsigningEnvelopeDocumentUncheckedUpdateManyWithoutEnvelopeNestedInpu
   deleteMany?: Prisma.EsigningEnvelopeDocumentScalarWhereInput | Prisma.EsigningEnvelopeDocumentScalarWhereInput[]
 }
 
+export type EsigningEnvelopeDocumentCreateNestedOneWithoutIssuedArtifactsInput = {
+  create?: Prisma.XOR<Prisma.EsigningEnvelopeDocumentCreateWithoutIssuedArtifactsInput, Prisma.EsigningEnvelopeDocumentUncheckedCreateWithoutIssuedArtifactsInput>
+  connectOrCreate?: Prisma.EsigningEnvelopeDocumentCreateOrConnectWithoutIssuedArtifactsInput
+  connect?: Prisma.EsigningEnvelopeDocumentWhereUniqueInput
+}
+
+export type EsigningEnvelopeDocumentUpdateOneWithoutIssuedArtifactsNestedInput = {
+  create?: Prisma.XOR<Prisma.EsigningEnvelopeDocumentCreateWithoutIssuedArtifactsInput, Prisma.EsigningEnvelopeDocumentUncheckedCreateWithoutIssuedArtifactsInput>
+  connectOrCreate?: Prisma.EsigningEnvelopeDocumentCreateOrConnectWithoutIssuedArtifactsInput
+  upsert?: Prisma.EsigningEnvelopeDocumentUpsertWithoutIssuedArtifactsInput
+  disconnect?: Prisma.EsigningEnvelopeDocumentWhereInput | boolean
+  delete?: Prisma.EsigningEnvelopeDocumentWhereInput | boolean
+  connect?: Prisma.EsigningEnvelopeDocumentWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.EsigningEnvelopeDocumentUpdateToOneWithWhereWithoutIssuedArtifactsInput, Prisma.EsigningEnvelopeDocumentUpdateWithoutIssuedArtifactsInput>, Prisma.EsigningEnvelopeDocumentUncheckedUpdateWithoutIssuedArtifactsInput>
+}
+
 export type EsigningEnvelopeDocumentCreateNestedOneWithoutSharePointFilingInput = {
   create?: Prisma.XOR<Prisma.EsigningEnvelopeDocumentCreateWithoutSharePointFilingInput, Prisma.EsigningEnvelopeDocumentUncheckedCreateWithoutSharePointFilingInput>
   connectOrCreate?: Prisma.EsigningEnvelopeDocumentCreateOrConnectWithoutSharePointFilingInput
@@ -778,6 +801,7 @@ export type EsigningEnvelopeDocumentCreateWithoutGeneratedDocumentInput = {
   fieldDefinitions?: Prisma.EsigningDocumentFieldDefinitionCreateNestedManyWithoutDocumentInput
   taskEsigningPreparations?: Prisma.TaskEsigningPreparationCreateNestedManyWithoutEnvelopeDocumentInput
   sharePointFiling?: Prisma.EsigningSharePointFilingCreateNestedOneWithoutEnvelopeDocumentInput
+  issuedArtifacts?: Prisma.EsigningIssuedArtifactCreateNestedManyWithoutDocumentInput
 }
 
 export type EsigningEnvelopeDocumentUncheckedCreateWithoutGeneratedDocumentInput = {
@@ -798,6 +822,7 @@ export type EsigningEnvelopeDocumentUncheckedCreateWithoutGeneratedDocumentInput
   fieldDefinitions?: Prisma.EsigningDocumentFieldDefinitionUncheckedCreateNestedManyWithoutDocumentInput
   taskEsigningPreparations?: Prisma.TaskEsigningPreparationUncheckedCreateNestedManyWithoutEnvelopeDocumentInput
   sharePointFiling?: Prisma.EsigningSharePointFilingUncheckedCreateNestedOneWithoutEnvelopeDocumentInput
+  issuedArtifacts?: Prisma.EsigningIssuedArtifactUncheckedCreateNestedManyWithoutDocumentInput
 }
 
 export type EsigningEnvelopeDocumentCreateOrConnectWithoutGeneratedDocumentInput = {
@@ -865,6 +890,7 @@ export type EsigningEnvelopeDocumentCreateWithoutEnvelopeInput = {
   generatedDocument?: Prisma.GeneratedDocumentCreateNestedOneWithoutEsigningEnvelopeDocumentsInput
   taskEsigningPreparations?: Prisma.TaskEsigningPreparationCreateNestedManyWithoutEnvelopeDocumentInput
   sharePointFiling?: Prisma.EsigningSharePointFilingCreateNestedOneWithoutEnvelopeDocumentInput
+  issuedArtifacts?: Prisma.EsigningIssuedArtifactCreateNestedManyWithoutDocumentInput
 }
 
 export type EsigningEnvelopeDocumentUncheckedCreateWithoutEnvelopeInput = {
@@ -885,6 +911,7 @@ export type EsigningEnvelopeDocumentUncheckedCreateWithoutEnvelopeInput = {
   fieldDefinitions?: Prisma.EsigningDocumentFieldDefinitionUncheckedCreateNestedManyWithoutDocumentInput
   taskEsigningPreparations?: Prisma.TaskEsigningPreparationUncheckedCreateNestedManyWithoutEnvelopeDocumentInput
   sharePointFiling?: Prisma.EsigningSharePointFilingUncheckedCreateNestedOneWithoutEnvelopeDocumentInput
+  issuedArtifacts?: Prisma.EsigningIssuedArtifactUncheckedCreateNestedManyWithoutDocumentInput
 }
 
 export type EsigningEnvelopeDocumentCreateOrConnectWithoutEnvelopeInput = {
@@ -913,6 +940,106 @@ export type EsigningEnvelopeDocumentUpdateManyWithWhereWithoutEnvelopeInput = {
   data: Prisma.XOR<Prisma.EsigningEnvelopeDocumentUpdateManyMutationInput, Prisma.EsigningEnvelopeDocumentUncheckedUpdateManyWithoutEnvelopeInput>
 }
 
+export type EsigningEnvelopeDocumentCreateWithoutIssuedArtifactsInput = {
+  id?: string
+  tenantId: string
+  fileName: string
+  originalFileName?: string | null
+  storagePath: string
+  signedStoragePath?: string | null
+  originalHash: string
+  signedHash?: string | null
+  pageCount: number
+  sortOrder: number
+  fileSize: number
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  envelope: Prisma.EsigningEnvelopeCreateNestedOneWithoutDocumentsInput
+  fieldDefinitions?: Prisma.EsigningDocumentFieldDefinitionCreateNestedManyWithoutDocumentInput
+  generatedDocument?: Prisma.GeneratedDocumentCreateNestedOneWithoutEsigningEnvelopeDocumentsInput
+  taskEsigningPreparations?: Prisma.TaskEsigningPreparationCreateNestedManyWithoutEnvelopeDocumentInput
+  sharePointFiling?: Prisma.EsigningSharePointFilingCreateNestedOneWithoutEnvelopeDocumentInput
+}
+
+export type EsigningEnvelopeDocumentUncheckedCreateWithoutIssuedArtifactsInput = {
+  id?: string
+  tenantId: string
+  envelopeId: string
+  fileName: string
+  originalFileName?: string | null
+  storagePath: string
+  signedStoragePath?: string | null
+  originalHash: string
+  signedHash?: string | null
+  pageCount: number
+  sortOrder: number
+  fileSize: number
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  generatedDocumentId?: string | null
+  fieldDefinitions?: Prisma.EsigningDocumentFieldDefinitionUncheckedCreateNestedManyWithoutDocumentInput
+  taskEsigningPreparations?: Prisma.TaskEsigningPreparationUncheckedCreateNestedManyWithoutEnvelopeDocumentInput
+  sharePointFiling?: Prisma.EsigningSharePointFilingUncheckedCreateNestedOneWithoutEnvelopeDocumentInput
+}
+
+export type EsigningEnvelopeDocumentCreateOrConnectWithoutIssuedArtifactsInput = {
+  where: Prisma.EsigningEnvelopeDocumentWhereUniqueInput
+  create: Prisma.XOR<Prisma.EsigningEnvelopeDocumentCreateWithoutIssuedArtifactsInput, Prisma.EsigningEnvelopeDocumentUncheckedCreateWithoutIssuedArtifactsInput>
+}
+
+export type EsigningEnvelopeDocumentUpsertWithoutIssuedArtifactsInput = {
+  update: Prisma.XOR<Prisma.EsigningEnvelopeDocumentUpdateWithoutIssuedArtifactsInput, Prisma.EsigningEnvelopeDocumentUncheckedUpdateWithoutIssuedArtifactsInput>
+  create: Prisma.XOR<Prisma.EsigningEnvelopeDocumentCreateWithoutIssuedArtifactsInput, Prisma.EsigningEnvelopeDocumentUncheckedCreateWithoutIssuedArtifactsInput>
+  where?: Prisma.EsigningEnvelopeDocumentWhereInput
+}
+
+export type EsigningEnvelopeDocumentUpdateToOneWithWhereWithoutIssuedArtifactsInput = {
+  where?: Prisma.EsigningEnvelopeDocumentWhereInput
+  data: Prisma.XOR<Prisma.EsigningEnvelopeDocumentUpdateWithoutIssuedArtifactsInput, Prisma.EsigningEnvelopeDocumentUncheckedUpdateWithoutIssuedArtifactsInput>
+}
+
+export type EsigningEnvelopeDocumentUpdateWithoutIssuedArtifactsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  tenantId?: Prisma.StringFieldUpdateOperationsInput | string
+  fileName?: Prisma.StringFieldUpdateOperationsInput | string
+  originalFileName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  storagePath?: Prisma.StringFieldUpdateOperationsInput | string
+  signedStoragePath?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  originalHash?: Prisma.StringFieldUpdateOperationsInput | string
+  signedHash?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  pageCount?: Prisma.IntFieldUpdateOperationsInput | number
+  sortOrder?: Prisma.IntFieldUpdateOperationsInput | number
+  fileSize?: Prisma.IntFieldUpdateOperationsInput | number
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  envelope?: Prisma.EsigningEnvelopeUpdateOneRequiredWithoutDocumentsNestedInput
+  fieldDefinitions?: Prisma.EsigningDocumentFieldDefinitionUpdateManyWithoutDocumentNestedInput
+  generatedDocument?: Prisma.GeneratedDocumentUpdateOneWithoutEsigningEnvelopeDocumentsNestedInput
+  taskEsigningPreparations?: Prisma.TaskEsigningPreparationUpdateManyWithoutEnvelopeDocumentNestedInput
+  sharePointFiling?: Prisma.EsigningSharePointFilingUpdateOneWithoutEnvelopeDocumentNestedInput
+}
+
+export type EsigningEnvelopeDocumentUncheckedUpdateWithoutIssuedArtifactsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  tenantId?: Prisma.StringFieldUpdateOperationsInput | string
+  envelopeId?: Prisma.StringFieldUpdateOperationsInput | string
+  fileName?: Prisma.StringFieldUpdateOperationsInput | string
+  originalFileName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  storagePath?: Prisma.StringFieldUpdateOperationsInput | string
+  signedStoragePath?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  originalHash?: Prisma.StringFieldUpdateOperationsInput | string
+  signedHash?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  pageCount?: Prisma.IntFieldUpdateOperationsInput | number
+  sortOrder?: Prisma.IntFieldUpdateOperationsInput | number
+  fileSize?: Prisma.IntFieldUpdateOperationsInput | number
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  generatedDocumentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  fieldDefinitions?: Prisma.EsigningDocumentFieldDefinitionUncheckedUpdateManyWithoutDocumentNestedInput
+  taskEsigningPreparations?: Prisma.TaskEsigningPreparationUncheckedUpdateManyWithoutEnvelopeDocumentNestedInput
+  sharePointFiling?: Prisma.EsigningSharePointFilingUncheckedUpdateOneWithoutEnvelopeDocumentNestedInput
+}
+
 export type EsigningEnvelopeDocumentCreateWithoutSharePointFilingInput = {
   id?: string
   tenantId: string
@@ -931,6 +1058,7 @@ export type EsigningEnvelopeDocumentCreateWithoutSharePointFilingInput = {
   fieldDefinitions?: Prisma.EsigningDocumentFieldDefinitionCreateNestedManyWithoutDocumentInput
   generatedDocument?: Prisma.GeneratedDocumentCreateNestedOneWithoutEsigningEnvelopeDocumentsInput
   taskEsigningPreparations?: Prisma.TaskEsigningPreparationCreateNestedManyWithoutEnvelopeDocumentInput
+  issuedArtifacts?: Prisma.EsigningIssuedArtifactCreateNestedManyWithoutDocumentInput
 }
 
 export type EsigningEnvelopeDocumentUncheckedCreateWithoutSharePointFilingInput = {
@@ -951,6 +1079,7 @@ export type EsigningEnvelopeDocumentUncheckedCreateWithoutSharePointFilingInput 
   generatedDocumentId?: string | null
   fieldDefinitions?: Prisma.EsigningDocumentFieldDefinitionUncheckedCreateNestedManyWithoutDocumentInput
   taskEsigningPreparations?: Prisma.TaskEsigningPreparationUncheckedCreateNestedManyWithoutEnvelopeDocumentInput
+  issuedArtifacts?: Prisma.EsigningIssuedArtifactUncheckedCreateNestedManyWithoutDocumentInput
 }
 
 export type EsigningEnvelopeDocumentCreateOrConnectWithoutSharePointFilingInput = {
@@ -987,6 +1116,7 @@ export type EsigningEnvelopeDocumentUpdateWithoutSharePointFilingInput = {
   fieldDefinitions?: Prisma.EsigningDocumentFieldDefinitionUpdateManyWithoutDocumentNestedInput
   generatedDocument?: Prisma.GeneratedDocumentUpdateOneWithoutEsigningEnvelopeDocumentsNestedInput
   taskEsigningPreparations?: Prisma.TaskEsigningPreparationUpdateManyWithoutEnvelopeDocumentNestedInput
+  issuedArtifacts?: Prisma.EsigningIssuedArtifactUpdateManyWithoutDocumentNestedInput
 }
 
 export type EsigningEnvelopeDocumentUncheckedUpdateWithoutSharePointFilingInput = {
@@ -1007,6 +1137,7 @@ export type EsigningEnvelopeDocumentUncheckedUpdateWithoutSharePointFilingInput 
   generatedDocumentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   fieldDefinitions?: Prisma.EsigningDocumentFieldDefinitionUncheckedUpdateManyWithoutDocumentNestedInput
   taskEsigningPreparations?: Prisma.TaskEsigningPreparationUncheckedUpdateManyWithoutEnvelopeDocumentNestedInput
+  issuedArtifacts?: Prisma.EsigningIssuedArtifactUncheckedUpdateManyWithoutDocumentNestedInput
 }
 
 export type EsigningEnvelopeDocumentCreateWithoutFieldDefinitionsInput = {
@@ -1027,6 +1158,7 @@ export type EsigningEnvelopeDocumentCreateWithoutFieldDefinitionsInput = {
   generatedDocument?: Prisma.GeneratedDocumentCreateNestedOneWithoutEsigningEnvelopeDocumentsInput
   taskEsigningPreparations?: Prisma.TaskEsigningPreparationCreateNestedManyWithoutEnvelopeDocumentInput
   sharePointFiling?: Prisma.EsigningSharePointFilingCreateNestedOneWithoutEnvelopeDocumentInput
+  issuedArtifacts?: Prisma.EsigningIssuedArtifactCreateNestedManyWithoutDocumentInput
 }
 
 export type EsigningEnvelopeDocumentUncheckedCreateWithoutFieldDefinitionsInput = {
@@ -1047,6 +1179,7 @@ export type EsigningEnvelopeDocumentUncheckedCreateWithoutFieldDefinitionsInput 
   generatedDocumentId?: string | null
   taskEsigningPreparations?: Prisma.TaskEsigningPreparationUncheckedCreateNestedManyWithoutEnvelopeDocumentInput
   sharePointFiling?: Prisma.EsigningSharePointFilingUncheckedCreateNestedOneWithoutEnvelopeDocumentInput
+  issuedArtifacts?: Prisma.EsigningIssuedArtifactUncheckedCreateNestedManyWithoutDocumentInput
 }
 
 export type EsigningEnvelopeDocumentCreateOrConnectWithoutFieldDefinitionsInput = {
@@ -1083,6 +1216,7 @@ export type EsigningEnvelopeDocumentUpdateWithoutFieldDefinitionsInput = {
   generatedDocument?: Prisma.GeneratedDocumentUpdateOneWithoutEsigningEnvelopeDocumentsNestedInput
   taskEsigningPreparations?: Prisma.TaskEsigningPreparationUpdateManyWithoutEnvelopeDocumentNestedInput
   sharePointFiling?: Prisma.EsigningSharePointFilingUpdateOneWithoutEnvelopeDocumentNestedInput
+  issuedArtifacts?: Prisma.EsigningIssuedArtifactUpdateManyWithoutDocumentNestedInput
 }
 
 export type EsigningEnvelopeDocumentUncheckedUpdateWithoutFieldDefinitionsInput = {
@@ -1103,6 +1237,7 @@ export type EsigningEnvelopeDocumentUncheckedUpdateWithoutFieldDefinitionsInput 
   generatedDocumentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   taskEsigningPreparations?: Prisma.TaskEsigningPreparationUncheckedUpdateManyWithoutEnvelopeDocumentNestedInput
   sharePointFiling?: Prisma.EsigningSharePointFilingUncheckedUpdateOneWithoutEnvelopeDocumentNestedInput
+  issuedArtifacts?: Prisma.EsigningIssuedArtifactUncheckedUpdateManyWithoutDocumentNestedInput
 }
 
 export type EsigningEnvelopeDocumentCreateWithoutTaskEsigningPreparationsInput = {
@@ -1123,6 +1258,7 @@ export type EsigningEnvelopeDocumentCreateWithoutTaskEsigningPreparationsInput =
   fieldDefinitions?: Prisma.EsigningDocumentFieldDefinitionCreateNestedManyWithoutDocumentInput
   generatedDocument?: Prisma.GeneratedDocumentCreateNestedOneWithoutEsigningEnvelopeDocumentsInput
   sharePointFiling?: Prisma.EsigningSharePointFilingCreateNestedOneWithoutEnvelopeDocumentInput
+  issuedArtifacts?: Prisma.EsigningIssuedArtifactCreateNestedManyWithoutDocumentInput
 }
 
 export type EsigningEnvelopeDocumentUncheckedCreateWithoutTaskEsigningPreparationsInput = {
@@ -1143,6 +1279,7 @@ export type EsigningEnvelopeDocumentUncheckedCreateWithoutTaskEsigningPreparatio
   generatedDocumentId?: string | null
   fieldDefinitions?: Prisma.EsigningDocumentFieldDefinitionUncheckedCreateNestedManyWithoutDocumentInput
   sharePointFiling?: Prisma.EsigningSharePointFilingUncheckedCreateNestedOneWithoutEnvelopeDocumentInput
+  issuedArtifacts?: Prisma.EsigningIssuedArtifactUncheckedCreateNestedManyWithoutDocumentInput
 }
 
 export type EsigningEnvelopeDocumentCreateOrConnectWithoutTaskEsigningPreparationsInput = {
@@ -1179,6 +1316,7 @@ export type EsigningEnvelopeDocumentUpdateWithoutTaskEsigningPreparationsInput =
   fieldDefinitions?: Prisma.EsigningDocumentFieldDefinitionUpdateManyWithoutDocumentNestedInput
   generatedDocument?: Prisma.GeneratedDocumentUpdateOneWithoutEsigningEnvelopeDocumentsNestedInput
   sharePointFiling?: Prisma.EsigningSharePointFilingUpdateOneWithoutEnvelopeDocumentNestedInput
+  issuedArtifacts?: Prisma.EsigningIssuedArtifactUpdateManyWithoutDocumentNestedInput
 }
 
 export type EsigningEnvelopeDocumentUncheckedUpdateWithoutTaskEsigningPreparationsInput = {
@@ -1199,6 +1337,7 @@ export type EsigningEnvelopeDocumentUncheckedUpdateWithoutTaskEsigningPreparatio
   generatedDocumentId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   fieldDefinitions?: Prisma.EsigningDocumentFieldDefinitionUncheckedUpdateManyWithoutDocumentNestedInput
   sharePointFiling?: Prisma.EsigningSharePointFilingUncheckedUpdateOneWithoutEnvelopeDocumentNestedInput
+  issuedArtifacts?: Prisma.EsigningIssuedArtifactUncheckedUpdateManyWithoutDocumentNestedInput
 }
 
 export type EsigningEnvelopeDocumentCreateManyGeneratedDocumentInput = {
@@ -1236,6 +1375,7 @@ export type EsigningEnvelopeDocumentUpdateWithoutGeneratedDocumentInput = {
   fieldDefinitions?: Prisma.EsigningDocumentFieldDefinitionUpdateManyWithoutDocumentNestedInput
   taskEsigningPreparations?: Prisma.TaskEsigningPreparationUpdateManyWithoutEnvelopeDocumentNestedInput
   sharePointFiling?: Prisma.EsigningSharePointFilingUpdateOneWithoutEnvelopeDocumentNestedInput
+  issuedArtifacts?: Prisma.EsigningIssuedArtifactUpdateManyWithoutDocumentNestedInput
 }
 
 export type EsigningEnvelopeDocumentUncheckedUpdateWithoutGeneratedDocumentInput = {
@@ -1256,6 +1396,7 @@ export type EsigningEnvelopeDocumentUncheckedUpdateWithoutGeneratedDocumentInput
   fieldDefinitions?: Prisma.EsigningDocumentFieldDefinitionUncheckedUpdateManyWithoutDocumentNestedInput
   taskEsigningPreparations?: Prisma.TaskEsigningPreparationUncheckedUpdateManyWithoutEnvelopeDocumentNestedInput
   sharePointFiling?: Prisma.EsigningSharePointFilingUncheckedUpdateOneWithoutEnvelopeDocumentNestedInput
+  issuedArtifacts?: Prisma.EsigningIssuedArtifactUncheckedUpdateManyWithoutDocumentNestedInput
 }
 
 export type EsigningEnvelopeDocumentUncheckedUpdateManyWithoutGeneratedDocumentInput = {
@@ -1310,6 +1451,7 @@ export type EsigningEnvelopeDocumentUpdateWithoutEnvelopeInput = {
   generatedDocument?: Prisma.GeneratedDocumentUpdateOneWithoutEsigningEnvelopeDocumentsNestedInput
   taskEsigningPreparations?: Prisma.TaskEsigningPreparationUpdateManyWithoutEnvelopeDocumentNestedInput
   sharePointFiling?: Prisma.EsigningSharePointFilingUpdateOneWithoutEnvelopeDocumentNestedInput
+  issuedArtifacts?: Prisma.EsigningIssuedArtifactUpdateManyWithoutDocumentNestedInput
 }
 
 export type EsigningEnvelopeDocumentUncheckedUpdateWithoutEnvelopeInput = {
@@ -1330,6 +1472,7 @@ export type EsigningEnvelopeDocumentUncheckedUpdateWithoutEnvelopeInput = {
   fieldDefinitions?: Prisma.EsigningDocumentFieldDefinitionUncheckedUpdateManyWithoutDocumentNestedInput
   taskEsigningPreparations?: Prisma.TaskEsigningPreparationUncheckedUpdateManyWithoutEnvelopeDocumentNestedInput
   sharePointFiling?: Prisma.EsigningSharePointFilingUncheckedUpdateOneWithoutEnvelopeDocumentNestedInput
+  issuedArtifacts?: Prisma.EsigningIssuedArtifactUncheckedUpdateManyWithoutDocumentNestedInput
 }
 
 export type EsigningEnvelopeDocumentUncheckedUpdateManyWithoutEnvelopeInput = {
@@ -1357,11 +1500,13 @@ export type EsigningEnvelopeDocumentUncheckedUpdateManyWithoutEnvelopeInput = {
 export type EsigningEnvelopeDocumentCountOutputType = {
   fieldDefinitions: number
   taskEsigningPreparations: number
+  issuedArtifacts: number
 }
 
 export type EsigningEnvelopeDocumentCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   fieldDefinitions?: boolean | EsigningEnvelopeDocumentCountOutputTypeCountFieldDefinitionsArgs
   taskEsigningPreparations?: boolean | EsigningEnvelopeDocumentCountOutputTypeCountTaskEsigningPreparationsArgs
+  issuedArtifacts?: boolean | EsigningEnvelopeDocumentCountOutputTypeCountIssuedArtifactsArgs
 }
 
 /**
@@ -1388,6 +1533,13 @@ export type EsigningEnvelopeDocumentCountOutputTypeCountTaskEsigningPreparations
   where?: Prisma.TaskEsigningPreparationWhereInput
 }
 
+/**
+ * EsigningEnvelopeDocumentCountOutputType without action
+ */
+export type EsigningEnvelopeDocumentCountOutputTypeCountIssuedArtifactsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.EsigningIssuedArtifactWhereInput
+}
+
 
 export type EsigningEnvelopeDocumentSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   id?: boolean
@@ -1410,6 +1562,7 @@ export type EsigningEnvelopeDocumentSelect<ExtArgs extends runtime.Types.Extensi
   generatedDocument?: boolean | Prisma.EsigningEnvelopeDocument$generatedDocumentArgs<ExtArgs>
   taskEsigningPreparations?: boolean | Prisma.EsigningEnvelopeDocument$taskEsigningPreparationsArgs<ExtArgs>
   sharePointFiling?: boolean | Prisma.EsigningEnvelopeDocument$sharePointFilingArgs<ExtArgs>
+  issuedArtifacts?: boolean | Prisma.EsigningEnvelopeDocument$issuedArtifactsArgs<ExtArgs>
   _count?: boolean | Prisma.EsigningEnvelopeDocumentCountOutputTypeDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["esigningEnvelopeDocument"]>
 
@@ -1478,6 +1631,7 @@ export type EsigningEnvelopeDocumentInclude<ExtArgs extends runtime.Types.Extens
   generatedDocument?: boolean | Prisma.EsigningEnvelopeDocument$generatedDocumentArgs<ExtArgs>
   taskEsigningPreparations?: boolean | Prisma.EsigningEnvelopeDocument$taskEsigningPreparationsArgs<ExtArgs>
   sharePointFiling?: boolean | Prisma.EsigningEnvelopeDocument$sharePointFilingArgs<ExtArgs>
+  issuedArtifacts?: boolean | Prisma.EsigningEnvelopeDocument$issuedArtifactsArgs<ExtArgs>
   _count?: boolean | Prisma.EsigningEnvelopeDocumentCountOutputTypeDefaultArgs<ExtArgs>
 }
 export type EsigningEnvelopeDocumentIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
@@ -1497,6 +1651,7 @@ export type $EsigningEnvelopeDocumentPayload<ExtArgs extends runtime.Types.Exten
     generatedDocument: Prisma.$GeneratedDocumentPayload<ExtArgs> | null
     taskEsigningPreparations: Prisma.$TaskEsigningPreparationPayload<ExtArgs>[]
     sharePointFiling: Prisma.$EsigningSharePointFilingPayload<ExtArgs> | null
+    issuedArtifacts: Prisma.$EsigningIssuedArtifactPayload<ExtArgs>[]
   }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     id: string
@@ -1913,6 +2068,7 @@ export interface Prisma__EsigningEnvelopeDocumentClient<T, Null = never, ExtArgs
   generatedDocument<T extends Prisma.EsigningEnvelopeDocument$generatedDocumentArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.EsigningEnvelopeDocument$generatedDocumentArgs<ExtArgs>>): Prisma.Prisma__GeneratedDocumentClient<runtime.Types.Result.GetResult<Prisma.$GeneratedDocumentPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
   taskEsigningPreparations<T extends Prisma.EsigningEnvelopeDocument$taskEsigningPreparationsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.EsigningEnvelopeDocument$taskEsigningPreparationsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$TaskEsigningPreparationPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   sharePointFiling<T extends Prisma.EsigningEnvelopeDocument$sharePointFilingArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.EsigningEnvelopeDocument$sharePointFilingArgs<ExtArgs>>): Prisma.Prisma__EsigningSharePointFilingClient<runtime.Types.Result.GetResult<Prisma.$EsigningSharePointFilingPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+  issuedArtifacts<T extends Prisma.EsigningEnvelopeDocument$issuedArtifactsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.EsigningEnvelopeDocument$issuedArtifactsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$EsigningIssuedArtifactPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   /**
    * Attaches callbacks for the resolution and/or rejection of the Promise.
    * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -2441,6 +2597,30 @@ export type EsigningEnvelopeDocument$sharePointFilingArgs<ExtArgs extends runtim
    */
   include?: Prisma.EsigningSharePointFilingInclude<ExtArgs> | null
   where?: Prisma.EsigningSharePointFilingWhereInput
+}
+
+/**
+ * EsigningEnvelopeDocument.issuedArtifacts
+ */
+export type EsigningEnvelopeDocument$issuedArtifactsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the EsigningIssuedArtifact
+   */
+  select?: Prisma.EsigningIssuedArtifactSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the EsigningIssuedArtifact
+   */
+  omit?: Prisma.EsigningIssuedArtifactOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.EsigningIssuedArtifactInclude<ExtArgs> | null
+  where?: Prisma.EsigningIssuedArtifactWhereInput
+  orderBy?: Prisma.EsigningIssuedArtifactOrderByWithRelationInput | Prisma.EsigningIssuedArtifactOrderByWithRelationInput[]
+  cursor?: Prisma.EsigningIssuedArtifactWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.EsigningIssuedArtifactScalarFieldEnum | Prisma.EsigningIssuedArtifactScalarFieldEnum[]
 }
 
 /**

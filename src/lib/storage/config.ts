@@ -257,6 +257,37 @@ export const StorageKeys = {
   },
 
   /**
+   * Issued-artifact keys. Every generation writes under its own `v{n}/` folder and never reuses a
+   * folder an earlier version used, so issued files are never overwritten. (Version 1 of envelopes
+   * completed before versioning still lives at the unversioned keys above.)
+   */
+  esigningIssuedSignedDocument(
+    tenantId: string,
+    envelopeId: string,
+    version: number,
+    documentId: string
+  ): string {
+    return `${tenantId}/esigning/${envelopeId}/v${version}/signed/${documentId}.pdf`;
+  },
+
+  esigningIssuedCertificate(
+    tenantId: string,
+    envelopeId: string,
+    version: number
+  ): string {
+    return `${tenantId}/esigning/${envelopeId}/v${version}/certificate.pdf`;
+  },
+
+  esigningIssuedDocumentWithCertificate(
+    tenantId: string,
+    envelopeId: string,
+    version: number,
+    documentId: string
+  ): string {
+    return `${tenantId}/esigning/${envelopeId}/v${version}/with-certificate/${documentId}.pdf`;
+  },
+
+  /**
    * Legacy per-document certificate key retained for backwards compatibility
    * with historical stored artifacts. New certificate generation is envelope-level.
    */
