@@ -298,6 +298,13 @@ export async function sendEsigningRequestEmail(input: {
       }
     </p>
 
+    ${input.accessMode === 'EMAIL_WITH_CODE'
+      ? `<p style="font-family:Arial,Helvetica,sans-serif;font-size:14px;color:${TEXT};margin:16px 0 0;line-height:1.6;">
+           <strong>An access code is required to open this document.</strong>
+           ${escapeHtml(input.senderName)} will give you the code separately &mdash; it is not included in this email.
+         </p>`
+      : ''}
+
     ${input.message
       ? `<blockquote style="border-left:3px solid ${BORDER};margin:20px 0 0;padding:10px 16px;
                             font-family:Arial,Helvetica,sans-serif;font-size:13px;

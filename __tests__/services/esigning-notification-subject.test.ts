@@ -95,3 +95,34 @@ describe('e-signing email subject', () => {
     expect(message.text).not.toContain('<table');
   });
 });
+
+describe('e-signing request email access code notice', () => {
+  const baseInput = {
+    to: 'client@example.com',
+    recipientName: 'Client',
+    senderName: 'Sender',
+    envelopeTitle: 'NDA',
+    signingUrl: 'https://app.example.com/sign/token-1',
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    sendEmail.mockResolvedValue({ success: true, messageId: 'message-1' });
+  });
+
+  it('states that an access code is needed and will come from the sender for EMAIL_WITH_CODE', async () => {
+    await sendEsigningRequestEmail({ ...baseInput, accessMode: 'EMAIL_WITH_CODE' });
+
+    const { html } = sendEmail.mock.calls[0][0] as { html: string };
+    expect(html).toContain('An access code is required to open this document.');
+    expect(html).toContain('Sender will give you the code separately');
+    expect(html).toContain('not included in this email');
+  });
+
+  it.each(['EMAIL_LINK', 'MANUAL_LINK'] as const)('does not mention an access code for %s', async (accessMode) => {
+    await sendEsigningRequestEmail({ ...baseInput, accessMode });
+
+    const { html } = sendEmail.mock.calls[0][0] as { html: string };
+    expect(html).not.toContain('access code');
+  });
+});
