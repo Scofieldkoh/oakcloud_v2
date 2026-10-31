@@ -1109,13 +1109,6 @@ export async function completeEsigningSigningSession(input: {
     if (!lockedEnvelope) {
       throw new Error('Envelope not found');
     }
-    if (lockedEnvelope.expiresAt && lockedEnvelope.expiresAt.getTime() < Date.now()) {
-      throw new Error('This envelope has expired');
-    }
-    if (!isOpenEnvelopeStatus(lockedEnvelope.status)) {
-      throw new Error(`This envelope is ${lockedEnvelope.status.toLowerCase()}`);
-    }
-
     const lockedRecipient = await tx.esigningEnvelopeRecipient.findUnique({
       where: { id: context.recipient.id },
       select: { status: true, consentedAt: true, sessionVersion: true },
@@ -1123,9 +1116,23 @@ export async function completeEsigningSigningSession(input: {
     if (!lockedRecipient || lockedRecipient.sessionVersion !== context.recipient.sessionVersion) {
       throw new Error('Signing session expired');
     }
-    if (lockedRecipient.status === 'SIGNED') {
+    // A same-action retry (this signer already finished) must stay quiet even
+    // when the envelope has since completed: two identical requests can both
+    // read the signer as active before either takes the lock. A different
+    // terminal outcome (voided, declined, expired) still falls through to the
+    // rejections below.
+    if (
+      lockedRecipient.status === 'SIGNED' &&
+      (isOpenEnvelopeStatus(lockedEnvelope.status) || lockedEnvelope.status === 'COMPLETED')
+    ) {
       alreadySigned = true;
       return;
+    }
+    if (lockedEnvelope.expiresAt && lockedEnvelope.expiresAt.getTime() < Date.now()) {
+      throw new Error('This envelope has expired');
+    }
+    if (!isOpenEnvelopeStatus(lockedEnvelope.status)) {
+      throw new Error(`This envelope is ${lockedEnvelope.status.toLowerCase()}`);
     }
     if (lockedRecipient.status === 'DECLINED') {
       throw new Error('This signing session has been declined');
@@ -1260,15 +1267,31 @@ export async function declineEsigningSigningSession(input: {
     if (!lockedEnvelope) {
       throw new Error('Envelope not found');
     }
-    if (!isOpenEnvelopeStatus(lockedEnvelope.status)) {
-      throw new Error(`This envelope is ${lockedEnvelope.status.toLowerCase()}`);
-    }
     const lockedRecipient = await tx.esigningEnvelopeRecipient.findUnique({
       where: { id: context.recipient.id },
       select: { status: true, sessionVersion: true },
     });
+    // A same-action retry (this signer already declined) stays quiet. The first
+    // decline revokes every session on the envelope (sessionVersion + 1), so the
+    // duplicate legitimately sees exactly that one increment; any other
+    // mismatch is still a revoked session.
+    if (
+      lockedRecipient?.status === 'DECLINED' &&
+      lockedEnvelope.status === 'DECLINED' &&
+      (lockedRecipient.sessionVersion === context.recipient.sessionVersion ||
+        lockedRecipient.sessionVersion === context.recipient.sessionVersion + 1)
+    ) {
+      alreadyDeclined = true;
+      return;
+    }
     if (!lockedRecipient || lockedRecipient.sessionVersion !== context.recipient.sessionVersion) {
       throw new Error('Signing session expired');
+    }
+    if (lockedEnvelope.expiresAt && lockedEnvelope.expiresAt.getTime() < Date.now()) {
+      throw new Error('This envelope has expired');
+    }
+    if (!isOpenEnvelopeStatus(lockedEnvelope.status)) {
+      throw new Error(`This envelope is ${lockedEnvelope.status.toLowerCase()}`);
     }
     if (lockedRecipient.status === 'SIGNED') {
       throw new Error('A completed signer cannot decline');

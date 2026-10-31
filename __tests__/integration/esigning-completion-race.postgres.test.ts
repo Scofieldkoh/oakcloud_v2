@@ -131,6 +131,7 @@ describePostgres('e-signing completion race (PostgreSQL)', () => {
 
   async function seed(input: {
     envelopeStatus?: 'SENT' | 'IN_PROGRESS';
+    expiresAt?: Date;
     recipients: SeedRecipient[];
   }) {
     const suffix = randomUUID();
@@ -154,6 +155,7 @@ describePostgres('e-signing completion race (PostgreSQL)', () => {
         title: 'Race',
         status: input.envelopeStatus ?? 'SENT',
         signingOrder: 'PARALLEL',
+        expiresAt: input.expiresAt ?? null,
         certificateId: `race-${suffix}`,
       },
     });
@@ -417,6 +419,261 @@ describePostgres('e-signing completion race (PostgreSQL)', () => {
     await expect(complete(voided, voided.recipients[1])).rejects.toThrow(/voided/i);
     await expect(decline(voided, voided.recipients[1])).rejects.toThrow(/voided/i);
     expect((await snapshot(voided.envelope.id)).envelope.status).toBe('VOIDED');
+  });
+
+  /**
+   * Deterministic interleaving for the same-action and expiry races. A separate
+   * transaction takes the envelope row lock (and optionally commits a change on
+   * release); the callers then start their requests, which read the signing
+   * context successfully and block on the lock. Only after every expected
+   * waiter is parked on the lock does the holder commit, so both requests are
+   * guaranteed to have read the pre-lock state.
+   */
+  async function holdEnvelopeLock(
+    envelopeId: string,
+    mutate?: (tx: Parameters<Parameters<typeof prisma.$transaction>[0]>[0]) => Promise<void>
+  ) {
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    let acquired!: () => void;
+    const ready = new Promise<void>((resolve) => {
+      acquired = resolve;
+    });
+    const held = prisma.$transaction(
+      async (tx) => {
+        await tx.$queryRaw`SELECT id FROM esigning_envelopes WHERE id = ${envelopeId} FOR UPDATE`;
+        if (mutate) await mutate(tx);
+        acquired();
+        await gate;
+      },
+      { timeout: 60_000, maxWait: 10_000 }
+    );
+    held.catch(() => acquired());
+    await ready;
+    return { release, held };
+  }
+
+  async function waitForLockWaiters(count: number) {
+    const deadline = Date.now() + 15_000;
+    let waiting = 0;
+    while (Date.now() < deadline) {
+      const rows = await prisma.$queryRaw<{ n: number }[]>`
+        SELECT count(*)::int AS n
+        FROM pg_stat_activity
+        WHERE datname = current_database()
+          AND wait_event_type = 'Lock'
+          AND query LIKE '%FROM esigning_envelopes%FOR UPDATE%'
+      `;
+      waiting = rows[0]?.n ?? 0;
+      if (waiting >= count) return;
+      await sleep(20);
+    }
+    throw new Error(`expected ${count} requests waiting on the envelope lock, saw ${waiting}`);
+  }
+
+  async function runBehindLock(
+    envelopeId: string,
+    requests: Array<() => Promise<unknown>>,
+    mutate?: Parameters<typeof holdEnvelopeLock>[1]
+  ) {
+    const holder = await holdEnvelopeLock(envelopeId, mutate);
+    try {
+      const pending = requests.map((request) => Promise.allSettled([request()]).then(([r]) => r));
+      await waitForLockWaiters(requests.length);
+      holder.release();
+      await holder.held;
+      return await Promise.all(pending);
+    } finally {
+      holder.release();
+    }
+  }
+
+  describe('same-action retries and lock-time revalidation (deterministic)', () => {
+    it('duplicate complete by the same signer: both succeed quietly, one SIGNED event, one COMPLETED event', async () => {
+      const seeded = await seed({
+        envelopeStatus: 'IN_PROGRESS',
+        recipients: [
+          { name: 'signed', status: 'SIGNED' },
+          { name: 'last', status: 'VIEWED' },
+        ],
+      });
+      const last = seeded.recipients[1];
+
+      const results = await runBehindLock(seeded.envelope.id, [
+        () => complete(seeded, last),
+        () => complete(seeded, last),
+      ]);
+
+      expect(results.map((result) => (result.status === 'rejected' ? String(result.reason?.message) : 'ok'))).toEqual([
+        'ok',
+        'ok',
+      ]);
+      const { envelope, eventCounts } = await snapshot(seeded.envelope.id);
+      expect(envelope.status).toBe('COMPLETED');
+      expect(eventCounts.SIGNED).toBe(1);
+      expect(eventCounts.COMPLETED).toBe(1);
+    });
+
+    it('duplicate decline by the same signer: both succeed quietly, one DECLINED event, one sender email', async () => {
+      const notification = await import('@/services/esigning-notification.service');
+      const sendDeclined = vi.mocked(notification.sendEsigningDeclinedEmailToSender);
+      const seeded = await seed({
+        envelopeStatus: 'IN_PROGRESS',
+        recipients: [
+          { name: 'signed', status: 'SIGNED' },
+          { name: 'last', status: 'VIEWED' },
+        ],
+      });
+      const last = seeded.recipients[1];
+      sendDeclined.mockClear();
+
+      const results = await runBehindLock(seeded.envelope.id, [
+        () => decline(seeded, last),
+        () => decline(seeded, last),
+      ]);
+
+      expect(results.map((result) => (result.status === 'rejected' ? String(result.reason?.message) : 'ok'))).toEqual([
+        'ok',
+        'ok',
+      ]);
+      const { envelope, eventCounts } = await snapshot(seeded.envelope.id);
+      expect(envelope.status).toBe('DECLINED');
+      expect(envelope.recipients.find((recipient) => recipient.id === last.id)?.status).toBe('DECLINED');
+      expect(eventCounts.DECLINED).toBe(1);
+      expect(sendDeclined).toHaveBeenCalledTimes(1);
+    });
+
+    it('decline rejects when the envelope expires between the context read and the lock', async () => {
+      const seeded = await seed({
+        envelopeStatus: 'IN_PROGRESS',
+        expiresAt: new Date(Date.now() + 60 * 60_000),
+        recipients: [
+          { name: 'signed', status: 'SIGNED' },
+          { name: 'last', status: 'VIEWED' },
+        ],
+      });
+      const last = seeded.recipients[1];
+
+      const results = await runBehindLock(
+        seeded.envelope.id,
+        [() => decline(seeded, last)],
+        async (tx) => {
+          await tx.esigningEnvelope.update({
+            where: { id: seeded.envelope.id },
+            data: { expiresAt: new Date(Date.now() - 60_000) },
+          });
+        }
+      );
+
+      expect(results[0].status).toBe('rejected');
+      expect(String((results[0] as PromiseRejectedResult).reason?.message)).toMatch(/expired/i);
+      const { envelope, eventCounts } = await snapshot(seeded.envelope.id);
+      expect(envelope.status).toBe('IN_PROGRESS');
+      expect(envelope.recipients.find((recipient) => recipient.id === last.id)?.status).toBe('VIEWED');
+      expect(eventCounts.DECLINED ?? 0).toBe(0);
+    });
+
+    it('complete rejects when the envelope expires between the context read and the lock', async () => {
+      const seeded = await seed({
+        envelopeStatus: 'IN_PROGRESS',
+        expiresAt: new Date(Date.now() + 60 * 60_000),
+        recipients: [
+          { name: 'signed', status: 'SIGNED' },
+          { name: 'last', status: 'VIEWED' },
+        ],
+      });
+      const last = seeded.recipients[1];
+
+      const results = await runBehindLock(
+        seeded.envelope.id,
+        [() => complete(seeded, last)],
+        async (tx) => {
+          await tx.esigningEnvelope.update({
+            where: { id: seeded.envelope.id },
+            data: { expiresAt: new Date(Date.now() - 60_000) },
+          });
+        }
+      );
+
+      expect(results[0].status).toBe('rejected');
+      expect(String((results[0] as PromiseRejectedResult).reason?.message)).toMatch(/expired/i);
+      const { envelope, eventCounts } = await snapshot(seeded.envelope.id);
+      expect(envelope.status).toBe('IN_PROGRESS');
+      expect(envelope.recipients.find((recipient) => recipient.id === last.id)?.status).toBe('VIEWED');
+      expect(eventCounts.SIGNED ?? 0).toBe(0);
+    });
+
+    it('still rejects a different terminal outcome that wins the lock first', async () => {
+      const rejection = (result: PromiseSettledResult<unknown>) =>
+        result.status === 'rejected' ? String(result.reason?.message) : 'ok';
+      const fresh = () =>
+        seed({
+          envelopeStatus: 'IN_PROGRESS',
+          recipients: [
+            { name: 'signed', status: 'SIGNED' },
+            { name: 'last', status: 'VIEWED' },
+          ],
+        });
+
+      // Decline queued behind a completion: the signer is SIGNED, so decline fails.
+      const completedFirst = await fresh();
+      const [declineAfterComplete] = await runBehindLock(
+        completedFirst.envelope.id,
+        [() => decline(completedFirst, completedFirst.recipients[1])],
+        async (tx) => {
+          await tx.esigningEnvelopeRecipient.update({
+            where: { id: completedFirst.recipients[1].id },
+            data: { status: 'SIGNED', signedAt: new Date() },
+          });
+          await tx.esigningEnvelope.update({
+            where: { id: completedFirst.envelope.id },
+            data: { status: 'COMPLETED', completedAt: new Date() },
+          });
+        }
+      );
+      expect(rejection(declineAfterComplete)).toMatch(/completed signer|completed/i);
+      expect((await snapshot(completedFirst.envelope.id)).envelope.status).toBe('COMPLETED');
+
+      // Complete queued behind a decline by the same signer: not a same-action retry.
+      const declinedFirst = await fresh();
+      const [completeAfterDecline] = await runBehindLock(
+        declinedFirst.envelope.id,
+        [() => complete(declinedFirst, declinedFirst.recipients[1])],
+        async (tx) => {
+          await tx.esigningEnvelopeRecipient.update({
+            where: { id: declinedFirst.recipients[1].id },
+            data: { status: 'DECLINED', declinedAt: new Date() },
+          });
+          await tx.esigningEnvelope.update({
+            where: { id: declinedFirst.envelope.id },
+            data: { status: 'DECLINED' },
+          });
+        }
+      );
+      expect(rejection(completeAfterDecline)).toMatch(/declined/i);
+      expect((await snapshot(declinedFirst.envelope.id)).envelope.status).toBe('DECLINED');
+
+      // Complete and decline queued behind a void.
+      const voidedFirst = await fresh();
+      const [completeAfterVoid, declineAfterVoid] = await runBehindLock(
+        voidedFirst.envelope.id,
+        [
+          () => complete(voidedFirst, voidedFirst.recipients[1]),
+          () => decline(voidedFirst, voidedFirst.recipients[1]),
+        ],
+        async (tx) => {
+          await tx.esigningEnvelope.update({
+            where: { id: voidedFirst.envelope.id },
+            data: { status: 'VOIDED', voidedAt: new Date() },
+          });
+        }
+      );
+      expect(rejection(completeAfterVoid)).toMatch(/voided/i);
+      expect(rejection(declineAfterVoid)).toMatch(/voided/i);
+      expect((await snapshot(voidedFirst.envelope.id)).envelope.status).toBe('VOIDED');
+    });
   });
 
   describe('stuck envelope sweeper', () => {
