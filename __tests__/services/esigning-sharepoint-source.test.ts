@@ -2,21 +2,19 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
   ensureArtifacts: vi.fn(),
-  mergePdfBuffers: vi.fn(),
-  storage: {
-    exists: vi.fn(),
-    download: vi.fn(),
-  },
-  storageKeys: {
-    esigningSignedDocument: vi.fn(),
-    esigningEnvelopeCertificate: vi.fn(),
-  },
+  getCurrentIssuedVersion: vi.fn(),
+  readIssuedArtifact: vi.fn(),
+  exists: vi.fn(),
 }));
 
-vi.mock('@/lib/storage', () => ({ storage: mocks.storage, StorageKeys: mocks.storageKeys }));
+vi.mock('@/lib/storage', () => ({ storage: { exists: mocks.exists } }));
 vi.mock('@/services/esigning-pdf.service', () => ({
   ensureEsigningEnvelopeArtifacts: mocks.ensureArtifacts,
-  mergePdfBuffers: mocks.mergePdfBuffers,
+}));
+vi.mock('@/services/esigning-issued-artifacts', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/services/esigning-issued-artifacts')>()),
+  getCurrentIssuedVersion: mocks.getCurrentIssuedVersion,
+  readIssuedArtifact: mocks.readIssuedArtifact,
 }));
 vi.mock('@/services/sharepoint.service', () => ({
   SharePointServiceError: class SharePointServiceError extends Error {
@@ -34,55 +32,67 @@ vi.mock('@/services/sharepoint.service', () => ({
 }));
 
 const { downloadSharePointFilingSource } = await import('@/services/esigning-sharepoint-filing/source');
+const { EsigningArtifactError } = await import('@/services/esigning-issued-artifacts');
+
+const input = {
+  tenantId: 'tenant-1',
+  envelopeId: 'envelope-1',
+  envelopeDocumentId: 'document-1',
+  signedStoragePath: null,
+};
+
+function currentVersion(withCertificate: Record<string, unknown>) {
+  return {
+    version: 2,
+    certificate: null,
+    signedByDocumentId: new Map(),
+    withCertificateByDocumentId: new Map(Object.entries(withCertificate)),
+  };
+}
 
 describe('downloadSharePointFilingSource', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.ensureArtifacts.mockResolvedValue(undefined);
+    mocks.exists.mockResolvedValue(true);
   });
 
-  it('merges the signed document and certificate in filing order', async () => {
-    const signedBuffer = Buffer.from('signed');
-    const certificateBuffer = Buffer.from('certificate');
-    const combinedBuffer = Buffer.from('%PDF-combined');
-    mocks.ensureArtifacts.mockResolvedValue(undefined);
-    mocks.storageKeys.esigningSignedDocument.mockReturnValue('signed-path');
-    mocks.storageKeys.esigningEnvelopeCertificate.mockReturnValue('certificate-path');
-    mocks.storage.exists.mockResolvedValue(true);
-    mocks.storage.download
-      .mockResolvedValueOnce(signedBuffer)
-      .mockResolvedValueOnce(certificateBuffer);
-    mocks.mergePdfBuffers.mockResolvedValue(combinedBuffer);
+  it('files the stored document+certificate artifact as is, without merging', async () => {
+    const stored = Buffer.from('%PDF-stored');
+    const artifact = { id: 'artifact-1', storagePath: 'tenant-1/esigning/envelope-1/v2/with-certificate/document-1.pdf' };
+    mocks.getCurrentIssuedVersion.mockResolvedValue(currentVersion({ 'document-1': artifact }));
+    mocks.readIssuedArtifact.mockResolvedValue(stored);
 
-    await expect(downloadSharePointFilingSource({
-      tenantId: 'tenant-1',
-      envelopeId: 'envelope-1',
-      envelopeDocumentId: 'document-1',
-      signedStoragePath: null,
-    })).resolves.toBe(combinedBuffer);
+    await expect(downloadSharePointFilingSource(input)).resolves.toBe(stored);
 
     expect(mocks.ensureArtifacts).toHaveBeenCalledWith({ envelopeId: 'envelope-1', requireCertificates: true });
-    expect(mocks.storageKeys.esigningEnvelopeCertificate).toHaveBeenCalledWith('tenant-1', 'envelope-1');
-    expect(mocks.storage.download).toHaveBeenNthCalledWith(1, 'signed-path');
-    expect(mocks.storage.download).toHaveBeenNthCalledWith(2, 'certificate-path');
-    expect(mocks.mergePdfBuffers).toHaveBeenCalledWith([signedBuffer, certificateBuffer]);
+    expect(mocks.exists).toHaveBeenCalledWith(artifact.storagePath);
+    expect(mocks.readIssuedArtifact).toHaveBeenCalledWith(artifact);
   });
 
-  it('uses a persisted signed path when one is present', async () => {
-    mocks.ensureArtifacts.mockResolvedValue(undefined);
-    mocks.storage.exists.mockResolvedValue(true);
-    mocks.storage.download
-      .mockResolvedValueOnce(Buffer.from('signed'))
-      .mockResolvedValueOnce(Buffer.from('certificate'));
-    mocks.mergePdfBuffers.mockResolvedValue(Buffer.from('%PDF-combined'));
-    mocks.storageKeys.esigningEnvelopeCertificate.mockReturnValue('certificate-path');
+  it('is retryable when the document has no stored artifact yet', async () => {
+    mocks.getCurrentIssuedVersion.mockResolvedValue(currentVersion({}));
 
-    await downloadSharePointFilingSource({
-      tenantId: 'tenant-1',
-      envelopeId: 'envelope-1',
-      envelopeDocumentId: 'document-1',
-      signedStoragePath: 'persisted-signed-path',
+    await expect(downloadSharePointFilingSource(input)).rejects.toMatchObject({
+      code: 'SOURCE_NOT_READY',
+      retryable: true,
     });
+  });
 
-    expect(mocks.storage.download).toHaveBeenNthCalledWith(1, 'persisted-signed-path');
+  it('is retryable when the stored file is missing from storage', async () => {
+    mocks.getCurrentIssuedVersion.mockResolvedValue(currentVersion({ 'document-1': { id: 'a', storagePath: 'gone' } }));
+    mocks.exists.mockResolvedValue(false);
+
+    await expect(downloadSharePointFilingSource(input)).rejects.toMatchObject({ code: 'SOURCE_NOT_READY' });
+  });
+
+  it('fails permanently when the stored file no longer matches its recorded hash', async () => {
+    mocks.getCurrentIssuedVersion.mockResolvedValue(currentVersion({ 'document-1': { id: 'a', storagePath: 'p' } }));
+    mocks.readIssuedArtifact.mockRejectedValue(new EsigningArtifactError('ARTIFACT_HASH_MISMATCH', 'changed'));
+
+    await expect(downloadSharePointFilingSource(input)).rejects.toMatchObject({
+      code: 'SOURCE_INVALID',
+      retryable: false,
+    });
   });
 });

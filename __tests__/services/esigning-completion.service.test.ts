@@ -33,6 +33,8 @@ const mocks = vi.hoisted(() => ({
   ensureArtifacts: vi.fn(),
   buildLinks: vi.fn(),
   buildAttachments: vi.fn(),
+  readIssued: vi.fn(),
+  getIssuedVersion: vi.fn(),
 }));
 
 vi.mock('@/lib/prisma', () => ({
@@ -94,6 +96,15 @@ vi.mock('@/services/esigning-notification.service', () => ({
   sendEsigningCompletionEmail: mocks.sendCompletion,
   sendEsigningPdfFailureEmailToSender: vi.fn(),
 }));
+
+vi.mock('@/services/esigning-issued-artifacts', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/services/esigning-issued-artifacts')>();
+  return {
+    ...actual,
+    getCurrentIssuedVersion: mocks.getIssuedVersion,
+    readIssuedArtifact: mocks.readIssued,
+  };
+});
 
 vi.mock('@/services/esigning-pdf.service', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/services/esigning-pdf.service')>();
@@ -212,6 +223,15 @@ describe('e-signing completion worker', () => {
       certificateUrl: '/certificate',
     }]);
     mocks.buildAttachments.mockReturnValue([]);
+    mocks.getIssuedVersion.mockResolvedValue({
+      version: 1,
+      certificate: null,
+      signedByDocumentId: new Map(),
+      withCertificateByDocumentId: new Map(
+        ['document-1', 'document-2', 'document-3'].map((id) => [id, { id: `artifact-${id}` }]),
+      ),
+    });
+    mocks.readIssued.mockImplementation(async (record: { id: string }) => Buffer.from(`stored-${record.id}`));
     mocks.transaction.mockImplementation(async (callback: (tx: unknown) => Promise<unknown>) => {
       return callback(transactionClient());
     });
@@ -563,6 +583,13 @@ describe('e-signing completion worker', () => {
           documents: [{ id: 'document-1', fileName: 'nda.pdf', signedStoragePath: null }],
         },
       });
+    });
+    // Nothing issued for the document yet.
+    mocks.getIssuedVersion.mockResolvedValue({
+      version: 1,
+      certificate: null,
+      signedByDocumentId: new Map(),
+      withCertificateByDocumentId: new Map(),
     });
 
     const outcome = await processEsigningCompletionDelivery({

@@ -15,6 +15,7 @@ import type {
 } from '@/types/esigning';
 import type { EsigningPdfGenerationStatus } from '@/generated/prisma';
 import { sendEsigningCompletionEmail } from '@/services/esigning-notification.service';
+import { getCurrentIssuedVersion, readIssuedArtifact } from '@/services/esigning-issued-artifacts';
 import {
   buildDeliveryDocumentLinks,
   buildEmailAttachments,
@@ -958,31 +959,24 @@ export async function processEsigningCompletionDelivery(
       requireCertificates: true,
     });
 
-    if (deliveryDocuments.some((document) => !document.signedStoragePath)) {
-      throw new Error('Signed artifacts are not ready for delivery');
-    }
-
-    const [certificateBuffer, signedBuffers] = await Promise.all([
-      storage.download(
-        StorageKeys.esigningEnvelopeCertificate(
-          delivery.envelope.tenantId,
-          delivery.envelope.id,
-        ),
-      ),
-      Promise.all(
-        deliveryDocuments.map(async (document) => ({
+    // The attachment is the stored document+certificate file, byte for byte (merged and hashed once
+    // when the artifacts were generated), so every send is identical and verifies on the public check.
+    const issuedVersion = await getCurrentIssuedVersion(delivery.envelope.id);
+    const attachmentDocuments = await Promise.all(
+      deliveryDocuments.map(async (document) => {
+        const issued = issuedVersion?.withCertificateByDocumentId.get(document.id);
+        if (!issued) {
+          throw new Error('Signed artifacts are not ready for delivery');
+        }
+        return {
           id: document.id,
           fileName: document.fileName,
           originalFileName: document.originalFileName,
-          signedBuffer: await storage.download(document.signedStoragePath as string),
-        })),
-      ),
-    ]);
-    const documentsWithCertificate = signedBuffers.map((document) => ({
-      ...document,
-      certificateBuffer,
-    }));
-    const attachments = await buildEmailAttachments({ documents: documentsWithCertificate });
+          content: await readIssuedArtifact(issued),
+        };
+      }),
+    );
+    const attachments = await buildEmailAttachments({ documents: attachmentDocuments });
     const actorType = isRecipientDelivery ? 'recipient' : 'sender';
     const documentLinks = await buildDeliveryDocumentLinks({
       envelopeId: delivery.envelope.id,

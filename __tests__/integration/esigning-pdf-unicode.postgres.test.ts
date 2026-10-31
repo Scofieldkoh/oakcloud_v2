@@ -1,6 +1,7 @@
 // @vitest-environment node
 import { randomUUID } from 'node:crypto';
 import { PDFDocument } from 'pdf-lib';
+import { hashBlake3 } from '@/lib/encryption';
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { extractPdfPageTexts } from '../helpers/pdf-text';
 
@@ -120,7 +121,7 @@ describePostgres('e-signing signed PDF with non-Latin field values (real generat
         envelopeId: envelope.id,
         fileName: 'agreement.pdf',
         storagePath,
-        originalHash: 'original-hash',
+        originalHash: hashBlake3(originalBytes),
         pageCount: 1,
         sortOrder: 1,
         fileSize: originalBytes.byteLength,
