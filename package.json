@@ -21,7 +21,7 @@
     "test:p16:evidence": "vitest run __tests__/scripts/business-assistant-p16-evidence.test.ts",
     "test:business-assistant:postgres": "node scripts/require-business-assistant-test-env.mjs && vitest run __tests__/integration/business-assistant.postgres.test.ts __tests__/integration/business-assistant-authorization.postgres.test.ts __tests__/integration/business-assistant-learning.postgres.test.ts __tests__/integration/business-assistant-correction-concurrency.postgres.test.ts __tests__/integration/business-assistant-bizfile-correction-storage.postgres.test.ts __tests__/integration/bizfile-source-revision.postgres.test.ts __tests__/integration/bizfile-aggregate-revision.postgres.test.ts __tests__/integration/bizfile-operation-reconciliation.postgres.test.ts __tests__/integration/bizfile-effect-executor.postgres.test.ts __tests__/integration/bizfile/bizfile-correction-races.postgres.test.ts --maxWorkers=1",
     "test:stage3:postgres": "vitest run __tests__/integration/service-agreement-activation.postgres.test.ts",
-    "test:esigning": "vitest run esigning --exclude \\"**/*.postgres.test.ts\\"",
+    "test:esigning": "vitest run esigning --exclude \"**/*.postgres.test.ts\"",
     "test:esigning:postgres": "vitest run __tests__/integration/esigning-completion-worker.postgres.test.ts __tests__/integration/esigning-completion-race.postgres.test.ts",
     "test:client-services:postgres": "vitest run __tests__/integration/client-service-manual-creation.postgres.test.ts",
     "test:deadlines:postgres": "vitest run __tests__/integration/deadline-reconciliation.postgres.test.ts __tests__/integration/deadline-tenant-isolation.postgres.test.ts",
