@@ -37,6 +37,7 @@ import {
   recordEsigningEnvelopeEmailDeliveryResults,
   withEsigningDeliveryTarget,
 } from '@/services/esigning-email-delivery.service';
+import { lockEsigningEnvelopeForUpdate } from '@/services/esigning-envelope-lock';
 import { summarizeEsigningUserAgent } from '@/services/esigning-evidence';
 import { isRequiredEsigningFieldComplete, saveRecipientFieldValues } from '@/services/esigning-field.service';
 import {
@@ -154,6 +155,91 @@ export async function finalizeEsigningEnvelopeCompletion(
 
 type SigningContext = Awaited<ReturnType<typeof getSigningContext>>;
 
+/**
+ * Finds envelopes that never reached COMPLETED even though every signer has
+ * SIGNED, and completes them. Such envelopes were produced by the old
+ * completion race (two final signers each counting the other as unsigned) and
+ * nothing else would ever revisit them: the completion queue only picks up
+ * COMPLETED envelopes and a second `complete` call returns early.
+ *
+ * Each candidate is re-checked under the same envelope row lock the signing
+ * path uses, so the sweeper cannot race a live completion, decline or void.
+ * Artifact generation, emails and filing are queued by the shared finalizer and
+ * picked up by the completion queue task.
+ */
+export async function sweepStuckEsigningEnvelopes(input?: {
+  limit?: number;
+}): Promise<{ found: number; completed: number; failed: number }> {
+  const candidates = await prisma.esigningEnvelope.findMany({
+    where: {
+      status: { in: ['SENT', 'IN_PROGRESS'] },
+      deletedAt: null,
+      recipients: {
+        some: { type: 'SIGNER' },
+        none: { type: 'SIGNER', status: { not: 'SIGNED' } },
+      },
+    },
+    select: { id: true, tenantId: true },
+    orderBy: { updatedAt: 'asc' },
+    take: input?.limit ?? 50,
+  });
+
+  let completed = 0;
+  let failed = 0;
+
+  for (const candidate of candidates) {
+    try {
+      const wasCompleted = await prisma.$transaction(async (tx) => {
+        const locked = await lockEsigningEnvelopeForUpdate(tx, candidate.id);
+        if (!locked || !isOpenEnvelopeStatus(locked.status)) {
+          return false;
+        }
+
+        const signers = await tx.esigningEnvelopeRecipient.findMany({
+          where: { envelopeId: candidate.id, type: 'SIGNER' },
+          select: { status: true, signedAt: true },
+        });
+        if (signers.length === 0 || signers.some((signer) => signer.status !== 'SIGNED')) {
+          return false;
+        }
+
+        const completedAt = signers.reduce<Date | null>(
+          (latest, signer) =>
+            signer.signedAt && (!latest || signer.signedAt > latest) ? signer.signedAt : latest,
+          null
+        ) ?? new Date();
+
+        return finalizeEsigningEnvelopeCompletion(tx, {
+          tenantId: candidate.tenantId,
+          envelopeId: candidate.id,
+          currentStatus: locked.status,
+          remainingSignerCount: 0,
+          completedAt,
+        });
+      });
+
+      if (!wasCompleted) {
+        continue;
+      }
+
+      completed += 1;
+      log.warn('Completed e-signing envelope stuck with every signer signed', {
+        envelopeId: candidate.id,
+      });
+      await safelyProcessServiceAgreementActivations(candidate.id);
+      await safelyReconcileEsigningEnvelopeTaskOutcomes(candidate.tenantId, candidate.id);
+    } catch (error) {
+      failed += 1;
+      log.error('Failed to complete stuck e-signing envelope', {
+        envelopeId: candidate.id,
+        error,
+      });
+    }
+  }
+
+  return { found: candidates.length, completed, failed };
+}
+
 function getVisibleSigningDocumentIds(context: SigningContext): Set<string> {
   return new Set(
     context.envelope.documents
@@ -171,6 +257,10 @@ function getVisibleSigningDocumentIds(context: SigningContext): Set<string> {
 
 function toIsoString(value: Date | null | undefined): string | null {
   return value ? value.toISOString() : null;
+}
+
+function isOpenEnvelopeStatus(status: string): boolean {
+  return status === 'SENT' || status === 'IN_PROGRESS';
 }
 
 function isTerminalEnvelopeStatus(status: string): boolean {
@@ -1009,7 +1099,51 @@ export async function completeEsigningSigningSession(input: {
   });
 
   let envelopeCompleted = false;
+  let alreadySigned = false;
   await prisma.$transaction(async (tx) => {
+    // Serialise with every other signer, decline, void and sweeper that touches
+    // this envelope, then re-validate against committed state. Without the lock
+    // two final signers each count the other as unsigned (READ COMMITTED) and
+    // neither completes the envelope.
+    const lockedEnvelope = await lockEsigningEnvelopeForUpdate(tx, context.envelope.id);
+    if (!lockedEnvelope) {
+      throw new Error('Envelope not found');
+    }
+    const lockedRecipient = await tx.esigningEnvelopeRecipient.findUnique({
+      where: { id: context.recipient.id },
+      select: { status: true, consentedAt: true, sessionVersion: true },
+    });
+    if (!lockedRecipient || lockedRecipient.sessionVersion !== context.recipient.sessionVersion) {
+      throw new Error('Signing session expired');
+    }
+    // A same-action retry (this signer already finished) must stay quiet even
+    // when the envelope has since completed: two identical requests can both
+    // read the signer as active before either takes the lock. A different
+    // terminal outcome (voided, declined, expired) still falls through to the
+    // rejections below.
+    if (
+      lockedRecipient.status === 'SIGNED' &&
+      (isOpenEnvelopeStatus(lockedEnvelope.status) || lockedEnvelope.status === 'COMPLETED')
+    ) {
+      alreadySigned = true;
+      return;
+    }
+    if (lockedEnvelope.expiresAt && lockedEnvelope.expiresAt.getTime() < Date.now()) {
+      throw new Error('This envelope has expired');
+    }
+    if (!isOpenEnvelopeStatus(lockedEnvelope.status)) {
+      throw new Error(`This envelope is ${lockedEnvelope.status.toLowerCase()}`);
+    }
+    if (lockedRecipient.status === 'DECLINED') {
+      throw new Error('This signing session has been declined');
+    }
+    if (lockedRecipient.status === 'QUEUED') {
+      throw new Error('This signing step is not active yet');
+    }
+    if (!lockedRecipient.consentedAt) {
+      throw new Error('Consent is required before signing');
+    }
+
     await saveRecipientFieldValues(
       {
         tenantId: context.envelope.tenantId,
@@ -1080,11 +1214,14 @@ export async function completeEsigningSigningSession(input: {
     envelopeCompleted = await finalizeEsigningEnvelopeCompletion(tx, {
       tenantId: context.envelope.tenantId,
       envelopeId: context.envelope.id,
-      currentStatus: context.envelope.status,
+      currentStatus: lockedEnvelope.status,
       remainingSignerCount,
       completedAt: now,
     });
   });
+  if (alreadySigned) {
+    return loadEsigningSigningSession();
+  }
   await processEsigningCompletionArtifacts({
     envelopeCompleted,
     envelopeId: context.envelope.id,
@@ -1122,7 +1259,48 @@ export async function declineEsigningSigningSession(input: {
     return;
   }
 
+  let alreadyDeclined = false;
   await prisma.$transaction(async (tx) => {
+    // Same lock as completion: a decline can no longer overwrite an envelope
+    // that a racing final signer just completed (or that was voided/expired).
+    const lockedEnvelope = await lockEsigningEnvelopeForUpdate(tx, context.envelope.id);
+    if (!lockedEnvelope) {
+      throw new Error('Envelope not found');
+    }
+    const lockedRecipient = await tx.esigningEnvelopeRecipient.findUnique({
+      where: { id: context.recipient.id },
+      select: { status: true, sessionVersion: true },
+    });
+    // A same-action retry (this signer already declined) stays quiet. The first
+    // decline revokes every session on the envelope (sessionVersion + 1), so the
+    // duplicate legitimately sees exactly that one increment; any other
+    // mismatch is still a revoked session.
+    if (
+      lockedRecipient?.status === 'DECLINED' &&
+      lockedEnvelope.status === 'DECLINED' &&
+      (lockedRecipient.sessionVersion === context.recipient.sessionVersion ||
+        lockedRecipient.sessionVersion === context.recipient.sessionVersion + 1)
+    ) {
+      alreadyDeclined = true;
+      return;
+    }
+    if (!lockedRecipient || lockedRecipient.sessionVersion !== context.recipient.sessionVersion) {
+      throw new Error('Signing session expired');
+    }
+    if (lockedEnvelope.expiresAt && lockedEnvelope.expiresAt.getTime() < Date.now()) {
+      throw new Error('This envelope has expired');
+    }
+    if (!isOpenEnvelopeStatus(lockedEnvelope.status)) {
+      throw new Error(`This envelope is ${lockedEnvelope.status.toLowerCase()}`);
+    }
+    if (lockedRecipient.status === 'SIGNED') {
+      throw new Error('A completed signer cannot decline');
+    }
+    if (lockedRecipient.status === 'DECLINED') {
+      alreadyDeclined = true;
+      return;
+    }
+
     await tx.esigningEnvelopeRecipient.update({
       where: { id: context.recipient.id },
       data: {
@@ -1161,6 +1339,9 @@ export async function declineEsigningSigningSession(input: {
       },
     });
   });
+  if (alreadyDeclined) {
+    return;
+  }
   await safelyReconcileEsigningEnvelopeTaskOutcomes(
     context.envelope.tenantId,
     context.envelope.id,
