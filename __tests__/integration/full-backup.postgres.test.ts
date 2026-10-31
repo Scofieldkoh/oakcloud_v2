@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * Full backup round trip on real PostgreSQL: back up a seeded install, restore
  * it into a brand-new install with a different ENCRYPTION_KEY and storage, then

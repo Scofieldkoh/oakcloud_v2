@@ -1,3 +1,4 @@
+// @vitest-environment node
 import { randomUUID } from 'node:crypto';
 import { readdirSync, readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
@@ -294,5 +295,5 @@ describePostgres('billing reconciliation PostgreSQL integration', () => {
       await setupClient.query(`DROP SCHEMA IF EXISTS ${schema} CASCADE`);
       schemaName = undefined;
     }
-  });
+  }, 60_000); // applies every migration into an isolated schema, which exceeds the 5 s default
 });
