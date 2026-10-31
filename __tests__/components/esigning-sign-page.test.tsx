@@ -1263,7 +1263,10 @@ describe('EsigningSignPage access code prompt', () => {
 
     render(<EsigningSignPage />);
 
-    expect(await screen.findByText('Enter the access code the sender gave you to continue.')).toBeInTheDocument();
+    const prompt = await screen.findByText('Enter the access code the sender gave you to continue.');
+    // No session exists before the code is verified, so the prompt must not name anyone.
+    expect(prompt.textContent).toBe('Enter the access code the sender gave you to continue.');
+    expect(screen.getByRole('heading', { name: 'Access code required' })).toBeInTheDocument();
     expect(screen.queryByText(/check your email/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/one-time/i)).not.toBeInTheDocument();
     expect(screen.queryByPlaceholderText(/from your email/i)).not.toBeInTheDocument();

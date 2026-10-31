@@ -1345,7 +1345,7 @@ export function EsigningSignPage() {
             Access code required
           </h1>
           <p className="mt-2 text-center text-sm text-text-secondary">
-            Enter the access code {session?.envelope.senderName || 'the sender'} gave you to continue.
+            Enter the access code the sender gave you to continue.
           </p>
           {accessCodeError ? (
             <Alert variant="error" className="mt-4">
