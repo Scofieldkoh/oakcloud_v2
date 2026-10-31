@@ -74,6 +74,9 @@ jobs:
       - name: Test business assistant and BizFile contracts
         run: npm run test:run -- __tests__/services/business-assistant __tests__/api/business-assistant __tests__/services/bizfile __tests__/api/bizfile __tests__/lib/fresh-authorization.test.ts __tests__/middleware.test.ts --reporter=dot
 
+      - name: Test e-signing unit suites
+        run: npm run test:esigning -- --reporter=dot
+
       - name: Build application
         env:
           # The production Next build is known to exceed Node's default ~4 GB heap during validation.
@@ -125,3 +128,42 @@ jobs:
         env:
           TEST_DATABASE_URL: postgresql://assistant_test:assistant-test-only@127.0.0.1:55439/business_assistant_test
         run: npx vitest run __tests__/integration/document-generation-batch.postgres.test.ts --maxWorkers=1
+
+  esigning-postgres:
+    name: E-signing PostgreSQL suite
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: oakcloud_test
+          POSTGRES_PASSWORD: oakcloud-test-only
+          POSTGRES_DB: oakcloud_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U oakcloud_test -d oakcloud_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      # Disposable service container above; never point this at a real database.
+      DATABASE_URL: postgresql://oakcloud_test:oakcloud-test-only@127.0.0.1:5432/oakcloud_test
+      TEST_DATABASE_URL: postgresql://oakcloud_test:oakcloud-test-only@127.0.0.1:5432/oakcloud_test
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+      - name: Set up Node 24
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Generate Prisma client
+        run: npm run db:generate
+      - name: Apply migrations to the disposable test database
+        run: npx prisma migrate deploy
+      - name: Test e-signing completion worker concurrency
+        run: npm run test:esigning:postgres

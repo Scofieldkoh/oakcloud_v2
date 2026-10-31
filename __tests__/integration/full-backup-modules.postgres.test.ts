@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * Module-by-module restore on real PostgreSQL: the preview counts what would
  * change and refuses a selection that would break links between modules; the

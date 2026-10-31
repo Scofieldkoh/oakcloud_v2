@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * SharePoint cloud copy of full backups on real PostgreSQL, against an
  * in-memory stand-in for the SharePoint folder: each backup is copied up,

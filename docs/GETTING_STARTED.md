@@ -137,17 +137,71 @@ remain subject to administrator review and activation.
 | `npm run lint` | Run ESLint |
 | `npm run typecheck` | Run the TypeScript compiler without emitting files |
 | `npm run test:run` | Run the test suite once |
+| `npm run test:esigning` | Run only the e-signing unit tests (no database) |
+| `npm run test:esigning:postgres` | E-signing completion worker concurrency suite (needs `TEST_DATABASE_URL`) |
+| `npm run test:stage3:postgres` | Service agreement activation suite (needs `TEST_DATABASE_URL`) |
+| `npm run test:business-assistant:postgres` | Business Assistant and BizFile suites (needs a separate database, see below) |
 | `npm run test:chromium` | Verify Chromium PDF generation and PDF-to-PNG rasterisation |
 | `npm run test:coverage` | Run tests with coverage |
 
 `npm run test:chromium` requires an installed Chrome/Chromium executable. Set
 `CHROME_PATH` when the executable is not in one of Oakcloud's standard paths.
 
+### PostgreSQL test suites
+
+Every `*.postgres.test.ts` suite starts with `// @vitest-environment node`, because the default Vitest environment is jsdom and the Prisma client cannot load there. Keep that line when adding a Postgres suite.
+
+Most Postgres suites (`test:esigning:postgres`, `test:stage3:postgres`, `test:client-services:postgres`, `test:deadlines:postgres`, `test:billing:postgres`) read `TEST_DATABASE_URL` and skip when it is unset. Point it at a disposable database whose name contains `test`, migrated with `prisma migrate deploy`:
+
+```bash
+export TEST_DATABASE_URL=postgresql://<user>:<password>@127.0.0.1:5432/oakcloud_test
+DATABASE_URL="$TEST_DATABASE_URL" npx prisma migrate deploy
+npm run test:esigning:postgres
+```
+
+Run the plain unit suites (`npm run test:run`, `npm run test:esigning`) without the application's `.env` loaded into the shell: a production `NODE_ENV` breaks the jsdom suites.
+
+#### Business Assistant database (`test:business-assistant:postgres`)
+
+This script needs its own PostgreSQL 16 database and will not run against `oakcloud_test`. `scripts/require-business-assistant-test-env.mjs` and the BizFile suites require all of the following:
+
+- host `127.0.0.1`, port `55439`, database `business_assistant_test`, user `assistant_test`;
+- `DATABASE_URL` and `BUSINESS_ASSISTANT_TEST_DATABASE_URL` set to the same URL.
+
+Set it up with Docker (the same image and settings as CI):
+
+```bash
+docker run -d --name oakcloud-assistant-test -p 127.0.0.1:55439:5432 \
+  -e POSTGRES_USER=assistant_test -e POSTGRES_PASSWORD=assistant-test-only \
+  -e POSTGRES_DB=business_assistant_test postgres:16
+```
+
+Without Docker, run a second local cluster on that port:
+
+```bash
+export PATH=/usr/lib/postgresql/16/bin:$PATH
+echo assistant-test-only > /tmp/pg55439.pw
+initdb -D ~/pg55439 -U assistant_test --pwfile=/tmp/pg55439.pw --auth=scram-sha-256 -E UTF8
+pg_ctl -D ~/pg55439 -o "-p 55439 -c listen_addresses=127.0.0.1 -c unix_socket_directories=/tmp" -l ~/pg55439.log -w start
+PGPASSWORD=assistant-test-only createdb -h 127.0.0.1 -p 55439 -U assistant_test business_assistant_test
+```
+
+Then migrate and run the suites. The password above is for a throwaway local database only:
+
+```bash
+export DATABASE_URL=postgresql://assistant_test:assistant-test-only@127.0.0.1:55439/business_assistant_test
+export BUSINESS_ASSISTANT_TEST_DATABASE_URL="$DATABASE_URL"
+npx prisma migrate deploy
+npm run test:business-assistant:postgres
+```
+
+Never point either variable at the application database; the guard script rejects ports `5433` and `3000` and a database named `oakcloud`.
+
 ### Continuous integration
 
 GitHub Actions runs two workflows. It does not run the full test suite, so run `npm run test:run` locally before opening a PR.
 
-- `node24-compatibility.yml` runs on every PR and every push to `main`. It covers lint, typecheck, selected test suites, the production Next build, and the Business Assistant, BizFile and document-generation PostgreSQL suites on a disposable database.
+- `node24-compatibility.yml` runs on every PR and every push to `main`. It covers lint, typecheck, selected test suites (including `npm run test:esigning`, all e-signing unit tests), the production Next build, the e-signing PostgreSQL suite (`test:esigning:postgres`, in the `esigning-postgres` job on a disposable `postgres:16` service), and the Business Assistant, BizFile and document-generation PostgreSQL suites on a separate disposable database.
 - `production-image.yml` builds and smoke-tests the Docker image on every push to `main`. On PRs it runs only when the Dockerfile, package files, Next config, Prisma or the Chromium helpers change.
 
 Each suite runs once per workflow. When adding a suite to CI, list its file explicitly rather than a directory filter; `vitest run <path>` matches every test file whose path contains that text.
