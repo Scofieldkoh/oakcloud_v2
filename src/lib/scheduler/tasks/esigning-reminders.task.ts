@@ -40,6 +40,7 @@ export const esigningRemindersTask: TaskRegistration = {
   id: 'esigning-reminders',
   name: 'E-Signing Reminders',
   description: 'Sends configured reminder emails and expiry warnings for active envelopes',
+  enabledEnvVar: 'SCHEDULER_ENABLED',
   defaultCronPattern: '0 0 * * *',
   execute: executeEsigningReminderTask,
 };
