@@ -33,6 +33,7 @@ import {
   validateEnvelopeSendReadiness,
 } from '@/services/esigning-envelope.lib';
 import { safelyReconcileEsigningEnvelopeTaskOutcomes } from '@/services/tasks/integration.service';
+import { lockEsigningEnvelopeForUpdate } from '@/services/esigning-envelope-lock';
 import { getEsigningEnvelopeDetail } from './lifecycle';
 import {
   log,
@@ -598,6 +599,17 @@ export async function voidEsigningEnvelope(
   }
 
   await prisma.$transaction(async (tx) => {
+    // Lock first so a void cannot overwrite a completion/decline that committed
+    // after the check above, and a racing signer cannot complete a voided
+    // envelope.
+    const lockedEnvelope = await lockEsigningEnvelopeForUpdate(tx, envelopeId);
+    if (!lockedEnvelope) {
+      throw new Error('Envelope not found');
+    }
+    if (!['SENT', 'IN_PROGRESS'].includes(lockedEnvelope.status)) {
+      throw new Error('Only sent or in-progress envelopes can be voided');
+    }
+
     await tx.esigningEnvelope.update({
       where: { id: envelopeId },
       data: {
