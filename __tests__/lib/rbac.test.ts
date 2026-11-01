@@ -45,6 +45,7 @@ import {
   canReadCompanies,
   hasPermission,
   hasAnyPermission,
+  hasTenantWidePermission,
   hasAllPermissions,
   getUserPermissions,
   requirePermission,
@@ -386,6 +387,76 @@ describe('RBAC', () => {
       // For company-1, should use company-specific role (update only, not read)
       const canUpdate = await hasPermission('user-1', 'company', 'update', 'company-1');
       expect(canUpdate).toBe(true);
+    });
+  });
+
+  describe('hasTenantWidePermission', () => {
+    function assignment(companyId: string | null, permissions: Array<[string, string]>, systemRoleType: string | null = null) {
+      return {
+        id: `assignment-${companyId ?? 'all'}`,
+        companyId,
+        role: {
+          id: `role-${companyId ?? 'all'}`,
+          systemRoleType,
+          permissions: permissions.map(([resource, action], i) => ({
+            id: `rp-${i}`,
+            permission: { id: `p-${i}`, resource, action },
+          })),
+        },
+      };
+    }
+
+    it('ignores company-specific assignments, unlike hasPermission without a company', async () => {
+      vi.mocked(prisma.user.findUnique).mockResolvedValue({
+        id: 'user-1',
+        tenantId: 'tenant-1',
+        isActive: true,
+        deletedAt: null,
+        roleAssignments: [assignment('company-1', [['esigning', 'read']])],
+      } as never);
+
+      expect(await hasTenantWidePermission('user-1', 'esigning', 'read')).toBe(false);
+      expect(await hasPermission('user-1', 'esigning', 'read')).toBe(true);
+    });
+
+    it('grants permissions held through a tenant-wide assignment, including manage', async () => {
+      vi.mocked(prisma.user.findUnique).mockResolvedValue({
+        id: 'user-1',
+        tenantId: 'tenant-1',
+        isActive: true,
+        deletedAt: null,
+        roleAssignments: [
+          assignment(null, [['esigning', 'read']]),
+          assignment('company-1', [['esigning', 'manage']]),
+        ],
+      } as never);
+
+      expect(await hasTenantWidePermission('user-1', 'esigning', 'read')).toBe(true);
+      expect(await hasTenantWidePermission('user-1', 'esigning', 'update')).toBe(false);
+    });
+
+    it('passes admins and rejects inactive or missing users', async () => {
+      vi.mocked(prisma.user.findUnique).mockResolvedValue({
+        id: 'user-1',
+        tenantId: 'tenant-1',
+        isActive: true,
+        deletedAt: null,
+        roleAssignments: [assignment(null, [], 'TENANT_ADMIN')],
+      } as never);
+      expect(await hasTenantWidePermission('user-1', 'esigning', 'delete')).toBe(true);
+
+      clearAllPermissionCache();
+      vi.mocked(prisma.user.findUnique).mockResolvedValue({
+        id: 'user-1',
+        tenantId: 'tenant-1',
+        isActive: false,
+        deletedAt: null,
+        roleAssignments: [assignment(null, [['esigning', 'read']])],
+      } as never);
+      expect(await hasTenantWidePermission('user-1', 'esigning', 'read')).toBe(false);
+
+      vi.mocked(prisma.user.findUnique).mockResolvedValue(null as never);
+      expect(await hasTenantWidePermission('user-2', 'esigning', 'read')).toBe(false);
     });
   });
 

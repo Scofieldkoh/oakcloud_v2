@@ -46,7 +46,11 @@ vi.mock('@/services/service-agreement', () => serviceAgreementMock);
 vi.mock('@/lib/esigning-session', () => sessionMocks);
 vi.mock('@/lib/storage', () => ({ storage: storageMocks }));
 vi.mock('@/lib/audit', () => ({ createAuditLog: vi.fn() }));
-vi.mock('@/lib/rbac', () => ({ hasPermission: rbacMocks.hasPermission }));
+vi.mock('@/lib/rbac', () => ({
+  hasPermission: rbacMocks.hasPermission,
+  hasTenantWidePermission: (userId: string, resource: string, action: string) =>
+    rbacMocks.hasPermission(userId, resource, action),
+}));
 vi.mock('@/services/esigning-field.service', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/services/esigning-field.service')>();
   return {

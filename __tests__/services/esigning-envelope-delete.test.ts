@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { deleteDraftEsigningEnvelope } from '@/services/esigning-envelope.service';
+import { makeEsigningScope } from '../helpers/esigning-scope';
 
 const mocks = vi.hoisted(() => ({
   findFirst: vi.fn(),
@@ -58,7 +59,7 @@ const session = {
 describe('e-signing envelope deletion', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mocks.resolveEsigningActorScope.mockResolvedValue({ canDeleteAny: true });
+    mocks.resolveEsigningActorScope.mockResolvedValue(makeEsigningScope({ admin: true }));
     mocks.findFirst.mockResolvedValue({
       id: 'envelope-1',
       status: 'COMPLETED',
@@ -98,7 +99,7 @@ describe('e-signing envelope deletion', () => {
 
   it.each(['DECLINED', 'VOIDED'])('preserves delete permissions for %s envelopes', async (status) => {
     mocks.findFirst.mockResolvedValue({ id: 'envelope-1', status, createdById: 'user-2' });
-    mocks.resolveEsigningActorScope.mockResolvedValue({ canDeleteAny: false, canDeleteOwn: false });
+    mocks.resolveEsigningActorScope.mockResolvedValue(makeEsigningScope({ tenantWide: { read: true } }));
     await expect(deleteDraftEsigningEnvelope(session, 'tenant-1', 'envelope-1')).rejects.toThrow('Forbidden');
     expect(mocks.delete).not.toHaveBeenCalled();
   });

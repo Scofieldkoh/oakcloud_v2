@@ -51,11 +51,11 @@ export async function addEsigningEnvelopeRecipient(
   if (!envelope) {
     throw new Error('Envelope not found');
   }
+  if (!canMutateEnvelope(scope, session, envelope)) {
+    throw new Error('Forbidden');
+  }
   if (envelope.status !== 'DRAFT') {
     throw new Error('Recipients can only be added while the envelope is a draft');
-  }
-  if (!canMutateEnvelope(scope, session, envelope.createdById)) {
-    throw new Error('Forbidden');
   }
   if (envelope.recipients.length >= ESIGNING_LIMITS.MAX_RECIPIENTS) {
     throw new Error(`An envelope can have at most ${ESIGNING_LIMITS.MAX_RECIPIENTS} recipients`);
@@ -159,7 +159,7 @@ export async function updateEsigningEnvelopeRecipient(
   if (!envelope) {
     throw new Error('Envelope not found');
   }
-  if (!canMutateEnvelope(scope, session, envelope.createdById)) {
+  if (!canMutateEnvelope(scope, session, envelope)) {
     throw new Error('Forbidden');
   }
 
@@ -369,11 +369,11 @@ export async function removeEsigningEnvelopeRecipient(
   if (!envelope) {
     throw new Error('Envelope not found');
   }
+  if (!canMutateEnvelope(scope, session, envelope)) {
+    throw new Error('Forbidden');
+  }
   if (envelope.status !== 'DRAFT') {
     throw new Error('Recipients can only be removed while the envelope is a draft');
-  }
-  if (!canMutateEnvelope(scope, session, envelope.createdById)) {
-    throw new Error('Forbidden');
   }
   if (!envelope.recipients.some((recipient) => recipient.id === recipientId)) {
     throw new Error('Recipient not found');
@@ -435,14 +435,14 @@ export async function reorderEsigningEnvelopeRecipients(
   if (!envelope) {
     throw new Error('Envelope not found');
   }
+  if (!canMutateEnvelope(scope, session, envelope)) {
+    throw new Error('Forbidden');
+  }
   if (envelope.status !== 'DRAFT') {
     throw new Error('Recipients can only be reordered while the envelope is a draft');
   }
   if (envelope.signingOrder === 'PARALLEL') {
     throw new Error('Enable sequential signing before reordering recipients');
-  }
-  if (!canMutateEnvelope(scope, session, envelope.createdById)) {
-    throw new Error('Forbidden');
   }
 
   const signerRecipients = envelope.recipients.filter((recipient) => recipient.type === 'SIGNER');

@@ -1,6 +1,6 @@
 import { Prisma } from '@/generated/prisma';
 import type { SessionUser } from '@/lib/auth';
-import { hasPermission } from '@/lib/rbac';
+import { hasPermission, hasTenantWidePermission } from '@/lib/rbac';
 import { prisma } from '@/lib/prisma';
 import type {
   EsigningEnvelopeDetailDto,
@@ -19,13 +19,64 @@ import {
   toEsigningCopyDeliveryDtoStatus,
 } from '@/services/esigning-completion.service';
 
+export type EsigningPermissionAction = 'create' | 'read' | 'update' | 'delete' | 'manage';
+
+/** The e-signing actions one actor holds in one scope (a company, or tenant-wide). */
+export type EsigningPermissionFlags = Record<EsigningPermissionAction, boolean>;
+
+/**
+ * What one actor may do with e-signing envelopes, resolved once per request.
+ *
+ * Company access lives here and in the `can*Envelope` helpers below, so route
+ * handlers and services never reason about companies themselves.
+ */
 export interface EsigningActorScope {
   tenantId: string;
-  canCreate: boolean;
-  canReadAll: boolean;
-  canUpdateAny: boolean;
-  canDeleteAny: boolean;
-  canManage: boolean;
+  /** Workspace admin or super admin: every action on every envelope. */
+  isAdmin: boolean;
+  /** Held through tenant-wide role assignments (no company) only. */
+  tenantWide: EsigningPermissionFlags;
+  /**
+   * Effective flags per company the actor has a company-specific assignment for
+   * (`session.companyIds`). Any other company falls back to `tenantWide`, which is
+   * the override rule `hasPermission(…, companyId)` applies.
+   */
+  companies: Record<string, EsigningPermissionFlags>;
+  /** Held through any assignment. Only for gating before a company is known. */
+  any: EsigningPermissionFlags;
+}
+
+/** The two facts about an envelope that decide access. */
+export interface EsigningEnvelopeAccessRef {
+  createdById: string;
+  companyId: string | null;
+}
+
+const ESIGNING_PERMISSION_ACTIONS: readonly EsigningPermissionAction[] = [
+  'create',
+  'read',
+  'update',
+  'delete',
+  'manage',
+];
+
+function allFlags(value: boolean): EsigningPermissionFlags {
+  return { create: value, read: value, update: value, delete: value, manage: value };
+}
+
+function hasAnyFlag(flags: EsigningPermissionFlags): boolean {
+  return ESIGNING_PERMISSION_ACTIONS.some((action) => flags[action]);
+}
+
+async function resolveFlags(
+  check: (action: EsigningPermissionAction) => Promise<boolean>
+): Promise<EsigningPermissionFlags> {
+  const results = await Promise.all(ESIGNING_PERMISSION_ACTIONS.map((action) => check(action)));
+  const flags = allFlags(false);
+  ESIGNING_PERMISSION_ACTIONS.forEach((action, index) => {
+    flags[action] = results[index];
+  });
+  return flags;
 }
 
 export function toIsoString(value: Date | null | undefined): string | null {
@@ -72,34 +123,50 @@ export async function resolveEsigningActorScope(
   if (session.isSuperAdmin || session.isWorkspaceAdmin) {
     return {
       tenantId,
-      canCreate: true,
-      canReadAll: true,
-      canUpdateAny: true,
-      canDeleteAny: true,
-      canManage: true,
+      isAdmin: true,
+      tenantWide: allFlags(true),
+      companies: {},
+      any: allFlags(true),
     };
   }
 
-  const [canCreate, canReadAll, canUpdateAny, canDeleteAny, canManage] = await Promise.all([
-    hasPermission(session.id, 'esigning', 'create'),
-    hasPermission(session.id, 'esigning', 'read'),
-    hasPermission(session.id, 'esigning', 'update'),
-    hasPermission(session.id, 'esigning', 'delete'),
-    hasPermission(session.id, 'esigning', 'manage'),
+  const companyIds = Array.from(new Set(session.companyIds ?? []));
+  const [any, tenantWide, companyFlags] = await Promise.all([
+    resolveFlags((action) => hasPermission(session.id, 'esigning', action)),
+    resolveFlags((action) => hasTenantWidePermission(session.id, 'esigning', action)),
+    Promise.all(
+      companyIds.map(
+        async (companyId) =>
+          [
+            companyId,
+            await resolveFlags((action) => hasPermission(session.id, 'esigning', action, companyId)),
+          ] as const
+      )
+    ),
   ]);
 
-  if (!canCreate && !canReadAll && !canUpdateAny && !canDeleteAny && !canManage) {
+  if (!hasAnyFlag(any)) {
     throw new Error('Permission denied: esigning');
   }
 
   return {
     tenantId,
-    canCreate,
-    canReadAll,
-    canUpdateAny,
-    canDeleteAny,
-    canManage,
+    isAdmin: false,
+    tenantWide,
+    companies: Object.fromEntries(companyFlags),
+    any,
   };
+}
+
+/** The actor's flags for a company, or for tenant-wide scope when `companyId` is empty. */
+export function getEsigningFlagsForCompany(
+  scope: EsigningActorScope,
+  companyId: string | null | undefined
+): EsigningPermissionFlags {
+  if (scope.isAdmin || !companyId) {
+    return scope.tenantWide;
+  }
+  return scope.companies[companyId] ?? scope.tenantWide;
 }
 
 export async function ensureCompanyBelongsToTenant(
@@ -124,28 +191,160 @@ export async function ensureCompanyBelongsToTenant(
   }
 }
 
+/**
+ * The one place the envelope access rule lives.
+ *
+ * - Envelope in company C: allowed when the actor holds the action for C, or is the
+ *   creator and still holds some e-signing permission for C.
+ * - Envelope without a company: allowed when the actor holds the action through a
+ *   tenant-wide role, or is the creator.
+ *
+ * Admins always pass.
+ */
+function canActOnEnvelope(
+  scope: EsigningActorScope,
+  session: SessionUser,
+  envelope: EsigningEnvelopeAccessRef,
+  action: EsigningPermissionAction
+): boolean {
+  if (scope.isAdmin) {
+    return true;
+  }
+
+  const flags = getEsigningFlagsForCompany(scope, envelope.companyId);
+  if (flags[action]) {
+    return true;
+  }
+
+  if (envelope.createdById !== session.id) {
+    return false;
+  }
+
+  return envelope.companyId ? hasAnyFlag(flags) : true;
+}
+
 export function canReadEnvelope(
   scope: EsigningActorScope,
   session: SessionUser,
-  createdById: string
+  envelope: EsigningEnvelopeAccessRef
 ): boolean {
-  return scope.canReadAll || createdById === session.id;
+  return canActOnEnvelope(scope, session, envelope, 'read');
 }
 
 export function canMutateEnvelope(
   scope: EsigningActorScope,
   session: SessionUser,
-  createdById: string
+  envelope: EsigningEnvelopeAccessRef
 ): boolean {
-  return scope.canUpdateAny || createdById === session.id;
+  return canActOnEnvelope(scope, session, envelope, 'update');
 }
 
 export function canDeleteEnvelope(
   scope: EsigningActorScope,
   session: SessionUser,
-  createdById: string
+  envelope: EsigningEnvelopeAccessRef
 ): boolean {
-  return scope.canDeleteAny || createdById === session.id;
+  return canActOnEnvelope(scope, session, envelope, 'delete');
+}
+
+/** Void, resend, retry processing and manual links: `manage`, or the right to update. */
+export function canManageEnvelope(
+  scope: EsigningActorScope,
+  session: SessionUser,
+  envelope: EsigningEnvelopeAccessRef
+): boolean {
+  return (
+    canActOnEnvelope(scope, session, envelope, 'manage') ||
+    canActOnEnvelope(scope, session, envelope, 'update')
+  );
+}
+
+/**
+ * Changing an envelope's company needs update rights on the current company and on
+ * the target. A target company needs a real `update` grant there (the creator rule
+ * does not apply), so nobody can push an envelope into a company they cannot edit.
+ */
+export function canMoveEnvelopeToCompany(
+  scope: EsigningActorScope,
+  session: SessionUser,
+  envelope: EsigningEnvelopeAccessRef,
+  targetCompanyId: string | null
+): boolean {
+  if (!canMutateEnvelope(scope, session, envelope)) {
+    return false;
+  }
+  if (scope.isAdmin) {
+    return true;
+  }
+  return targetCompanyId
+    ? getEsigningFlagsForCompany(scope, targetCompanyId).update
+    : canMutateEnvelope(scope, session, { createdById: envelope.createdById, companyId: null });
+}
+
+/** Creating needs `create` for the company, or from any assignment when there is none yet. */
+export function canCreateEnvelopeForCompany(
+  scope: EsigningActorScope,
+  companyId: string | null | undefined
+): boolean {
+  if (scope.isAdmin) {
+    return true;
+  }
+  return companyId ? getEsigningFlagsForCompany(scope, companyId).create : scope.any.create;
+}
+
+export function assertCanCreateEnvelopeForCompany(
+  scope: EsigningActorScope,
+  companyId: string | null | undefined
+): void {
+  if (!canCreateEnvelopeForCompany(scope, companyId)) {
+    throw new Error('Permission denied: esigning:create');
+  }
+}
+
+/**
+ * Prisma `where` limiting envelopes to the ones `canReadEnvelope` allows. The list,
+ * the total, the status counts and the company counts all start from this, so a
+ * count never includes an envelope the actor cannot open.
+ */
+export function buildEsigningEnvelopeReadWhere(
+  scope: EsigningActorScope,
+  session: SessionUser
+): Prisma.EsigningEnvelopeWhereInput {
+  if (scope.isAdmin) {
+    return {};
+  }
+
+  const clauses: Prisma.EsigningEnvelopeWhereInput[] = [];
+  const own = { createdById: session.id };
+
+  // No company: tenant-wide read, otherwise only the creator.
+  clauses.push(scope.tenantWide.read ? { companyId: null } : { companyId: null, ...own });
+
+  // Companies with their own assignment (these override the tenant-wide roles).
+  const explicitIds = Object.keys(scope.companies);
+  const readableIds = explicitIds.filter((id) => scope.companies[id].read);
+  const creatorOnlyIds = explicitIds.filter(
+    (id) => !scope.companies[id].read && hasAnyFlag(scope.companies[id])
+  );
+  if (readableIds.length > 0) {
+    clauses.push({ companyId: { in: readableIds } });
+  }
+  if (creatorOnlyIds.length > 0) {
+    clauses.push({ companyId: { in: creatorOnlyIds }, ...own });
+  }
+
+  // Every other company falls back to the tenant-wide roles.
+  const otherCompanies = {
+    not: null,
+    ...(explicitIds.length > 0 ? { notIn: explicitIds } : {}),
+  };
+  if (scope.tenantWide.read) {
+    clauses.push({ companyId: otherCompanies });
+  } else if (hasAnyFlag(scope.tenantWide)) {
+    clauses.push({ companyId: otherCompanies, ...own });
+  }
+
+  return { OR: clauses };
 }
 
 export async function getEnvelopeAggregate(envelopeId: string, tenantId?: string) {
@@ -248,6 +447,10 @@ export function serializeEnvelopeDetail(input: {
   session: SessionUser;
 }): EsigningEnvelopeDetailDto {
   const { envelope, fieldValues, scope, session } = input;
+  const accessRef: EsigningEnvelopeAccessRef = {
+    createdById: envelope.createdById,
+    companyId: envelope.companyId,
+  };
   const fieldCountByRecipient = new Map<string, { total: number; required: number; signature: number }>();
 
   for (const field of envelope.fieldDefinitions) {
@@ -287,13 +490,15 @@ export function serializeEnvelopeDetail(input: {
     pdfGenerationError: envelope.pdfGenerationError ?? null,
     createdById: envelope.createdById,
     createdByName: formatUserName(envelope.createdBy.firstName, envelope.createdBy.lastName, envelope.createdBy.email),
-    canEdit: envelope.status === 'DRAFT' && canMutateEnvelope(scope, session, envelope.createdById),
+    canEdit: envelope.status === 'DRAFT' && canMutateEnvelope(scope, session, accessRef),
     canDelete:
       ['DRAFT', 'COMPLETED'].includes(envelope.status) &&
-      canDeleteEnvelope(scope, session, envelope.createdById),
-    canSend: envelope.status === 'DRAFT' && canMutateEnvelope(scope, session, envelope.createdById),
-    canVoid: ['SENT', 'IN_PROGRESS'].includes(envelope.status) && (scope.canManage || canMutateEnvelope(scope, session, envelope.createdById)),
-    canDuplicate: scope.canCreate && canReadEnvelope(scope, session, envelope.createdById),
+      canDeleteEnvelope(scope, session, accessRef),
+    canSend: envelope.status === 'DRAFT' && canMutateEnvelope(scope, session, accessRef),
+    canVoid: ['SENT', 'IN_PROGRESS'].includes(envelope.status) && canManageEnvelope(scope, session, accessRef),
+    canDuplicate:
+      canCreateEnvelopeForCompany(scope, envelope.companyId) &&
+      canReadEnvelope(scope, session, accessRef),
     canRetryCompletionProcessing:
       envelope.status === 'COMPLETED' &&
       (envelope.pdfGenerationStatus === 'FAILED' ||
@@ -302,7 +507,7 @@ export function serializeEnvelopeDetail(input: {
           delivery.kind === 'COMPLETION' &&
           ['FAILED_RETRYABLE', 'FAILED_PERMANENT'].includes(delivery.status)
         )) &&
-      (scope.canManage || canMutateEnvelope(scope, session, envelope.createdById)),
+      canManageEnvelope(scope, session, accessRef),
     emailDelivery: getEsigningEmailDeliveryHealth(envelope.emailDeliveries ?? [], envelope.metadata),
     postCompletion: getEsigningPostCompletionSummary(envelope, envelope.emailDeliveries ?? []),
     documentCount: envelope.documents.length,

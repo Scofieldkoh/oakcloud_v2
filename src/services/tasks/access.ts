@@ -106,7 +106,7 @@ export async function requireTaskOutcomeAccess(
     });
     if (!envelope) throw new NotFoundError('E-signing envelope not found');
     const scope = await resolveEsigningActorScope(session, tenantId);
-    if (!canReadEnvelope(scope, session, envelope.createdById)) {
+    if (!canReadEnvelope(scope, session, envelope)) {
       throw new ForbiddenError('E-signing envelope access denied');
     }
     if (envelope.companyId && !(await canAccessCompany(session, envelope.companyId))) {

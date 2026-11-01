@@ -55,11 +55,11 @@ export async function uploadEsigningEnvelopeDocument(
   if (!envelope) {
     throw new Error('Envelope not found');
   }
+  if (!canMutateEnvelope(scope, session, envelope)) {
+    throw new Error('Forbidden');
+  }
   if (envelope.status !== 'DRAFT') {
     throw new Error('Documents can only be uploaded while the envelope is a draft');
-  }
-  if (!canMutateEnvelope(scope, session, envelope.createdById)) {
-    throw new Error('Forbidden');
   }
   if (envelope.documents.length >= ESIGNING_LIMITS.MAX_DOCUMENTS) {
     throw new Error(`An envelope can contain at most ${ESIGNING_LIMITS.MAX_DOCUMENTS} documents`);
@@ -484,15 +484,16 @@ export async function attachGeneratedDocumentsToEsigningEnvelope(
     select: {
       status: true,
       createdById: true,
+      companyId: true,
     },
   });
 
   if (!envelope) throw new Error('Envelope not found');
+  if (!canMutateEnvelope(scope, session, envelope)) {
+    throw new Error('Forbidden');
+  }
   if (envelope.status !== 'DRAFT') {
     throw new Error('Generated documents can only be attached while the envelope is a draft');
-  }
-  if (!canMutateEnvelope(scope, session, envelope.createdById)) {
-    throw new Error('Forbidden');
   }
 
   await attachGeneratedDocumentsToDraftEnvelope({
@@ -607,11 +608,11 @@ export async function deleteEsigningEnvelopeDocument(
   if (!envelope) {
     throw new Error('Envelope not found');
   }
+  if (!canMutateEnvelope(scope, session, envelope)) {
+    throw new Error('Forbidden');
+  }
   if (envelope.status !== 'DRAFT') {
     throw new Error('Documents can only be removed while the envelope is a draft');
-  }
-  if (!canMutateEnvelope(scope, session, envelope.createdById)) {
-    throw new Error('Forbidden');
   }
 
   const document = envelope.documents.find((entry) => entry.id === documentId);
@@ -692,11 +693,11 @@ export async function reorderEsigningEnvelopeDocument(
   if (!envelope) {
     throw new Error('Envelope not found');
   }
+  if (!canMutateEnvelope(scope, session, envelope)) {
+    throw new Error('Forbidden');
+  }
   if (envelope.status !== 'DRAFT') {
     throw new Error('Documents can only be reordered while the envelope is a draft');
-  }
-  if (!canMutateEnvelope(scope, session, envelope.createdById)) {
-    throw new Error('Forbidden');
   }
 
   const currentIndex = envelope.documents.findIndex((entry) => entry.id === documentId);
@@ -750,11 +751,11 @@ export async function renameEsigningEnvelopeDocument(
   if (!envelope) {
     throw new Error('Envelope not found');
   }
+  if (!canMutateEnvelope(scope, session, envelope)) {
+    throw new Error('Forbidden');
+  }
   if (envelope.status !== 'DRAFT') {
     throw new Error('Documents can only be renamed while the envelope is a draft');
-  }
-  if (!canMutateEnvelope(scope, session, envelope.createdById)) {
-    throw new Error('Forbidden');
   }
 
   const document = envelope.documents.find((entry) => entry.id === documentId);
@@ -817,11 +818,11 @@ export async function updateEsigningEnvelopeDocumentVisibility(
   if (!envelope) {
     throw new Error('Envelope not found');
   }
+  if (!canMutateEnvelope(scope, session, envelope)) {
+    throw new Error('Forbidden');
+  }
   if (envelope.status !== 'DRAFT') {
     throw new Error('Document visibility can only be changed while the envelope is a draft');
-  }
-  if (!canMutateEnvelope(scope, session, envelope.createdById)) {
-    throw new Error('Forbidden');
   }
   if (!envelope.documents.some((document) => document.id === documentId)) {
     throw new Error('Document not found');

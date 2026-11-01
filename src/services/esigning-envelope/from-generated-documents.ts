@@ -18,6 +18,7 @@ import type { EsigningEnvelopeDetailDto } from '@/types/esigning';
 import { finalizeDocument } from '@/services/document-generator.service';
 import { getDocumentPartyOptions } from '@/services/document-party.service';
 import { createEsigningEnvelope, deleteDraftEsigningEnvelope } from './lifecycle';
+import { assertCanCreateEnvelopeForCompany, resolveEsigningActorScope } from '@/services/esigning-envelope.lib';
 import { addEsigningEnvelopeRecipient } from './recipients';
 import { attachGeneratedDocumentsToEsigningEnvelope } from './documents';
 
@@ -141,6 +142,11 @@ export async function createEsigningEnvelopeFromGeneratedDocuments(
   if (companyIds.size > 1) {
     throw new ValidationError('Documents sent together for e-signing must belong to the same company.');
   }
+  const companyId = ordered[0].companyId;
+  // Check before finalizing anything, so a denied caller changes no documents.
+  const scope = await resolveEsigningActorScope(session, tenantId);
+  assertCanCreateEnvelopeForCompany(scope, companyId ?? null);
+
   const drafts = ordered.filter((document) => document.status === 'DRAFT');
   if (drafts.length > 0 && !input.finalizeDrafts) {
     throw new ValidationError(`Finalize "${drafts[0].title}" before sending it for e-signing.`);
@@ -149,7 +155,6 @@ export async function createEsigningEnvelopeFromGeneratedDocuments(
     await finalizeDocument(draft.id, { tenantId, userId: session.id }, draft.revision);
   }
 
-  const companyId = ordered[0].companyId;
   const parties = companyId
     ? await getDocumentPartyOptions(companyId, tenantId)
     : { directors: [], shareholders: [], contacts: [] };

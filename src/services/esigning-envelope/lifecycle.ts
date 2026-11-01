@@ -17,7 +17,12 @@ import { generateUniqueEsigningCertificateId } from '@/services/esigning-certifi
 import { getEsigningEmailDeliveryHealth } from '@/services/esigning-email-delivery.service';
 import { getEsigningPostCompletionSummary, toEsigningCopyDeliveryDtoStatus } from '@/services/esigning-completion.service';
 import {
+  assertCanCreateEnvelopeForCompany,
+  buildEsigningEnvelopeReadWhere,
+  canCreateEnvelopeForCompany,
   canDeleteEnvelope,
+  canManageEnvelope,
+  canMoveEnvelopeToCompany,
   canMutateEnvelope,
   canReadEnvelope,
   createEnvelopeEvent,
@@ -54,30 +59,38 @@ export async function listEsigningEnvelopes(
   >;
 }> {
   const scope = await resolveEsigningActorScope(session, tenantId);
+  // Every filter that narrows the scope goes in this AND list: the actor's read scope
+  // first, then the search. A second `OR` on the same object would overwrite the first.
+  const scopeFilters: Prisma.EsigningEnvelopeWhereInput[] = [
+    buildEsigningEnvelopeReadWhere(scope, session),
+  ];
   const scopeWhere: Prisma.EsigningEnvelopeWhereInput = {
     tenantId,
     deletedAt: null,
+    AND: scopeFilters,
   };
 
   if (query.query) {
-    scopeWhere.OR = [
-      { title: { contains: query.query, mode: 'insensitive' } },
-      { company: { is: { name: { contains: query.query, mode: 'insensitive' } } } },
-      {
-        documents: {
-          some: {
-            OR: [
-              { fileName: { contains: query.query, mode: 'insensitive' } },
-              { originalFileName: { contains: query.query, mode: 'insensitive' } },
-            ],
+    scopeFilters.push({
+      OR: [
+        { title: { contains: query.query, mode: 'insensitive' } },
+        { company: { is: { name: { contains: query.query, mode: 'insensitive' } } } },
+        {
+          documents: {
+            some: {
+              OR: [
+                { fileName: { contains: query.query, mode: 'insensitive' } },
+                { originalFileName: { contains: query.query, mode: 'insensitive' } },
+              ],
+            },
           },
         },
-      },
-      { recipients: { some: { name: { contains: query.query, mode: 'insensitive' } } } },
-      { recipients: { some: { email: { contains: query.query, mode: 'insensitive' } } } },
-    ];
+        { recipients: { some: { name: { contains: query.query, mode: 'insensitive' } } } },
+        { recipients: { some: { email: { contains: query.query, mode: 'insensitive' } } } },
+      ],
+    });
   }
-  if (!scope.canReadAll || query.createdBy === 'me') {
+  if (query.createdBy === 'me') {
     scopeWhere.createdById = session.id;
   }
 
@@ -316,14 +329,16 @@ export async function listEsigningEnvelopes(
       createdByName: formatUserName(envelope.createdBy.firstName, envelope.createdBy.lastName, envelope.createdBy.email),
       canDelete:
         ['DRAFT', 'COMPLETED', 'DECLINED', 'VOIDED'].includes(envelope.status) &&
-        canDeleteEnvelope(scope, session, envelope.createdById),
+        canDeleteEnvelope(scope, session, envelope),
       canVoid:
         ['SENT', 'IN_PROGRESS'].includes(envelope.status) &&
-        (scope.canManage || canMutateEnvelope(scope, session, envelope.createdById)),
-      canDuplicate: scope.canCreate && canReadEnvelope(scope, session, envelope.createdById),
+        canManageEnvelope(scope, session, envelope),
+      canDuplicate:
+        canCreateEnvelopeForCompany(scope, envelope.companyId) &&
+        canReadEnvelope(scope, session, envelope),
       canResend:
         ['SENT', 'IN_PROGRESS'].includes(envelope.status) &&
-        (scope.canManage || canMutateEnvelope(scope, session, envelope.createdById)) &&
+        canManageEnvelope(scope, session, envelope) &&
         envelope.recipients.some(
           (recipient) =>
             recipient.type === 'SIGNER' && ['NOTIFIED', 'VIEWED'].includes(recipient.status)
@@ -336,7 +351,7 @@ export async function listEsigningEnvelopes(
             delivery.kind === 'COMPLETION' &&
             ['FAILED_RETRYABLE', 'FAILED_PERMANENT'].includes(delivery.status)
           )) &&
-        (scope.canManage || canMutateEnvelope(scope, session, envelope.createdById)),
+        canManageEnvelope(scope, session, envelope),
       emailDelivery: getEsigningEmailDeliveryHealth(envelope.emailDeliveries ?? [], envelope.metadata),
       postCompletion: getEsigningPostCompletionSummary(envelope, envelope.emailDeliveries ?? []),
       resendableRecipientCount: envelope.recipients.filter(
@@ -392,7 +407,7 @@ export async function getEsigningEnvelopeDetail(
   const scope = await resolveEsigningActorScope(session, tenantId);
   const aggregate = await getEnvelopeAggregate(envelopeId, tenantId);
 
-  if (!canReadEnvelope(scope, session, aggregate.envelope.createdById)) {
+  if (!canReadEnvelope(scope, session, aggregate.envelope)) {
     throw new Error('Forbidden');
   }
 
@@ -411,9 +426,7 @@ export async function createEsigningEnvelope(
   taskIntegrationContext?: TaskLaunchContext,
 ): Promise<EsigningEnvelopeDetailDto> {
   const scope = await resolveEsigningActorScope(session, tenantId);
-  if (!scope.canCreate) {
-    throw new Error('Permission denied: esigning:create');
-  }
+  assertCanCreateEnvelopeForCompany(scope, input.companyId ?? null);
 
   await ensureCompanyBelongsToTenant(tenantId, input.companyId ?? null);
 
@@ -528,6 +541,7 @@ export async function updateDraftEsigningEnvelope(
       id: true,
       status: true,
       createdById: true,
+      companyId: true,
       signingOrder: true,
     },
   });
@@ -535,11 +549,18 @@ export async function updateDraftEsigningEnvelope(
   if (!envelope) {
     throw new Error('Envelope not found');
   }
+  // Permission before state, so a denied caller never learns the envelope's status.
+  if (!canMutateEnvelope(scope, session, envelope)) {
+    throw new Error('Forbidden');
+  }
   if (envelope.status !== 'DRAFT') {
     throw new Error('Only draft envelopes can be edited');
   }
-  if (!canMutateEnvelope(scope, session, envelope.createdById)) {
-    throw new Error('Forbidden');
+  // Moving an envelope to another company (or out of one) needs update rights on both.
+  if (input.companyId !== undefined && (input.companyId ?? null) !== envelope.companyId) {
+    if (!canMoveEnvelopeToCompany(scope, session, envelope, input.companyId ?? null)) {
+      throw new Error('Forbidden');
+    }
   }
 
   await ensureCompanyBelongsToTenant(tenantId, input.companyId ?? null);
@@ -610,9 +631,6 @@ export async function duplicateEsigningEnvelope(
   envelopeId: string
 ): Promise<EsigningEnvelopeDetailDto> {
   const scope = await resolveEsigningActorScope(session, tenantId);
-  if (!scope.canCreate) {
-    throw new Error('Permission denied: esigning:create');
-  }
 
   const sourceEnvelope = await prisma.esigningEnvelope.findFirst({
     where: {
@@ -642,9 +660,11 @@ export async function duplicateEsigningEnvelope(
   if (!sourceEnvelope) {
     throw new Error('Envelope not found');
   }
-  if (!canReadEnvelope(scope, session, sourceEnvelope.createdById)) {
+  if (!canReadEnvelope(scope, session, sourceEnvelope)) {
     throw new Error('Forbidden');
   }
+  // The copy lives in the source's company, so the actor needs create rights there.
+  assertCanCreateEnvelopeForCompany(scope, sourceEnvelope.companyId);
 
   const duplicatedEnvelopeId = randomUUID();
   const certificateId = await generateUniqueEsigningCertificateId();
@@ -852,11 +872,11 @@ export async function deleteDraftEsigningEnvelope(
   if (!envelope) {
     throw new Error('Envelope not found');
   }
+  if (!canDeleteEnvelope(scope, session, envelope)) {
+    throw new Error('Forbidden');
+  }
   if (!['DRAFT', 'COMPLETED', 'DECLINED', 'VOIDED'].includes(envelope.status)) {
     throw new Error('Only draft, completed, declined or voided envelopes can be deleted');
-  }
-  if (!canDeleteEnvelope(scope, session, envelope.createdById)) {
-    throw new Error('Forbidden');
   }
 
   const linkedTaskStageIds = await safelyCaptureEsigningTaskStageIds(

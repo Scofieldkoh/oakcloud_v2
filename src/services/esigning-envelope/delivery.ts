@@ -4,7 +4,6 @@
  */
 
 import type { SessionUser } from '@/lib/auth';
-import { canAccessCompany } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { createAuditLog } from '@/lib/audit';
 import { storage, StorageKeys } from '@/lib/storage';
@@ -23,6 +22,7 @@ import {
 } from '@/services/esigning-email-delivery.service';
 import { detectEsigningFieldOverlapWarnings } from '@/services/esigning-field.service';
 import {
+  canManageEnvelope,
   canMutateEnvelope,
   createEnvelopeEvent,
   formatUserName,
@@ -62,11 +62,11 @@ export async function sendEsigningEnvelope(
   const aggregate = await getEnvelopeAggregate(envelopeId, tenantId);
   const { envelope } = aggregate;
 
+  if (!canMutateEnvelope(scope, session, envelope)) {
+    throw new Error('Forbidden');
+  }
   if (envelope.status !== 'DRAFT') {
     throw new Error('Only draft envelopes can be sent');
-  }
-  if (!canMutateEnvelope(scope, session, envelope.createdById)) {
-    throw new Error('Forbidden');
   }
 
   validateEnvelopeSendReadiness({
@@ -265,14 +265,11 @@ export async function resendEsigningEnvelopeRecipient(
   if (!envelope) {
     throw new Error('Envelope not found');
   }
+  if (!canManageEnvelope(scope, session, envelope)) {
+    throw new Error('Forbidden');
+  }
   if (!['SENT', 'IN_PROGRESS'].includes(envelope.status)) {
     throw new Error('Only sent or in-progress envelopes can be resent');
-  }
-  if (!canMutateEnvelope(scope, session, envelope.createdById) && !scope.canManage) {
-    throw new Error('Forbidden');
-  }
-  if (envelope.companyId && !(await canAccessCompany(session, envelope.companyId))) {
-    throw new Error('Forbidden');
   }
 
   const recipient = envelope.recipients.find((entry) => entry.id === recipientId);
@@ -386,14 +383,11 @@ export async function getEsigningEnvelopeRecipientManualLink(
   if (!envelope) {
     throw new Error('Envelope not found');
   }
+  if (!canManageEnvelope(scope, session, envelope)) {
+    throw new Error('Forbidden');
+  }
   if (!['SENT', 'IN_PROGRESS'].includes(envelope.status)) {
     throw new Error('Signer links are available only after the envelope has been sent');
-  }
-  if (!canMutateEnvelope(scope, session, envelope.createdById) && !scope.canManage) {
-    throw new Error('Forbidden');
-  }
-  if (envelope.companyId && !(await canAccessCompany(session, envelope.companyId))) {
-    throw new Error('Forbidden');
   }
 
   const recipient = envelope.recipients.find((entry) => entry.id === recipientId);
@@ -470,11 +464,11 @@ export async function resendEsigningEnvelopeActiveRecipients(
   if (!envelope) {
     throw new Error('Envelope not found');
   }
+  if (!canManageEnvelope(scope, session, envelope)) {
+    throw new Error('Forbidden');
+  }
   if (!['SENT', 'IN_PROGRESS'].includes(envelope.status)) {
     throw new Error('Only sent or in-progress envelopes can be resent');
-  }
-  if (!canMutateEnvelope(scope, session, envelope.createdById) && !scope.canManage) {
-    throw new Error('Forbidden');
   }
 
   const activeRecipients = envelope.recipients.filter(
@@ -591,11 +585,11 @@ export async function voidEsigningEnvelope(
   if (!envelope) {
     throw new Error('Envelope not found');
   }
+  if (!canManageEnvelope(scope, session, envelope)) {
+    throw new Error('Forbidden');
+  }
   if (!['SENT', 'IN_PROGRESS'].includes(envelope.status)) {
     throw new Error('Only sent or in-progress envelopes can be voided');
-  }
-  if (!scope.canManage && !canMutateEnvelope(scope, session, envelope.createdById)) {
-    throw new Error('Forbidden');
   }
 
   await prisma.$transaction(async (tx) => {
@@ -706,11 +700,11 @@ export async function retryEsigningEnvelopeCompletionProcessing(
   if (!envelope) {
     throw new Error('Envelope not found');
   }
+  if (!canManageEnvelope(scope, session, envelope)) {
+    throw new Error('Forbidden');
+  }
   if (envelope.status !== 'COMPLETED') {
     throw new Error('Only completed envelopes can retry completion processing');
-  }
-  if (!scope.canManage && !canMutateEnvelope(scope, session, envelope.createdById)) {
-    throw new Error('Forbidden');
   }
 
   await prisma.$transaction(async (tx) => {

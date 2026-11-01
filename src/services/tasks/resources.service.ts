@@ -4,6 +4,7 @@ import { canAccessCompany } from '@/lib/auth';
 import { hasPermission } from '@/lib/rbac';
 import { prisma } from '@/lib/prisma';
 import {
+  getEsigningFlagsForCompany,
   canReadEnvelope,
   resolveEsigningActorScope,
   type EsigningActorScope,
@@ -373,8 +374,8 @@ async function serializeEsigningEnvelopeResource(
     ? await canReadCompanyResource(session, envelope.companyId)
     : true;
   const envelopeReadable = Boolean(
-    esigningScope?.canReadAll
-      && canReadEnvelope(esigningScope, session, envelope.createdById)
+    esigningScope
+      && canReadEnvelope(esigningScope, session, envelope)
       && companyReadable,
   );
   if (!envelopeReadable) {
@@ -394,7 +395,9 @@ async function serializeEsigningEnvelopeResource(
     completedSignatures: signers.filter((signer) => signer.status === 'SIGNED').length,
     requiredSignatures: signers.length,
     href: taskResourceHref(`/esigning/${envelope.id}`, taskId, stage.id),
-    canGenerateSignerLink: Boolean(esigningScope?.canUpdateAny),
+    canGenerateSignerLink: Boolean(
+      esigningScope && getEsigningFlagsForCompany(esigningScope, envelope.companyId).update,
+    ),
     generatedDocumentIds: envelope.documents.flatMap((document) => (
       document.generatedDocumentId ? [document.generatedDocumentId] : []
     )),

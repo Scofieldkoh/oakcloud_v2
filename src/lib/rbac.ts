@@ -454,6 +454,69 @@ export async function hasPermission(
 }
 
 /**
+ * Check a permission against tenant-wide role assignments only (companyId = null).
+ *
+ * `hasPermission` without a company answers "does the user hold this permission
+ * through ANY assignment", which includes company-specific ones. Use this when a
+ * resource without a company must be limited to tenant-wide roles. Admins pass.
+ */
+export async function hasTenantWidePermission(
+  userId: string,
+  resource: Resource,
+  action: Action
+): Promise<boolean> {
+  const cacheKey = `${userId}:tenant-wide`;
+  const now = Date.now();
+
+  let entry = permissionCache.get(cacheKey);
+  if (!entry || now - entry.timestamp >= PERMISSION_CACHE_TTL) {
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        deletedAt: true,
+        isActive: true,
+        roleAssignments: {
+          select: {
+            companyId: true,
+            role: {
+              select: {
+                systemRoleType: true,
+                permissions: {
+                  select: { permission: { select: { resource: true, action: true } } },
+                },
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!user || user.deletedAt || !user.isActive) {
+      return false;
+    }
+
+    const isAdmin = user.roleAssignments.some(
+      (assignment) => normalizeSystemRole(assignment.role.systemRoleType) === 'ADMIN'
+    );
+    const permissions = new Set<string>();
+    for (const assignment of user.roleAssignments) {
+      if (assignment.companyId !== null) continue;
+      for (const rp of assignment.role.permissions) {
+        permissions.add(`${rp.permission.resource}:${rp.permission.action}`);
+      }
+    }
+    entry = { permissions, isAdmin, hasScopedWorkspaceAdminAccess: false, timestamp: now };
+    permissionCache.set(cacheKey, entry);
+  }
+
+  return (
+    entry.isAdmin ||
+    entry.permissions.has(`${resource}:${action}`) ||
+    entry.permissions.has(`${resource}:manage`)
+  );
+}
+
+/**
  * Get effective role assignments based on specificity
  * Company-specific roles override tenant-wide roles
  *
