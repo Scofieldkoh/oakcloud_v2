@@ -25,7 +25,7 @@ if (process.env.CI === 'true' && !testDatabaseUrl) {
 }
 
 const current = vi.hoisted(() => ({ session: null as unknown }));
-const memory = vi.hoisted(() => ({ files: new Map<string, Buffer>() }));
+const memory = vi.hoisted(() => ({ files: new Map<string, Buffer>(), pdf: null as Buffer | null }));
 
 vi.mock('@/lib/auth', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/lib/auth')>()),
@@ -68,6 +68,12 @@ vi.mock('@/lib/storage', async (importOriginal) => {
 vi.mock('@/lib/email', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/lib/email')>()),
   sendEmail: vi.fn(async () => ({ success: true, messageId: 'test' })),
+}));
+
+// Rendering a generated document needs Chromium; hand back a real one-page PDF instead.
+vi.mock('@/services/document-export.service', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/services/document-export.service')>()),
+  exportToPDF: vi.fn(async () => ({ buffer: Buffer.from(memory.pdf!), filename: 'Generated.pdf' })),
 }));
 
 const describePostgres = testDatabaseUrl ? describe : describe.skip;
@@ -443,6 +449,7 @@ describePostgres('e-signing company access (real routes, rbac and database)', ()
     const original = await PDFDocument.create();
     original.addPage([595, 842]);
     documentPdf = Buffer.from(await original.save());
+    memory.pdf = documentPdf;
 
     const suffix = randomUUID();
     const workspace = await prisma.workspace.create({
@@ -559,9 +566,13 @@ describePostgres('e-signing company access (real routes, rbac and database)', ()
     return kind === 'A' ? companyA : kind === 'B' ? companyB : null;
   }
 
-  async function seedEnvelope(state: State, kind: Kind): Promise<Fixture> {
+  async function seedEnvelope(
+    state: State,
+    kind: Kind,
+    options: { createdBy?: ActorName | 'owner' } = {}
+  ): Promise<Fixture> {
     const id = randomUUID();
-    const createdById = kind === 'N2' ? users.aCreator : users.owner;
+    const createdById = users[options.createdBy ?? (kind === 'N2' ? 'aCreator' : 'owner')];
     const envelope = await prisma.esigningEnvelope.create({
       data: {
         id,
@@ -631,6 +642,16 @@ describePostgres('e-signing company access (real routes, rbac and database)', ()
         companyId: true,
         updatedAt: true,
         voidedAt: true,
+        metadata: true,
+        pdfGenerationStatus: true,
+        autoFilingStatus: true,
+        documents: { orderBy: { id: 'asc' }, select: { id: true, originalFileName: true, sortOrder: true } },
+        recipients: {
+          orderBy: { id: 'asc' },
+          select: { id: true, name: true, email: true, status: true, signingOrder: true, sessionVersion: true },
+        },
+        // Saving fields replaces the rows, so their ids change when a write got through.
+        fieldDefinitions: { orderBy: { id: 'asc' }, select: { id: true } },
         _count: { select: { documents: true, recipients: true, fieldDefinitions: true, events: true } },
       },
     });
@@ -675,7 +696,9 @@ describePostgres('e-signing company access (real routes, rbac and database)', ()
         expect(response.status, body.slice(0, 300)).toBeGreaterThanOrEqual(200);
         expect(response.status, body.slice(0, 300)).toBeLessThan(300);
       } else {
-        // State-dependent handlers may answer a state error, but never a missing envelope.
+        // State-dependent handlers may answer a state error, but never a missing envelope or
+        // document: a permitted actor must not be told the envelope does not exist.
+        expect(response.status, body.slice(0, 300)).not.toBe(404);
         expect(body).not.toContain('Envelope not found');
       }
     });
@@ -798,6 +821,28 @@ describePostgres('e-signing company access (real routes, rbac and database)', ()
     });
   });
 
+  /**
+   * Who may create an envelope (or one from generated documents) in company A, in company B,
+   * or with no company. With no company, `create` from any assignment is enough.
+   */
+  const CREATE_POLICY: Record<ActorName, Record<'A' | 'B' | 'none', boolean>> = {
+    aOnly: { A: true, B: false, none: true },
+    aCreator: { A: true, B: false, none: true },
+    bOnly: { A: false, B: true, none: true },
+    tenantWide: { A: true, B: true, none: true },
+    admin: { A: true, B: true, none: true },
+    aReadOnly: { A: false, B: false, none: false },
+    // Tenant-wide read only, plus a full role in A: B falls back to read-only.
+    mixed: { A: true, B: false, none: true },
+  };
+  const CREATE_CASES = ACTORS.flatMap((actor) =>
+    (['A', 'B', 'none'] as const).map((where) => [actor, where, CREATE_POLICY[actor][where]] as const)
+  );
+
+  function companyFor(where: 'A' | 'B' | 'none'): string | null {
+    return where === 'A' ? companyA : where === 'B' ? companyB : null;
+  }
+
   describe('POST /envelopes (create)', () => {
     async function create(actor: ActorName, companyId: string | null) {
       const title = `Created ${randomUUID()}`;
@@ -808,56 +853,174 @@ describePostgres('e-signing company access (real routes, rbac and database)', ()
       return { response, count };
     }
 
-    it.each([
-      ['aOnly', 'A', 201],
-      ['aOnly', 'B', 403],
-      ['aOnly', 'none', 201],
-      ['bOnly', 'A', 403],
-      ['bOnly', 'B', 201],
-      ['tenantWide', 'A', 201],
-      ['tenantWide', 'B', 201],
-      ['tenantWide', 'none', 201],
-      ['admin', 'B', 201],
-      ['aReadOnly', 'A', 403],
-      ['mixed', 'A', 201],
-      ['mixed', 'B', 403],
-    ] as const)('%s creating in %s -> %s', async (actor, where, status) => {
-      const companyId = where === 'A' ? companyA : where === 'B' ? companyB : null;
-      const { response, count } = await create(actor, companyId);
-      expect(response.status).toBe(status);
-      expect(count).toBe(status === 201 ? 1 : 0);
+    it.each(CREATE_CASES)('%s creating in %s -> allowed: %s', async (actor, where, allowedToCreate) => {
+      const { response, count } = await create(actor, companyFor(where));
+      expect(response.status).toBe(allowedToCreate ? 201 : 403);
+      expect(count).toBe(allowedToCreate ? 1 : 0);
     });
   });
 
   describe('POST /envelopes/from-documents (create)', () => {
-    async function seedGeneratedDocument(companyId: string) {
+    async function seedGeneratedDocument(where: 'A' | 'B' | 'none', status: 'DRAFT' | 'FINALIZED' = 'FINALIZED') {
       return prisma.generatedDocument.create({
         data: {
           tenantId,
-          companyId,
-          title: `Draft ${randomUUID().slice(0, 6)}`,
+          companyId: companyFor(where),
+          title: `Generated ${randomUUID().slice(0, 8)}`,
           content: '<p>Hello</p>',
-          status: 'DRAFT',
+          status,
+          revision: 1,
+          ...(status === 'FINALIZED' ? { finalizedAt: new Date(), finalizedById: users.owner } : {}),
           createdById: users.owner,
         },
       });
     }
 
-    it('refuses documents of another company before finalizing anything', async () => {
-      const documentInB = await seedGeneratedDocument(companyB);
-      const envelopesBefore = await prisma.esigningEnvelope.count({ where: { tenantId } });
-
-      const response = await asActor('aOnly', () =>
+    function fromDocuments(actor: ActorName, documentId: string, finalizeDrafts = false) {
+      return asActor(actor, () =>
         routes.fromDocuments.POST(
-          json(ctx, '/envelopes/from-documents', 'POST', { generatedDocumentIds: [documentInB.id], finalizeDrafts: true })
+          json(ctx, '/envelopes/from-documents', 'POST', { generatedDocumentIds: [documentId], finalizeDrafts })
         )
       );
+    }
+
+    it.each(CREATE_CASES)('%s with a document of %s -> allowed: %s', async (actor, where, allowedToCreate) => {
+      const document = await seedGeneratedDocument(where);
+      const envelopesBefore = await prisma.esigningEnvelope.count({ where: { tenantId } });
+
+      const response = await fromDocuments(actor, document.id);
+      const body = await response.clone().text();
+
+      if (!allowedToCreate) {
+        expect(response.status, body.slice(0, 300)).toBe(403);
+        expect(await prisma.esigningEnvelope.count({ where: { tenantId } })).toBe(envelopesBefore);
+        expect(await prisma.esigningEnvelopeDocument.count({ where: { generatedDocumentId: document.id } })).toBe(0);
+        return;
+      }
+
+      expect(response.status, body.slice(0, 300)).toBe(201);
+      const { id } = JSON.parse(body) as { id: string };
+      const envelope = await prisma.esigningEnvelope.findUniqueOrThrow({
+        where: { id },
+        include: { documents: true },
+      });
+      expect(envelope.companyId).toBe(companyFor(where));
+      expect(envelope.createdById).toBe(users[actor]);
+      expect(envelope.documents.map((entry) => entry.generatedDocumentId)).toEqual([document.id]);
+    });
+
+    it('refuses draft documents of another company before finalizing anything', async () => {
+      const documentInB = await seedGeneratedDocument('B', 'DRAFT');
+      const envelopesBefore = await prisma.esigningEnvelope.count({ where: { tenantId } });
+
+      const response = await fromDocuments('aOnly', documentInB.id, true);
 
       expect(response.status).toBe(403);
       expect(await prisma.esigningEnvelope.count({ where: { tenantId } })).toBe(envelopesBefore);
       const after = await prisma.generatedDocument.findUniqueOrThrow({ where: { id: documentInB.id } });
       expect(after.status).toBe('DRAFT');
       expect(after.finalizedAt).toBeNull();
+    });
+  });
+
+  describe('attaching generated documents to an envelope (JSON)', () => {
+    type DocWhere = 'A' | 'B' | 'none';
+    const DOC_WHERES: DocWhere[] = ['A', 'B', 'none'];
+    const kindForCompany: Record<'A' | 'B', Kind> = { A: 'A', B: 'B' };
+
+    async function seedDocument(where: DocWhere) {
+      return prisma.generatedDocument.create({
+        data: {
+          tenantId,
+          companyId: companyFor(where),
+          title: `Attach ${randomUUID().slice(0, 8)}`,
+          content: '<p>Hello</p>',
+          status: 'FINALIZED',
+          revision: 1,
+          finalizedAt: new Date(),
+          finalizedById: users.owner,
+          createdById: users.owner,
+        },
+      });
+    }
+
+    function attach(actor: ActorName, envelopeId: string, documentId: string) {
+      return asActor(actor, () =>
+        routes.documents.POST(
+          json(ctx, `/envelopes/${envelopeId}/documents`, 'POST', { generatedDocumentIds: [documentId] }),
+          { params: Promise.resolve({ id: envelopeId }) }
+        )
+      );
+    }
+
+    /**
+     * Allowed when the actor may edit the envelope and, for an envelope with no company (which
+     * takes the document's company), may also update that company.
+     */
+    function expectedToAttach(actor: ActorName, kind: Kind, docWhere: DocWhere): boolean {
+      if (!POLICY[actor][kind].includes('update')) return false;
+      const envelopeHasCompany = kind === 'A' || kind === 'B';
+      if (envelopeHasCompany || docWhere === 'none') return true;
+      return POLICY[actor][kindForCompany[docWhere]].includes('update');
+    }
+
+    const cases = ACTORS.flatMap((actor) =>
+      KINDS.flatMap((kind) =>
+        DOC_WHERES
+          // A company envelope only takes documents of its own company, or of none.
+          // (Compare the letters: the company ids only exist once beforeAll has run.)
+          .filter((docWhere) => (kind !== 'A' && kind !== 'B') || docWhere === 'none' || docWhere === kind)
+          .map((docWhere) => [actor, kind, docWhere, expectedToAttach(actor, kind, docWhere)] as const)
+      )
+    );
+
+    it.each(cases)('%s on %s with a document of %s -> allowed: %s', async (actor, kind, docWhere, allowedToAttach) => {
+      const { exportToPDF } = await import('@/services/document-export.service');
+      vi.mocked(exportToPDF).mockClear();
+      const document = await seedDocument(docWhere);
+
+      if (!allowedToAttach) {
+        const fx = shared.DRAFT[kind];
+        const before = await snapshot(fx.envelopeId);
+
+        const response = await attach(actor, fx.envelopeId, document.id);
+
+        expect(response.status).toBe(403);
+        // Refused before anything was rendered, written or moved.
+        expect(exportToPDF).not.toHaveBeenCalled();
+        expect(await snapshot(fx.envelopeId)).toBe(before);
+        expect(await prisma.esigningEnvelopeDocument.count({ where: { generatedDocumentId: document.id } })).toBe(0);
+        return;
+      }
+
+      const fx = await seedEnvelope('DRAFT', kind);
+      const response = await attach(actor, fx.envelopeId, document.id);
+      const body = await response.clone().text();
+
+      expect(response.status, body.slice(0, 300)).toBe(201);
+      const row = await prisma.esigningEnvelope.findUniqueOrThrow({
+        where: { id: fx.envelopeId },
+        include: { documents: true },
+      });
+      // An envelope with no company takes the document's company; otherwise it keeps its own.
+      expect(row.companyId).toBe(companyOf(kind) ?? companyFor(docWhere));
+      expect(row.documents.some((entry) => entry.generatedDocumentId === document.id)).toBe(true);
+    });
+
+    it('does not move an envelope into a company the actor cannot reach, even though the response is 403', async () => {
+      // The exact case a reviewer found: company A user, their own no-company draft, a company B document.
+      const fx = await seedEnvelope('DRAFT', 'N', { createdBy: 'aOnly' });
+      const document = await seedDocument('B');
+
+      const response = await attach('aOnly', fx.envelopeId, document.id);
+
+      expect(response.status).toBe(403);
+      const row = await prisma.esigningEnvelope.findUniqueOrThrow({
+        where: { id: fx.envelopeId },
+        include: { documents: true },
+      });
+      expect(row.companyId).toBeNull();
+      expect(row.documents.some((entry) => entry.generatedDocumentId === document.id)).toBe(false);
     });
   });
 
@@ -890,6 +1053,120 @@ describePostgres('e-signing company access (real routes, rbac and database)', ()
       expect(response.status).toBe(200);
       expect(row.companyId).toBe(companyB);
     });
+
+    describe('the creator exception covers ordinary edits, not company moves', () => {
+      async function patchOwn(actor: ActorName, kind: Kind, body: Record<string, unknown>) {
+        const fx = await seedEnvelope('DRAFT', kind, { createdBy: actor });
+        const response = await asActor(actor, () =>
+          routes.detail.PATCH(json(ctx, `/envelopes/${fx.envelopeId}`, 'PATCH', body), {
+            params: Promise.resolve({ id: fx.envelopeId }),
+          })
+        );
+        const row = await prisma.esigningEnvelope.findUniqueOrThrow({ where: { id: fx.envelopeId } });
+        return { response, row };
+      }
+
+      it('lets a creator with tenant-wide read and company-A update edit the title of their company-B envelope', async () => {
+        const { response, row } = await patchOwn('mixed', 'B', { title: 'Edited by creator' });
+        expect(response.status).toBe(200);
+        expect(row.title).toBe('Edited by creator');
+        expect(row.companyId).toBe(companyB);
+      });
+
+      it('refuses the same creator moving that company-B envelope into company A', async () => {
+        const { response, row } = await patchOwn('mixed', 'B', { companyId: companyA, title: 'Moved by creator' });
+        expect(response.status).toBe(403);
+        expect(row.companyId).toBe(companyB);
+        expect(row.title).not.toBe('Moved by creator');
+      });
+
+      it('refuses a company-A creator moving their envelope into a company they cannot update', async () => {
+        const { response, row } = await patchOwn('aCreator', 'A', { companyId: companyB });
+        expect(response.status).toBe(403);
+        expect(row.companyId).toBe(companyA);
+      });
+
+      it('lets the creator of a no-company draft move it into a company they can update', async () => {
+        const { response, row } = await patchOwn('aCreator', 'N2', { companyId: companyA });
+        expect(response.status).toBe(200);
+        expect(row.companyId).toBe(companyA);
+      });
+
+      it('refuses the creator of a no-company draft moving it into a company they cannot update', async () => {
+        const { response, row } = await patchOwn('aCreator', 'N2', { companyId: companyB });
+        expect(response.status).toBe(403);
+        expect(row.companyId).toBeNull();
+      });
+    });
+  });
+
+  describe('a company move that commits after the service read the envelope', () => {
+    /**
+     * The service authorizes against a snapshot read before it opens its write transaction. To
+     * land a move in that gap deterministically, another transaction takes the envelope's row
+     * lock, the request is started (it reads the stale company and then waits on the lock),
+     * and only then is the envelope moved to company B and the lock released.
+     */
+    async function whileMovedTo(envelopeId: string, companyId: string, run: () => Promise<Response>) {
+      let release!: () => void;
+      const gate = new Promise<void>((resolve) => { release = resolve; });
+      let locked!: () => void;
+      const lockedPromise = new Promise<void>((resolve) => { locked = resolve; });
+
+      const mover = prisma.$transaction(async (tx) => {
+        await tx.$queryRaw`SELECT id FROM esigning_envelopes WHERE id = ${envelopeId} FOR UPDATE`;
+        locked();
+        await gate;
+        await tx.esigningEnvelope.update({ where: { id: envelopeId }, data: { companyId } });
+      }, { timeout: 30_000 });
+      await lockedPromise;
+
+      const pending = run();
+      let settledEarly = false;
+      void pending.then(() => { settledEarly = true; }, () => { settledEarly = true; });
+      const deadline = Date.now() + 10_000;
+      let blocked = false;
+      while (Date.now() < deadline && !settledEarly && !blocked) {
+        const waiting = await prisma.$queryRaw<Array<{ waiting: bigint }>>`
+          SELECT count(*) AS waiting FROM pg_stat_activity
+          WHERE datname = current_database() AND wait_event_type = 'Lock'
+        `;
+        blocked = Number(waiting[0].waiting) > 0;
+        if (!blocked) await new Promise((resolve) => setTimeout(resolve, 25));
+      }
+      release();
+      await mover;
+      const response = await pending;
+      return { response, blockedOnTheLock: blocked };
+    }
+
+    const writers = HANDLERS.filter(
+      (handler) => (handler.needs.includes('update') || handler.needs.includes('delete')) && !handler.needs.includes('create')
+    );
+
+    it.each(writers.map((handler) => [handler.name, handler] as const))(
+      '%s writes nothing for a company-A-only actor',
+      async (_name, handler) => {
+        const fx = await seedEnvelope(handler.state, 'A');
+        const before = JSON.parse(await snapshot(fx.envelopeId)) as Record<string, unknown>;
+
+        const { response, blockedOnTheLock } = await whileMovedTo(fx.envelopeId, companyB, () =>
+          asActor('aOnly', () => handler.call(ctx, fx))
+        );
+        const body = await response.clone().text();
+
+        expect(blockedOnTheLock, 'the handler never waited on the envelope row lock').toBe(true);
+        expect(response.status, body.slice(0, 300)).toBe(403);
+
+        const rowAfter = await prisma.esigningEnvelope.findUnique({ where: { id: fx.envelopeId } });
+        expect(rowAfter, 'the envelope must still exist').not.toBeNull();
+        const after = JSON.parse(await snapshot(fx.envelopeId)) as Record<string, unknown>;
+        // Only the move itself changed the row: the denied request left no write behind.
+        delete before.updatedAt;
+        delete after.updatedAt;
+        expect(after).toEqual({ ...before, companyId: companyB });
+      }
+    );
   });
 
   describe('a company-A-only creator of a no-company draft', () => {

@@ -99,6 +99,7 @@ export async function POST(request: NextRequest) {
           envelopeId: result.id,
           generatedDocumentIds: selectedGeneratedDocuments.map((document) => document.id),
           actorUserId: session.id,
+          session,
         });
         result = await getEsigningEnvelopeDetail(session, tenantId, result.id);
       } else if (generatedDocument) {

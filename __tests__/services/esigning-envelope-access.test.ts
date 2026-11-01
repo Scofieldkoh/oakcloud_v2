@@ -18,6 +18,7 @@ import {
   canMoveEnvelopeToCompany,
   canMutateEnvelope,
   canReadEnvelope,
+  lockEnvelopeForAuthorizedChange,
   resolveEsigningActorScope,
   type EsigningActorScope,
 } from '@/services/esigning-envelope.lib';
@@ -174,12 +175,29 @@ describe('esigning envelope access rule', () => {
       expect(canMoveEnvelopeToCompany(scope, session, draftInA, 'B')).toBe(false);
     });
 
-    it('needs more than the creator rule on the target', () => {
-      // The actor created the draft and holds read in B, but cannot update in B.
+    it('does not let the creator rule stand in for update on the current company', () => {
+      // The actor created the draft and holds only read in B: ordinary edits are allowed
+      // by the creator rule, but moving it out of B needs a real update grant on B.
       const ownDraftInB = { createdById: 'editor', companyId: 'B' };
       expect(canMutateEnvelope(scope, session, ownDraftInB)).toBe(true);
-      expect(canMoveEnvelopeToCompany(scope, session, ownDraftInB, 'A')).toBe(true);
+      expect(canMoveEnvelopeToCompany(scope, session, ownDraftInB, 'A')).toBe(false);
       expect(canMoveEnvelopeToCompany(scope, session, draftInA, 'B')).toBe(false);
+    });
+
+    it('does not let a creator pull their envelope into a company they can update', () => {
+      // Tenant-wide read plus company-A update: the creator of a company-B envelope may
+      // edit it, but must not move it into A.
+      const wide = makeEsigningScope({ tenantWide: { read: true }, companies: { A: FULL } });
+      const ownDraftInB = { createdById: 'editor', companyId: 'B' };
+      expect(canMutateEnvelope(wide, session, ownDraftInB)).toBe(true);
+      expect(canMoveEnvelopeToCompany(wide, session, ownDraftInB, 'A')).toBe(false);
+    });
+
+    it('lets the creator of a no-company draft move it where they can update', () => {
+      const noCompany = { createdById: 'editor', companyId: null };
+      expect(canMoveEnvelopeToCompany(scope, session, noCompany, 'C')).toBe(true);
+      expect(canMoveEnvelopeToCompany(scope, session, noCompany, 'B')).toBe(false);
+      expect(canMoveEnvelopeToCompany(scope, session, { createdById: 'x', companyId: null }, 'C')).toBe(false);
     });
 
     it('needs update on the current company', () => {
@@ -267,6 +285,41 @@ describe('esigning envelope access rule', () => {
 
     it('refuses another tenant', async () => {
       await expect(resolveEsigningActorScope(sessionFor('user'), 'tenant-2')).rejects.toThrow('Forbidden');
+    });
+  });
+
+  describe('lockEnvelopeForAuthorizedChange', () => {
+    const scope = makeEsigningScope({ companies: { A: FULL } });
+    const session = sessionFor('user-a', ['A']);
+
+    function txReturning(rows: unknown[]) {
+      return { $queryRaw: vi.fn().mockResolvedValue(rows) } as never;
+    }
+    function lock(rows: unknown[], tenantId = 'tenant-1') {
+      return lockEnvelopeForAuthorizedChange(txReturning(rows), {
+        scope,
+        session,
+        tenantId,
+        envelopeId: 'envelope-1',
+        check: canMutateEnvelope,
+      });
+    }
+    const row = (companyId: string | null) => ({
+      id: 'envelope-1', tenantId: 'tenant-1', status: 'DRAFT', expiresAt: null, createdById: 'someone-else', companyId,
+    });
+
+    it('returns the locked row when the actor may still act on it', async () => {
+      await expect(lock([row('A')])).resolves.toMatchObject({ companyId: 'A', status: 'DRAFT' });
+    });
+
+    it('decides on the locked row, not on what the service read earlier', async () => {
+      // The service saw the envelope in company A; by the time it is locked it is in B.
+      await expect(lock([row('B')])).rejects.toThrow('Forbidden');
+    });
+
+    it('reports a missing envelope and an envelope of another tenant as not found', async () => {
+      await expect(lock([])).rejects.toThrow('Envelope not found');
+      await expect(lock([row('A')], 'tenant-2')).rejects.toThrow('Envelope not found');
     });
   });
 });

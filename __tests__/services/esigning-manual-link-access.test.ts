@@ -6,11 +6,14 @@ const mocks = vi.hoisted(() => ({
   createEsigningAccessLinkToken: vi.fn(),
   findFirst: vi.fn(),
   resolveEsigningActorScope: vi.fn(),
+  lockRow: vi.fn(),
 }));
 
 vi.mock('@/lib/prisma', () => ({
   prisma: {
     esigningEnvelope: { findFirst: mocks.findFirst },
+    $transaction: async (callback: (tx: unknown) => unknown) =>
+      callback({ $queryRaw: mocks.lockRow }),
   },
 }));
 vi.mock('@/lib/audit', () => ({ createAuditLog: mocks.createAuditLog }));
@@ -67,6 +70,11 @@ describe('e-signing manual link access', () => {
       makeEsigningScope({ companies: { 'company-1': { read: true, update: true } } })
     );
     mocks.createEsigningAccessLinkToken.mockResolvedValue('token-1');
+    // The locked row is the committed state; by default it is what the first read saw.
+    mocks.lockRow.mockImplementation(async () => {
+      const { id, tenantId, status, companyId, createdById } = await mocks.findFirst();
+      return [{ id, tenantId, status, companyId, createdById }];
+    });
   });
 
   it('does not mint a bearer signing link for another company', async () => {
@@ -106,5 +114,20 @@ describe('e-signing manual link access', () => {
     )).resolves.toBeDefined();
 
     expect(mocks.createEsigningAccessLinkToken).toHaveBeenCalledTimes(1);
+  });
+  it('does not mint a link when the envelope moved to another company after the first read', async () => {
+    mocks.findFirst.mockResolvedValue(envelopeIn('company-1'));
+    mocks.lockRow.mockResolvedValue([
+      { id: 'envelope-1', tenantId: 'tenant-1', status: 'IN_PROGRESS', companyId: 'company-2', createdById: 'user-1' },
+    ]);
+
+    await expect(getEsigningEnvelopeRecipientManualLink(
+      session,
+      'tenant-1',
+      'envelope-1',
+      'recipient-1',
+    )).rejects.toThrow('Forbidden');
+
+    expect(mocks.createEsigningAccessLinkToken).not.toHaveBeenCalled();
   });
 });

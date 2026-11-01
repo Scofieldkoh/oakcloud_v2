@@ -1,5 +1,6 @@
 import { PDFDocument } from 'pdf-lib';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { makeEsigningScope } from '../helpers/esigning-scope';
 
 const mocks = vi.hoisted(() => ({
   envelopeFindFirst: vi.fn(),
@@ -15,6 +16,8 @@ const mocks = vi.hoisted(() => ({
   audit: vi.fn(),
   envelopeEvent: vi.fn(),
   lockDocument: vi.fn(),
+  resolveScope: vi.fn(),
+  lockEnvelope: vi.fn(),
 }));
 
 vi.mock('@/lib/prisma', () => ({
@@ -31,7 +34,12 @@ vi.mock('@/lib/prisma', () => ({
       update: mocks.envelopeDocumentUpdate,
     },
     $transaction: vi.fn(async (callback: (tx: unknown) => unknown) => callback({
-      $queryRaw: mocks.lockDocument,
+      // Two row locks run in the transaction: the envelope (company, status) and the
+      // generated document (status, revision). Tell them apart by the table they read.
+      $queryRaw: (query: TemplateStringsArray | { sql: string }) => {
+        const text = Array.isArray(query) ? query.join('') : (query as { sql: string }).sql;
+        return text.includes('esigning_envelopes') ? mocks.lockEnvelope() : mocks.lockDocument();
+      },
       esigningEnvelopeDocument: {
         create: mocks.envelopeDocumentCreate,
         delete: mocks.envelopeDocumentDelete,
@@ -82,6 +90,7 @@ vi.mock('@/services/esigning-envelope.lib', async (importOriginal) => {
   return {
     ...actual,
     createEnvelopeEvent: mocks.envelopeEvent,
+    resolveEsigningActorScope: mocks.resolveScope,
   };
 });
 
@@ -109,6 +118,18 @@ describe('task-prepared E-signing envelopes', () => {
       revision: 4,
     });
     mocks.lockDocument.mockResolvedValue([{ status: 'FINALIZED', revision: 4, deleted_at: null }]);
+    // The locked envelope row is the committed state; by default it is what the first read saw.
+    mocks.lockEnvelope.mockImplementation(async () => {
+      const envelope = await mocks.envelopeFindFirst();
+      return [{
+        id: envelope.id,
+        tenantId: 'tenant-a',
+        status: envelope.status,
+        companyId: envelope.companyId ?? null,
+        createdById: envelope.createdById ?? 'user-1',
+      }];
+    });
+    mocks.resolveScope.mockResolvedValue(makeEsigningScope({ admin: true }));
   });
 
   it('reuses an envelope already owned by the same task stage', async () => {
@@ -266,6 +287,94 @@ describe('task-prepared E-signing envelopes', () => {
     expect(mocks.envelopeUpdateMany).toHaveBeenCalledWith({
       where: { id: 'envelope-1', tenantId: 'tenant-a', companyId: null },
       data: { companyId: 'company-1' },
+    });
+  });
+
+  describe('attaching as a signed-in user', () => {
+    const session = { id: 'user-1', tenantId: 'tenant-a' } as never;
+    const noCompanyDraft = {
+      id: 'envelope-1',
+      title: 'Engagement letter',
+      status: 'DRAFT',
+      companyId: null,
+      createdById: 'user-1',
+      documents: [],
+    };
+
+    it('refuses a document from a company the actor cannot update, before rendering or writing', async () => {
+      // The actor created the no-company draft and can update company A only.
+      mocks.resolveScope.mockResolvedValue(makeEsigningScope({
+        companies: { 'company-a': { read: true, update: true } },
+      }));
+      mocks.envelopeFindFirst.mockResolvedValue(noCompanyDraft);
+      mocks.documentFindFirst.mockResolvedValue({
+        id: 'document-1', title: 'Engagement letter', companyId: 'company-b', revision: 4,
+      });
+
+      await expect(attachGeneratedDocumentToDraftEnvelope({
+        tenantId: 'tenant-a',
+        envelopeId: 'envelope-1',
+        generatedDocumentId: 'document-1',
+        actorUserId: 'user-1',
+        session,
+      })).rejects.toThrow('Forbidden');
+
+      expect(mocks.exportPdf).not.toHaveBeenCalled();
+      expect(mocks.storageUpload).not.toHaveBeenCalled();
+      expect(mocks.envelopeDocumentCreate).not.toHaveBeenCalled();
+      expect(mocks.envelopeUpdateMany).not.toHaveBeenCalled();
+    });
+
+    it('lets the actor attach a document from a company they can update', async () => {
+      mocks.resolveScope.mockResolvedValue(makeEsigningScope({
+        companies: { 'company-a': { read: true, update: true } },
+      }));
+      mocks.envelopeFindFirst.mockResolvedValue(noCompanyDraft);
+      mocks.documentFindFirst.mockResolvedValue({
+        id: 'document-1', title: 'Engagement letter', companyId: 'company-a', revision: 4,
+      });
+      mocks.envelopeDocumentCreate.mockImplementation(async ({ data }) => data);
+      mocks.envelopeUpdateMany.mockResolvedValue({ count: 1 });
+
+      await attachGeneratedDocumentToDraftEnvelope({
+        tenantId: 'tenant-a',
+        envelopeId: 'envelope-1',
+        generatedDocumentId: 'document-1',
+        actorUserId: 'user-1',
+        session,
+      });
+
+      expect(mocks.envelopeUpdateMany).toHaveBeenCalledWith({
+        where: { id: 'envelope-1', tenantId: 'tenant-a', companyId: null },
+        data: { companyId: 'company-a' },
+      });
+    });
+
+    it('writes nothing when the envelope moved company while the PDF was rendering', async () => {
+      mocks.resolveScope.mockResolvedValue(makeEsigningScope({
+        companies: { 'company-a': { read: true, update: true } },
+      }));
+      mocks.envelopeFindFirst.mockResolvedValue({ ...noCompanyDraft, companyId: 'company-a' });
+      mocks.documentFindFirst.mockResolvedValue({
+        id: 'document-1', title: 'Engagement letter', companyId: 'company-a', revision: 4,
+      });
+      // Committed after the first read: now in company B.
+      mocks.lockEnvelope.mockResolvedValue([{
+        id: 'envelope-1', tenantId: 'tenant-a', status: 'DRAFT', companyId: 'company-b', createdById: 'user-1',
+      }]);
+
+      await expect(attachGeneratedDocumentToDraftEnvelope({
+        tenantId: 'tenant-a',
+        envelopeId: 'envelope-1',
+        generatedDocumentId: 'document-1',
+        actorUserId: 'user-1',
+        session,
+      })).rejects.toThrow('Forbidden');
+
+      expect(mocks.envelopeDocumentCreate).not.toHaveBeenCalled();
+      expect(mocks.storageDelete).toHaveBeenCalledWith(
+        expect.stringContaining('esigning/tenant-a/envelope-1/'),
+      );
     });
   });
 

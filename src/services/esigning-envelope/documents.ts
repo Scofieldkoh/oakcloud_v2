@@ -22,7 +22,16 @@ import { convertOfficeDocumentToPdfWithMicrosoftGraph } from '@/services/microso
 import { ESIGNING_LIMITS } from '@/lib/validations/esigning';
 import type { EsigningEnvelopeDetailDto } from '@/types/esigning';
 import { exportToPDF } from '@/services/document-export.service';
-import { canMutateEnvelope, resolveEsigningActorScope } from '@/services/esigning-envelope.lib';
+import {
+  canMoveEnvelopeToCompany,
+  canMutateEnvelope,
+  lockEnvelopeForAuthorizedChange,
+  resolveEsigningActorScope,
+  type EsigningActorScope,
+} from '@/services/esigning-envelope.lib';
+import { lockEsigningEnvelopeForUpdate } from '@/services/esigning-envelope-lock';
+import { saveEnvelopeFieldDefinitions } from '@/services/esigning-field.service';
+import type { SaveEsigningFieldDefinitionsInput } from '@/lib/validations/esigning';
 import { getEsigningEnvelopeDetail } from './lifecycle';
 import {
   log,
@@ -30,12 +39,47 @@ import {
   assertExportMatchesRevision,
 } from './shared';
 
+/**
+ * Locks the envelope and re-checks that the actor may still edit it, inside the
+ * transaction that writes. Returns the locked row for further revalidation.
+ */
+async function lockDraftForEdit(
+  tx: Prisma.TransactionClient,
+  input: {
+    scope: EsigningActorScope;
+    session: SessionUser;
+    tenantId: string;
+    envelopeId: string;
+    notDraftMessage: string;
+  },
+) {
+  const locked = await lockEnvelopeForAuthorizedChange(tx, {
+    scope: input.scope,
+    session: input.session,
+    tenantId: input.tenantId,
+    envelopeId: input.envelopeId,
+    check: canMutateEnvelope,
+  });
+  if (locked.status !== 'DRAFT') {
+    throw new Error(input.notDraftMessage);
+  }
+  return locked;
+}
+
 export async function uploadEsigningEnvelopeDocument(
   session: SessionUser,
   tenantId: string,
   envelopeId: string,
   file: File,
-  options?: { originalFileName?: string },
+  options?: {
+    originalFileName?: string;
+    /**
+     * Company to give an envelope that has none yet (a generated document's company).
+     * Applied in the same transaction as the document, after the actor's right to put
+     * the envelope in that company is checked against the locked row.
+     */
+    assignCompanyId?: string | null;
+  },
 ): Promise<EsigningEnvelopeDetailDto> {
   const scope = await resolveEsigningActorScope(session, tenantId);
   const envelope = await prisma.esigningEnvelope.findFirst({
@@ -125,20 +169,50 @@ export async function uploadEsigningEnvelopeDocument(
     },
   });
 
-  await prisma.esigningEnvelopeDocument.create({
-    data: {
-      id: documentId,
-      tenantId,
-      envelopeId,
-      fileName: storedFileName,
-      originalFileName,
-      storagePath,
-      originalHash: hashBlake3(pdfBuffer),
-      pageCount,
-      sortOrder,
-      fileSize: pdfBuffer.length,
-    },
-  });
+  try {
+    await prisma.$transaction(async (tx) => {
+      const locked = await lockDraftForEdit(tx, {
+        scope,
+        session,
+        tenantId,
+        envelopeId,
+        notDraftMessage: 'Documents can only be uploaded while the envelope is a draft',
+      });
+      const assignCompanyId = options?.assignCompanyId ?? null;
+      if (assignCompanyId) {
+        assertGeneratedDocumentCompanyMatchesEnvelope(locked.companyId, assignCompanyId);
+        if (
+          !locked.companyId &&
+          !canMoveEnvelopeToCompany(scope, session, locked, assignCompanyId)
+        ) {
+          throw new Error('Forbidden');
+        }
+      }
+      await tx.esigningEnvelopeDocument.create({
+        data: {
+          id: documentId,
+          tenantId,
+          envelopeId,
+          fileName: storedFileName,
+          originalFileName,
+          storagePath,
+          originalHash: hashBlake3(pdfBuffer),
+          pageCount,
+          sortOrder,
+          fileSize: pdfBuffer.length,
+        },
+      });
+      if (assignCompanyId && !locked.companyId) {
+        await tx.esigningEnvelope.update({
+          where: { id: envelopeId },
+          data: { companyId: assignCompanyId },
+        });
+      }
+    });
+  } catch (error) {
+    await storage.delete(storagePath).catch(() => undefined);
+    throw error;
+  }
 
   await createAuditLog({
     tenantId,
@@ -199,19 +273,26 @@ export async function uploadGeneratedDocumentToEsigningEnvelope(
     throw new Error('Selected generated document must be finalized and eligible');
   }
 
+  const scope = await resolveEsigningActorScope(session, tenantId);
   const envelope = await prisma.esigningEnvelope.findFirst({
     where: { id: envelopeId, tenantId, deletedAt: null },
-    select: { companyId: true },
+    select: { companyId: true, createdById: true },
   });
   if (!envelope) {
     throw new Error('Envelope not found');
   }
+  // Decide before rendering or writing anything. An envelope with no company takes the
+  // document's company, so the actor needs the right to put it there.
+  if (!canMutateEnvelope(scope, session, envelope)) {
+    throw new Error('Forbidden');
+  }
   assertGeneratedDocumentCompanyMatchesEnvelope(envelope.companyId, document.companyId);
-  if (!envelope.companyId && document.companyId) {
-    await prisma.esigningEnvelope.updateMany({
-      where: { id: envelopeId, tenantId, deletedAt: null, companyId: null },
-      data: { companyId: document.companyId },
-    });
+  if (
+    !envelope.companyId &&
+    document.companyId &&
+    !canMoveEnvelopeToCompany(scope, session, envelope, document.companyId)
+  ) {
+    throw new Error('Forbidden');
   }
 
   const pdf = await exportToPDF({
@@ -229,7 +310,7 @@ export async function uploadGeneratedDocumentToEsigningEnvelope(
     tenantId,
     envelopeId,
     file,
-    { originalFileName: document.title },
+    { originalFileName: document.title, assignCompanyId: document.companyId },
   );
 }
 
@@ -239,7 +320,16 @@ export async function attachGeneratedDocumentToDraftEnvelope(input: {
   generatedDocumentId: string;
   actorUserId: string;
   replaceExistingGeneratedDocument?: boolean;
+  /**
+   * The acting user, when a person (not the task worker) is attaching. With it, the
+   * attachment is authorized against the company the envelope will end up in, before
+   * anything is rendered or written, and again under the row lock.
+   */
+  session?: SessionUser;
 }): Promise<{ envelopeDocumentId: string }> {
+  const scope = input.session
+    ? await resolveEsigningActorScope(input.session, input.tenantId)
+    : null;
   const envelope = await prisma.esigningEnvelope.findFirst({
     where: {
       id: input.envelopeId,
@@ -284,6 +374,20 @@ export async function attachGeneratedDocumentToDraftEnvelope(input: {
     throw new Error('Selected generated document must be finalized and eligible');
   }
   assertGeneratedDocumentCompanyMatchesEnvelope(envelope.companyId, generatedDocument.companyId);
+  if (input.session && scope) {
+    if (!canMutateEnvelope(scope, input.session, envelope)) {
+      throw new Error('Forbidden');
+    }
+    // An envelope with no company takes the document's company; the actor needs the
+    // right to put it there.
+    if (
+      !envelope.companyId &&
+      generatedDocument.companyId &&
+      !canMoveEnvelopeToCompany(scope, input.session, envelope, generatedDocument.companyId)
+    ) {
+      throw new Error('Forbidden');
+    }
+  }
 
   const exported = await exportToPDF({
     documentId: generatedDocument.id,
@@ -346,6 +450,20 @@ export async function attachGeneratedDocumentToDraftEnvelope(input: {
 
   try {
     await prisma.$transaction(async (tx) => {
+      // Decide again on the committed row: the checks above ran on a snapshot taken
+      // before the PDF was rendered.
+      const locked = input.session && scope
+        ? await lockEnvelopeForAuthorizedChange(tx, {
+          scope,
+          session: input.session,
+          tenantId: input.tenantId,
+          envelopeId: input.envelopeId,
+          check: canMutateEnvelope,
+        })
+        : await lockEsigningEnvelopeForUpdate(tx, input.envelopeId);
+      if (!locked || locked.status !== 'DRAFT' || locked.companyId !== envelope.companyId) {
+        throw new ConflictError('The envelope changed while its PDF was being prepared. Try again.');
+      }
       await assertStillFinalizedAtRevision(
         tx,
         input.tenantId,
@@ -424,6 +542,7 @@ export async function attachGeneratedDocumentsToDraftEnvelope(input: {
   envelopeId: string;
   generatedDocumentIds: string[];
   actorUserId: string;
+  session?: SessionUser;
 }): Promise<{ envelopeDocumentIds: string[] }> {
   const envelope = await prisma.esigningEnvelope.findFirst({
     where: {
@@ -462,6 +581,7 @@ export async function attachGeneratedDocumentsToDraftEnvelope(input: {
       generatedDocumentId,
       actorUserId: input.actorUserId,
       replaceExistingGeneratedDocument: false,
+      session: input.session,
     });
     envelopeDocumentIds.push(attachment.envelopeDocumentId);
   }
@@ -501,6 +621,7 @@ export async function attachGeneratedDocumentsToEsigningEnvelope(
     envelopeId,
     generatedDocumentIds,
     actorUserId: session.id,
+    session,
   });
 
   return getEsigningEnvelopeDetail(session, tenantId, envelopeId);
@@ -621,6 +742,13 @@ export async function deleteEsigningEnvelopeDocument(
   }
 
   await prisma.$transaction(async (tx) => {
+    await lockDraftForEdit(tx, {
+      scope,
+      session,
+      tenantId,
+      envelopeId,
+      notDraftMessage: 'Documents can only be removed while the envelope is a draft',
+    });
     await tx.esigningEnvelopeDocument.delete({
       where: { id: documentId },
     });
@@ -710,14 +838,21 @@ export async function reorderEsigningEnvelopeDocument(
   const [selected] = reordered.splice(currentIndex, 1);
   reordered.splice(boundedIndex, 0, selected);
 
-  await prisma.$transaction(
-    reordered.map((entry, index) =>
-      prisma.esigningEnvelopeDocument.update({
+  await prisma.$transaction(async (tx) => {
+    await lockDraftForEdit(tx, {
+      scope,
+      session,
+      tenantId,
+      envelopeId,
+      notDraftMessage: 'Documents can only be reordered while the envelope is a draft',
+    });
+    for (const [index, entry] of reordered.entries()) {
+      await tx.esigningEnvelopeDocument.update({
         where: { id: entry.id },
         data: { sortOrder: index },
-      })
-    )
-  );
+      });
+    }
+  });
 
   return getEsigningEnvelopeDetail(session, tenantId, envelopeId);
 }
@@ -768,9 +903,18 @@ export async function renameEsigningEnvelopeDocument(
     return getEsigningEnvelopeDetail(session, tenantId, envelopeId);
   }
 
-  await prisma.esigningEnvelopeDocument.update({
-    where: { id: documentId },
-    data: { originalFileName: fileName },
+  await prisma.$transaction(async (tx) => {
+    await lockDraftForEdit(tx, {
+      scope,
+      session,
+      tenantId,
+      envelopeId,
+      notDraftMessage: 'Documents can only be renamed while the envelope is a draft',
+    });
+    await tx.esigningEnvelopeDocument.update({
+      where: { id: documentId },
+      data: { originalFileName: fileName },
+    });
   });
 
   await createAuditLog({
@@ -828,11 +972,20 @@ export async function updateEsigningEnvelopeDocumentVisibility(
     throw new Error('Document not found');
   }
 
-  await prisma.esigningEnvelope.update({
-    where: { id: envelopeId },
-    data: {
-      metadata: setEsigningDocumentVisibility(envelope.metadata, documentId, visibility),
-    },
+  await prisma.$transaction(async (tx) => {
+    await lockDraftForEdit(tx, {
+      scope,
+      session,
+      tenantId,
+      envelopeId,
+      notDraftMessage: 'Document visibility can only be changed while the envelope is a draft',
+    });
+    await tx.esigningEnvelope.update({
+      where: { id: envelopeId },
+      data: {
+        metadata: setEsigningDocumentVisibility(envelope.metadata, documentId, visibility),
+      },
+    });
   });
 
   await createAuditLog({
@@ -851,4 +1004,46 @@ export async function updateEsigningEnvelopeDocumentVisibility(
   });
 
   return getEsigningEnvelopeDetail(session, tenantId, envelopeId);
+}
+
+/**
+ * Replaces an envelope's field definitions. The company rule lives here, in the service
+ * layer, and is decided on the locked row in the transaction that writes.
+ */
+export async function saveEsigningEnvelopeFields(
+  session: SessionUser,
+  tenantId: string,
+  envelopeId: string,
+  input: SaveEsigningFieldDefinitionsInput,
+): Promise<{
+  envelope: EsigningEnvelopeDetailDto;
+  fieldWarnings: Awaited<ReturnType<typeof saveEnvelopeFieldDefinitions>>;
+}> {
+  const scope = await resolveEsigningActorScope(session, tenantId);
+  const envelope = await prisma.esigningEnvelope.findFirst({
+    where: { id: envelopeId, tenantId },
+    select: { id: true, status: true, companyId: true, createdById: true },
+  });
+  if (!envelope) {
+    throw new Error('Envelope not found');
+  }
+  if (!canMutateEnvelope(scope, session, envelope)) {
+    throw new Error('Forbidden');
+  }
+
+  const fieldWarnings = await prisma.$transaction(async (tx) => {
+    await lockDraftForEdit(tx, {
+      scope,
+      session,
+      tenantId,
+      envelopeId,
+      notDraftMessage: 'Fields can only be edited while the envelope is a draft',
+    });
+    return saveEnvelopeFieldDefinitions(envelopeId, input, tx);
+  });
+
+  return {
+    envelope: await getEsigningEnvelopeDetail(session, tenantId, envelopeId),
+    fieldWarnings,
+  };
 }

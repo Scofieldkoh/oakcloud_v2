@@ -659,6 +659,14 @@ describe('e-signing completion retry', () => {
     prismaMocks.transaction.mockImplementation(
       async (callback: (tx: unknown) => Promise<unknown>) => {
         return callback({
+          // The envelope row lock: the committed row matches what the first read saw.
+          $queryRaw: async () => [{
+            id: 'envelope-1',
+            tenantId: 'tenant-1',
+            status: 'COMPLETED',
+            companyId: 'company-1',
+            createdById: 'user-1',
+          }],
           esigningEnvelope: { updateMany: prismaMocks.envelopeUpdateMany },
           esigningEmailDelivery: { updateMany: prismaMocks.deliveryUpdateMany },
         });

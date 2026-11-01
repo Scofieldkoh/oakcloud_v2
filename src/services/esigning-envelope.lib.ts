@@ -2,6 +2,10 @@ import { Prisma } from '@/generated/prisma';
 import type { SessionUser } from '@/lib/auth';
 import { hasPermission, hasTenantWidePermission } from '@/lib/rbac';
 import { prisma } from '@/lib/prisma';
+import {
+  lockEsigningEnvelopeForUpdate,
+  type LockedEsigningEnvelopeRow,
+} from '@/services/esigning-envelope-lock';
 import type {
   EsigningEnvelopeDetailDto,
   EsigningEnvelopeDocumentDto,
@@ -261,8 +265,11 @@ export function canManageEnvelope(
 
 /**
  * Changing an envelope's company needs update rights on the current company and on
- * the target. A target company needs a real `update` grant there (the creator rule
- * does not apply), so nobody can push an envelope into a company they cannot edit.
+ * the target. For both, a real `update` grant is required: the creator exception only
+ * covers ordinary edits, so a creator who lost update rights on the source company
+ * cannot move the envelope, and nobody can push an envelope into a company they
+ * cannot edit. An envelope with no company has no grant to check, so there the
+ * ordinary rule (tenant-wide update, or the creator) applies.
  */
 export function canMoveEnvelopeToCompany(
   scope: EsigningActorScope,
@@ -270,15 +277,50 @@ export function canMoveEnvelopeToCompany(
   envelope: EsigningEnvelopeAccessRef,
   targetCompanyId: string | null
 ): boolean {
-  if (!canMutateEnvelope(scope, session, envelope)) {
-    return false;
-  }
   if (scope.isAdmin) {
     return true;
+  }
+  const sourceAllowed = envelope.companyId
+    ? getEsigningFlagsForCompany(scope, envelope.companyId).update
+    : canMutateEnvelope(scope, session, envelope);
+  if (!sourceAllowed) {
+    return false;
   }
   return targetCompanyId
     ? getEsigningFlagsForCompany(scope, targetCompanyId).update
     : canMutateEnvelope(scope, session, { createdById: envelope.createdById, companyId: null });
+}
+
+/**
+ * Re-checks an actor's access against the envelope row itself, under a row lock, inside
+ * the transaction that writes. The envelope the service authorized was read before the
+ * transaction, and a concurrent company move would make that read stale: the write
+ * would land in a company the actor cannot reach. Locking first means a move commits
+ * either before this check (and is seen here) or after this transaction (and waits).
+ * Throws before any write, so a denied caller leaves nothing behind.
+ */
+export async function lockEnvelopeForAuthorizedChange(
+  tx: Prisma.TransactionClient,
+  input: {
+    scope: EsigningActorScope;
+    session: SessionUser;
+    tenantId: string;
+    envelopeId: string;
+    check: (
+      scope: EsigningActorScope,
+      session: SessionUser,
+      envelope: EsigningEnvelopeAccessRef
+    ) => boolean;
+  }
+): Promise<LockedEsigningEnvelopeRow> {
+  const locked = await lockEsigningEnvelopeForUpdate(tx, input.envelopeId);
+  if (!locked || locked.tenantId !== input.tenantId) {
+    throw new Error('Envelope not found');
+  }
+  if (!input.check(input.scope, input.session, locked)) {
+    throw new Error('Forbidden');
+  }
+  return locked;
 }
 
 /** Creating needs `create` for the company, or from any assignment when there is none yet. */

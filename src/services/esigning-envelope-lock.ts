@@ -5,6 +5,8 @@ export interface LockedEsigningEnvelopeRow {
   tenantId: string;
   status: EsigningEnvelopeStatus;
   expiresAt: Date | null;
+  companyId: string | null;
+  createdById: string;
 }
 
 /**
@@ -29,7 +31,9 @@ export async function lockEsigningEnvelopeForUpdate(
       id,
       "tenantId",
       status::text AS status,
-      "expiresAt"
+      "expiresAt",
+      "companyId",
+      "createdById"
     FROM esigning_envelopes
     WHERE id = ${envelopeId}
     FOR UPDATE

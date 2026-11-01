@@ -10,6 +10,7 @@ const mocks = vi.hoisted(() => ({
   reconcileTaskStageIds: vi.fn(),
   createAuditLog: vi.fn(),
   resolveEsigningActorScope: vi.fn(),
+  lockRow: vi.fn(),
 }));
 
 vi.mock('@/lib/prisma', () => ({
@@ -18,6 +19,11 @@ vi.mock('@/lib/prisma', () => ({
       findFirst: mocks.findFirst,
       delete: mocks.delete,
     },
+    $transaction: async (callback: (tx: unknown) => unknown) =>
+      callback({
+        $queryRaw: mocks.lockRow,
+        esigningEnvelope: { delete: mocks.delete },
+      }),
   },
 }));
 
@@ -67,6 +73,10 @@ describe('e-signing envelope deletion', () => {
       title: 'Signed NDA',
       companyId: null,
     });
+    // The locked row is the committed state; by default it is what the first read saw.
+    mocks.lockRow.mockImplementation(async () => [
+      { tenantId: 'tenant-1', companyId: null, ...(await mocks.findFirst()) },
+    ]);
     mocks.captureTaskStageIds.mockResolvedValue(['stage-1']);
     mocks.delete.mockResolvedValue(undefined);
     mocks.deletePrefix.mockResolvedValue(undefined);
@@ -104,4 +114,20 @@ describe('e-signing envelope deletion', () => {
     expect(mocks.delete).not.toHaveBeenCalled();
   });
 
+  it('re-checks access on the locked row and deletes nothing when the envelope moved', async () => {
+    // The actor may delete in company-a; by the time the row is locked it is in company-b.
+    mocks.resolveEsigningActorScope.mockResolvedValue(
+      makeEsigningScope({ companies: { 'company-a': { read: true, delete: true } } })
+    );
+    mocks.findFirst.mockResolvedValue({
+      id: 'envelope-1', status: 'DRAFT', createdById: 'user-2', title: 'Moved', companyId: 'company-a',
+    });
+    mocks.lockRow.mockResolvedValue([
+      { id: 'envelope-1', tenantId: 'tenant-1', status: 'DRAFT', createdById: 'user-2', companyId: 'company-b' },
+    ]);
+
+    await expect(deleteDraftEsigningEnvelope(session, 'tenant-1', 'envelope-1')).rejects.toThrow('Forbidden');
+    expect(mocks.delete).not.toHaveBeenCalled();
+    expect(mocks.deletePrefix).not.toHaveBeenCalled();
+  });
 });

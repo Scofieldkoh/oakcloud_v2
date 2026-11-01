@@ -30,6 +30,7 @@ import {
   formatUserName,
   getEnvelopeAggregate,
   getEnvelopeOrderBy,
+  lockEnvelopeForAuthorizedChange,
   resolveEsigningActorScope,
   serializeEnvelopeDetail,
   toIsoString,
@@ -556,9 +557,10 @@ export async function updateDraftEsigningEnvelope(
   if (envelope.status !== 'DRAFT') {
     throw new Error('Only draft envelopes can be edited');
   }
+  const requestedCompanyId = input.companyId === undefined ? undefined : (input.companyId ?? null);
   // Moving an envelope to another company (or out of one) needs update rights on both.
-  if (input.companyId !== undefined && (input.companyId ?? null) !== envelope.companyId) {
-    if (!canMoveEnvelopeToCompany(scope, session, envelope, input.companyId ?? null)) {
+  if (requestedCompanyId !== undefined && requestedCompanyId !== envelope.companyId) {
+    if (!canMoveEnvelopeToCompany(scope, session, envelope, requestedCompanyId)) {
       throw new Error('Forbidden');
     }
   }
@@ -566,6 +568,26 @@ export async function updateDraftEsigningEnvelope(
   await ensureCompanyBelongsToTenant(tenantId, input.companyId ?? null);
 
   await prisma.$transaction(async (tx) => {
+    // The checks above ran on a snapshot. Lock the row and decide again on what is
+    // committed now, before writing anything.
+    const locked = await lockEnvelopeForAuthorizedChange(tx, {
+      scope,
+      session,
+      tenantId,
+      envelopeId,
+      check: canMutateEnvelope,
+    });
+    if (locked.status !== 'DRAFT') {
+      throw new Error('Only draft envelopes can be edited');
+    }
+    if (
+      requestedCompanyId !== undefined &&
+      requestedCompanyId !== locked.companyId &&
+      !canMoveEnvelopeToCompany(scope, session, locked, requestedCompanyId)
+    ) {
+      throw new Error('Forbidden');
+    }
+
     await tx.esigningEnvelope.update({
       where: { id: envelopeId },
       data: {
@@ -883,8 +905,20 @@ export async function deleteDraftEsigningEnvelope(
     tenantId,
     envelopeId,
   );
-  await prisma.esigningEnvelope.delete({
-    where: { id: envelopeId },
+  await prisma.$transaction(async (tx) => {
+    const locked = await lockEnvelopeForAuthorizedChange(tx, {
+      scope,
+      session,
+      tenantId,
+      envelopeId,
+      check: canDeleteEnvelope,
+    });
+    if (!['DRAFT', 'COMPLETED', 'DECLINED', 'VOIDED'].includes(locked.status)) {
+      throw new Error('Only draft, completed, declined or voided envelopes can be deleted');
+    }
+    await tx.esigningEnvelope.delete({
+      where: { id: envelopeId },
+    });
   });
   await safelyReconcileTaskStageIds(
     tenantId,
