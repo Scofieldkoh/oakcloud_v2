@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { requireAuth } from '@/lib/auth';
+import { requireEsigningReadEntry } from '@/services/esigning-envelope.lib';
 import { requirePermission } from '@/lib/rbac';
 import { createErrorResponse, resolveWorkspaceId } from '@/lib/api-helpers';
 import { updateEsigningEnvelopeSchema } from '@/lib/validations/esigning';
@@ -18,7 +19,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
   try {
     const { id } = await params;
     const session = await requireAuth();
-    await requirePermission(session, 'esigning', 'read');
+    await requireEsigningReadEntry(session);
 
     const { searchParams } = new URL(request.url);
     const tenantId = resolveWorkspaceId(session, searchParams.get('tenantId'));

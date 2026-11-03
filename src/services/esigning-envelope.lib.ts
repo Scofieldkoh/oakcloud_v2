@@ -1,6 +1,6 @@
 import { Prisma } from '@/generated/prisma';
 import type { SessionUser } from '@/lib/auth';
-import { hasPermission, hasTenantWidePermission } from '@/lib/rbac';
+import { hasPermission, hasTenantWidePermission, requireAnyPermission } from '@/lib/rbac';
 import { prisma } from '@/lib/prisma';
 import {
   lockEsigningEnvelopeForUpdate,
@@ -86,6 +86,25 @@ async function resolveFlags(
     flags[action] = results[index];
   });
   return flags;
+}
+
+/**
+ * Entry gate for the read routes (list, detail, events, PDFs, package download): the
+ * user needs SOME e-signing permission, not necessarily `read`. Envelopes with no
+ * company are readable by every e-signing user of the tenant, so a user whose only
+ * grant is create, update or delete must get past the route. What they can then see is
+ * decided by `buildEsigningEnvelopeReadWhere` and `canReadEnvelope`, so company
+ * envelopes still need `read` in that company (or being the creator). Mutation routes
+ * keep their own, action-specific gates.
+ */
+export async function requireEsigningReadEntry(session: SessionUser): Promise<void> {
+  if (session.isSuperAdmin || session.isWorkspaceAdmin) {
+    return;
+  }
+  await requireAnyPermission(
+    session,
+    ESIGNING_PERMISSION_ACTIONS.map((action) => ({ resource: 'esigning' as const, action }))
+  );
 }
 
 export function toIsoString(value: Date | null | undefined): string | null {

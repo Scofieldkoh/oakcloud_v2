@@ -1519,4 +1519,154 @@ describePostgres('e-signing company access (real routes, rbac and database)', ()
       }
     });
   });
+
+  describe('read entry for users whose only e-signing grant is create, update or delete', () => {
+    /**
+     * No-company envelopes are readable by every e-signing user of the tenant, whatever the
+     * action they hold. The entry gates of the read routes must not ask for `read` itself,
+     * while company envelopes keep needing `read` in that company and every change keeps its
+     * own rule.
+     */
+    type OnlyActor = 'aCreateOnly' | 'aUpdateOnly' | 'aDeleteOnly' | 'twCreateOnly' | 'noEsigning';
+    const ONLY_ACTORS: OnlyActor[] = ['aCreateOnly', 'aUpdateOnly', 'aDeleteOnly', 'twCreateOnly'];
+    const onlySessions = {} as Record<OnlyActor, unknown>;
+
+    beforeAll(async () => {
+      const suffix = randomUUID();
+      const permission = async (resource: string, action: string) =>
+        (
+          await prisma.permission.upsert({
+            where: { resource_action: { resource, action } },
+            create: { resource, action },
+            update: {},
+          })
+        ).id;
+      const roleWith = async (name: string, keys: Array<[string, string]>) => {
+        const role = await prisma.role.create({ data: { tenantId, name: `${name} ${suffix}` } });
+        for (const [resource, action] of keys) {
+          await prisma.rolePermission.create({ data: { roleId: role.id, permissionId: await permission(resource, action) } });
+        }
+        return role.id;
+      };
+      const plan: Record<OnlyActor, { roleId: string; companyId: string | null }> = {
+        aCreateOnly: { roleId: await roleWith('Only create', [['esigning', 'create']]), companyId: companyA },
+        aUpdateOnly: { roleId: await roleWith('Only update', [['esigning', 'update']]), companyId: companyA },
+        aDeleteOnly: { roleId: await roleWith('Only delete', [['esigning', 'delete']]), companyId: companyA },
+        twCreateOnly: { roleId: await roleWith('Tenant-wide only create', [['esigning', 'create']]), companyId: null },
+        // No e-signing grant at all (a document grant only).
+        noEsigning: { roleId: await roleWith('No e-signing', [['document', 'read']]), companyId: companyA },
+      };
+      for (const name of Object.keys(plan) as OnlyActor[]) {
+        const user = await prisma.user.create({
+          data: { tenantId, email: `${name}-${suffix}@example.test`, passwordHash: 'not-used', firstName: name, lastName: 'User' },
+        });
+        await prisma.userRoleAssignment.create({ data: { userId: user.id, ...plan[name] } });
+        onlySessions[name] = {
+          id: user.id,
+          email: user.email,
+          firstName: name,
+          lastName: 'User',
+          tenantId,
+          workspaceId: tenantId,
+          internalRole: 'STAFF',
+          isAdmin: false,
+          isManager: false,
+          isStaff: true,
+          isSuperAdmin: false,
+          isWorkspaceAdmin: false,
+          hasAllCompaniesAccess: plan[name].companyId === null,
+          companyIds: plan[name].companyId ? [plan[name].companyId] : [],
+        };
+      }
+    }, 60_000);
+
+    function as<T>(actor: OnlyActor, run: () => Promise<T>): Promise<T> {
+      current.session = onlySessions[actor];
+      return run();
+    }
+
+    function detailOf(fx: Fixture) {
+      return routes.detail.GET(plain(ctx, `/envelopes/${fx.envelopeId}`), { params: Promise.resolve({ id: fx.envelopeId }) });
+    }
+
+    it.each(ONLY_ACTORS)('%s lists exactly the no-company envelopes of the tenant', async (actor) => {
+      const ids: string[] = [];
+      let total = -1;
+      for (let page = 1; page <= 50; page += 1) {
+        const response = await as(actor, () => routes.envelopes.GET(plain(ctx, `/envelopes?limit=100&page=${page}`)));
+        expect(response.status).toBe(200);
+        const body = (await response.json()) as { total: number; envelopes: Array<{ id: string }>; companyOptions: unknown[] };
+        if (page === 1) total = body.total;
+        ids.push(...body.envelopes.map((entry) => entry.id));
+        expect(body.companyOptions).toEqual([]);
+        if (body.envelopes.length < 100) break;
+      }
+      const expected = await prisma.esigningEnvelope.findMany({
+        where: { tenantId, deletedAt: null, companyId: null },
+        select: { id: true },
+      });
+      expect(expected.length).toBeGreaterThan(0);
+      expect([...ids].sort()).toEqual(expected.map((row) => row.id).sort());
+      expect(total).toBe(expected.length);
+    });
+
+    it.each(ONLY_ACTORS)('%s opens a no-company envelope, its events and its PDF, but not company envelopes', async (actor) => {
+      for (const state of STATES) {
+        const fx = shared[state].N;
+        expect((await as(actor, () => detailOf(fx))).status, `${state} N detail`).toBe(200);
+      }
+      const fx = shared.DRAFT.N;
+      const events = await as(actor, () =>
+        routes.events.GET(plain(ctx, `/envelopes/${fx.envelopeId}/events`), { params: Promise.resolve({ id: fx.envelopeId }) })
+      );
+      expect(events.status).toBe(200);
+      const pdf = await as(actor, () =>
+        routes.documentPdf.GET(plain(ctx, `/envelopes/${fx.envelopeId}/documents/${fx.documentId}/pdf`), {
+          params: Promise.resolve({ id: fx.envelopeId, docId: fx.documentId }),
+        })
+      );
+      expect(pdf.status).toBe(200);
+      const done = shared.COMPLETED.N;
+      const download = await as(actor, () =>
+        routes.download.GET(plain(ctx, `/envelopes/${done.envelopeId}/download`), { params: Promise.resolve({ id: done.envelopeId }) })
+      );
+      expect(download.status).not.toBe(403);
+
+      // Company envelopes still need `read` in that company: none of these users has it.
+      for (const kind of ['A', 'B'] as const) {
+        expect((await as(actor, () => detailOf(shared.DRAFT[kind]))).status, `${kind} detail`).toBe(403);
+      }
+    });
+
+    it.each(ONLY_ACTORS)('%s still cannot change, send or delete a no-company envelope made by somebody else', async (actor) => {
+      const fx = shared.DRAFT.N;
+      const before = await snapshot(fx.envelopeId);
+      const calls = [
+        () => routes.detail.PATCH(json(ctx, `/envelopes/${fx.envelopeId}`, 'PATCH', { title: 'Taken' }), { params: Promise.resolve({ id: fx.envelopeId }) }),
+        () => routes.detail.DELETE(plain(ctx, `/envelopes/${fx.envelopeId}`, 'DELETE'), { params: Promise.resolve({ id: fx.envelopeId }) }),
+        () => routes.send.POST(json(ctx, `/envelopes/${fx.envelopeId}/send`, 'POST'), { params: Promise.resolve({ id: fx.envelopeId }) }),
+      ];
+      for (const call of calls) {
+        expect((await as(actor, call)).status).toBe(403);
+      }
+      expect(await snapshot(fx.envelopeId)).toBe(before);
+      expect(await prisma.esigningEnvelope.count({ where: { id: fx.envelopeId, deletedAt: null } })).toBe(1);
+    });
+
+    it('a user with no e-signing grant at all gets 403 from the list, the detail, the events and the PDF', async () => {
+      const fx = shared.DRAFT.N;
+      expect((await as('noEsigning', () => routes.envelopes.GET(plain(ctx, '/envelopes')))).status).toBe(403);
+      expect((await as('noEsigning', () => detailOf(fx))).status).toBe(403);
+      const events = await as('noEsigning', () =>
+        routes.events.GET(plain(ctx, `/envelopes/${fx.envelopeId}/events`), { params: Promise.resolve({ id: fx.envelopeId }) })
+      );
+      expect(events.status).toBe(403);
+      const pdf = await as('noEsigning', () =>
+        routes.documentPdf.GET(plain(ctx, `/envelopes/${fx.envelopeId}/documents/${fx.documentId}/pdf`), {
+          params: Promise.resolve({ id: fx.envelopeId, docId: fx.documentId }),
+        })
+      );
+      expect(pdf.status).toBe(403);
+    });
+  });
 });

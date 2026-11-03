@@ -4,6 +4,7 @@ import { makeEsigningScope } from '../helpers/esigning-scope';
 const rbacMocks = vi.hoisted(() => ({
   hasPermission: vi.fn(),
   hasTenantWidePermission: vi.fn(),
+  requireAnyPermission: vi.fn(),
 }));
 
 vi.mock('@/lib/rbac', () => rbacMocks);
@@ -19,6 +20,7 @@ import {
   canMutateEnvelope,
   canReadEnvelope,
   lockEnvelopeForAuthorizedChange,
+  requireEsigningReadEntry,
   resolveEsigningActorScope,
   type EsigningActorScope,
 } from '@/services/esigning-envelope.lib';
@@ -353,6 +355,28 @@ describe('esigning envelope access rule', () => {
     it('reports a missing envelope and an envelope of another tenant as not found', async () => {
       await expect(lock([])).rejects.toThrow('Envelope not found');
       await expect(lock([row('A')], 'tenant-2')).rejects.toThrow('Envelope not found');
+    });
+  });
+
+  describe('requireEsigningReadEntry', () => {
+    it('asks for any e-signing action, not for read alone', async () => {
+      rbacMocks.requireAnyPermission.mockResolvedValue(undefined);
+      await requireEsigningReadEntry(sessionFor('user-1', ['A']));
+      const [, permissions] = rbacMocks.requireAnyPermission.mock.calls[0];
+      expect(permissions).toEqual(
+        ['create', 'read', 'update', 'delete', 'manage'].map((action) => ({ resource: 'esigning', action }))
+      );
+    });
+
+    it('lets a user without any e-signing action through to a 403', async () => {
+      rbacMocks.requireAnyPermission.mockRejectedValue(new Error('Permission denied: esigning:create, esigning:read'));
+      await expect(requireEsigningReadEntry(sessionFor('user-1', ['A']))).rejects.toThrow('Permission denied');
+    });
+
+    it('does not ask the permission layer for admins', async () => {
+      rbacMocks.requireAnyPermission.mockClear();
+      await requireEsigningReadEntry({ ...(sessionFor('admin') as object), isWorkspaceAdmin: true } as never);
+      expect(rbacMocks.requireAnyPermission).not.toHaveBeenCalled();
     });
   });
 });

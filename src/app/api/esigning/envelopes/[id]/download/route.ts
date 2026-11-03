@@ -1,7 +1,7 @@
 import { NextRequest } from 'next/server';
 import { z } from 'zod';
 import { requireAuth } from '@/lib/auth';
-import { requirePermission } from '@/lib/rbac';
+import { requireEsigningReadEntry } from '@/services/esigning-envelope.lib';
 import {
   buildContentDispositionHeader,
   createErrorResponse,
@@ -23,7 +23,7 @@ export async function GET(request: NextRequest, { params }: RouteParams) {
   try {
     const { id } = await params;
     const session = await requireAuth();
-    await requirePermission(session, 'esigning', 'read');
+    await requireEsigningReadEntry(session);
 
     const { searchParams } = new URL(request.url);
     const parsed = downloadQuerySchema.parse({
