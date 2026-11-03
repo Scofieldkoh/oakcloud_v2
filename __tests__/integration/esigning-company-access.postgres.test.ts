@@ -92,30 +92,35 @@ interface Fixture {
 
 const ALL_ABILITIES: Ability[] = ['read', 'update', 'delete', 'create'];
 const NONE: Ability[] = [];
+const READ_AND_CREATE: Ability[] = ['read', 'create'];
 
 /**
  * What each actor may do with an envelope of each kind (the result table of the OAK-007 policy).
  * N is a no-company envelope made by somebody else; N2 is a no-company envelope made by aCreator.
+ *
+ * A no-company envelope is readable by every e-signing user of the tenant (decided by the owner).
+ * Changing, sending and deleting it still needs a tenant-wide grant or being its creator. 'create'
+ * on it means duplicating it, which any actor who may create a no-company envelope can do.
  */
 const POLICY: Record<ActorName, Record<Kind, Ability[]>> = {
-  aOnly: { A: ALL_ABILITIES, B: NONE, N: NONE, N2: NONE },
-  aCreator: { A: ALL_ABILITIES, B: NONE, N: NONE, N2: ALL_ABILITIES },
-  bOnly: { A: NONE, B: ALL_ABILITIES, N: NONE, N2: NONE },
+  aOnly: { A: ALL_ABILITIES, B: NONE, N: READ_AND_CREATE, N2: READ_AND_CREATE },
+  aCreator: { A: ALL_ABILITIES, B: NONE, N: READ_AND_CREATE, N2: ALL_ABILITIES },
+  bOnly: { A: NONE, B: ALL_ABILITIES, N: READ_AND_CREATE, N2: READ_AND_CREATE },
   tenantWide: { A: ALL_ABILITIES, B: ALL_ABILITIES, N: ALL_ABILITIES, N2: ALL_ABILITIES },
   admin: { A: ALL_ABILITIES, B: ALL_ABILITIES, N: ALL_ABILITIES, N2: ALL_ABILITIES },
-  aReadOnly: { A: ['read'], B: NONE, N: NONE, N2: NONE },
+  aReadOnly: { A: ['read'], B: NONE, N: ['read'], N2: ['read'] },
   // Tenant-wide read plus a full company-A role: A is editable (override), everything else read-only.
   mixed: { A: ALL_ABILITIES, B: ['read'], N: ['read', 'create'], N2: ['read', 'create'] },
 };
 
 /** Envelopes each actor sees in the list, out of the 12 shared fixtures (A, B, N, N2 per state). */
 const LIST_KINDS: Record<ActorName, Kind[]> = {
-  aOnly: ['A'],
-  aCreator: ['A', 'N2'],
-  bOnly: ['B'],
+  aOnly: ['A', 'N', 'N2'],
+  aCreator: ['A', 'N', 'N2'],
+  bOnly: ['B', 'N', 'N2'],
   tenantWide: ['A', 'B', 'N', 'N2'],
   admin: ['A', 'B', 'N', 'N2'],
-  aReadOnly: ['A'],
+  aReadOnly: ['A', 'N', 'N2'],
   mixed: ['A', 'B', 'N', 'N2'],
 };
 
@@ -729,11 +734,11 @@ describePostgres('e-signing company access (real routes, rbac and database)', ()
       switch (actor) {
         case 'aOnly':
         case 'aReadOnly':
-          return { companyId: companyA };
         case 'aCreator':
-          return { OR: [{ companyId: companyA }, { companyId: null, createdById: users.aCreator }] };
+          // Their company, plus every envelope with no company.
+          return { OR: [{ companyId: companyA }, { companyId: null }] };
         case 'bOnly':
-          return { companyId: companyB };
+          return { OR: [{ companyId: companyB }, { companyId: null }] };
         default:
           return {};
       }
@@ -1022,6 +1027,141 @@ describePostgres('e-signing company access (real routes, rbac and database)', ()
       expect(row.companyId).toBeNull();
       expect(row.documents.some((entry) => entry.generatedDocumentId === document.id)).toBe(false);
     });
+
+    describe('a batch is all or nothing', () => {
+      function attachMany(actor: ActorName, envelopeId: string, documentIds: string[]) {
+        return asActor(actor, () =>
+          routes.documents.POST(
+            json(ctx, `/envelopes/${envelopeId}/documents`, 'POST', { generatedDocumentIds: documentIds }),
+            { params: Promise.resolve({ id: envelopeId }) }
+          )
+        );
+      }
+
+      const storedKeys = () => [...memory.files.keys()].sort();
+
+      async function resetExport() {
+        const { exportToPDF } = await import('@/services/document-export.service');
+        vi.mocked(exportToPDF).mockReset();
+        vi.mocked(exportToPDF).mockImplementation(async () => ({
+          buffer: Buffer.from(memory.pdf!),
+          filename: 'Generated.pdf',
+        }) as never);
+        return exportToPDF;
+      }
+
+      it.each([
+        ['a document with no company, then one of company B', ['none', 'B'] as DocWhere[]],
+        ['a document of company B, then one with no company', ['B', 'none'] as DocWhere[]],
+        ['two documents with no company, then one of company B', ['none', 'none', 'B'] as DocWhere[]],
+      ])('refuses %s with 403 and leaves no trace', async (_label, wheres) => {
+        const exportToPDF = await resetExport();
+        const fx = await seedEnvelope('DRAFT', 'N', { createdBy: 'aOnly' });
+        const documents = await Promise.all(wheres.map((where) => seedDocument(where)));
+        const before = await snapshot(fx.envelopeId);
+        const keysBefore = storedKeys();
+
+        const response = await attachMany('aOnly', fx.envelopeId, documents.map((document) => document.id));
+
+        expect(response.status).toBe(403);
+        // Refused as a whole, before anything was rendered, uploaded or written.
+        expect(exportToPDF).not.toHaveBeenCalled();
+        expect(await snapshot(fx.envelopeId)).toBe(before);
+        expect(storedKeys()).toEqual(keysBefore);
+        expect(
+          await prisma.esigningEnvelopeDocument.count({
+            where: { generatedDocumentId: { in: documents.map((document) => document.id) } },
+          })
+        ).toBe(0);
+      });
+
+      it('refuses documents of two companies for an actor who may edit both, and changes nothing', async () => {
+        const exportToPDF = await resetExport();
+        const fx = await seedEnvelope('DRAFT', 'N');
+        const documents = [await seedDocument('A'), await seedDocument('B')];
+        const before = await snapshot(fx.envelopeId);
+        const keysBefore = storedKeys();
+
+        const response = await attachMany('tenantWide', fx.envelopeId, documents.map((document) => document.id));
+
+        expect(response.status).toBeGreaterThanOrEqual(400);
+        expect(response.status).toBeLessThan(500);
+        expect(exportToPDF).not.toHaveBeenCalled();
+        expect(await snapshot(fx.envelopeId)).toBe(before);
+        expect(storedKeys()).toEqual(keysBefore);
+      });
+
+      it('attaches a fully permitted mixed batch together and gives the envelope the batch company', async () => {
+        const exportToPDF = await resetExport();
+        const fx = await seedEnvelope('DRAFT', 'N', { createdBy: 'aOnly' });
+        const documents = [await seedDocument('none'), await seedDocument('A'), await seedDocument('none')];
+
+        const response = await attachMany('aOnly', fx.envelopeId, documents.map((document) => document.id));
+        const body = await response.clone().text();
+
+        expect(response.status, body.slice(0, 300)).toBe(201);
+        expect(exportToPDF).toHaveBeenCalledTimes(3);
+        const row = await prisma.esigningEnvelope.findUniqueOrThrow({
+          where: { id: fx.envelopeId },
+          include: { documents: { orderBy: { sortOrder: 'asc' } } },
+        });
+        expect(row.companyId).toBe(companyA);
+        expect(row.documents.map((entry) => entry.generatedDocumentId).filter(Boolean)).toEqual(
+          documents.map((document) => document.id)
+        );
+        for (const entry of row.documents) expect(memory.files.has(entry.storagePath)).toBe(true);
+        // The seeded document keeps sort order 1; the batch follows it in the order requested.
+        const generated = row.documents.filter((entry) => entry.generatedDocumentId);
+        expect(generated.map((entry) => entry.sortOrder)).toEqual([...generated.map((entry) => entry.sortOrder)].sort((a, b) => a - b));
+      });
+
+      it('removes every uploaded object and writes nothing when a later document fails to render', async () => {
+        const exportToPDF = await resetExport();
+        let calls = 0;
+        vi.mocked(exportToPDF).mockImplementation(async () => {
+          calls += 1;
+          if (calls === 2) throw new Error('render failed');
+          return { buffer: Buffer.from(memory.pdf!), filename: 'Generated.pdf' } as never;
+        });
+        const fx = await seedEnvelope('DRAFT', 'A');
+        const documents = [await seedDocument('A'), await seedDocument('A'), await seedDocument('A')];
+        const before = await snapshot(fx.envelopeId);
+        const keysBefore = storedKeys();
+
+        const response = await attachMany('aOnly', fx.envelopeId, documents.map((document) => document.id));
+
+        expect(response.status).toBeGreaterThanOrEqual(400);
+        expect(await snapshot(fx.envelopeId)).toBe(before);
+        expect(storedKeys()).toEqual(keysBefore);
+      });
+
+      it('removes every uploaded object and writes nothing when the envelope is moved while the batch renders', async () => {
+        const exportToPDF = await resetExport();
+        const fx = await seedEnvelope('DRAFT', 'N', { createdBy: 'aOnly' });
+        const documents = [await seedDocument('none'), await seedDocument('none')];
+        let calls = 0;
+        vi.mocked(exportToPDF).mockImplementation(async () => {
+          calls += 1;
+          // Between rendering and committing, somebody moves the envelope into company B.
+          if (calls === 2) {
+            await prisma.esigningEnvelope.update({ where: { id: fx.envelopeId }, data: { companyId: companyB } });
+          }
+          return { buffer: Buffer.from(memory.pdf!), filename: 'Generated.pdf' } as never;
+        });
+        const keysBefore = storedKeys();
+
+        const response = await attachMany('aOnly', fx.envelopeId, documents.map((document) => document.id));
+
+        expect(response.status).toBe(403);
+        expect(storedKeys()).toEqual(keysBefore);
+        const row = await prisma.esigningEnvelope.findUniqueOrThrow({
+          where: { id: fx.envelopeId },
+          include: { documents: true },
+        });
+        expect(row.companyId).toBe(companyB);
+        expect(row.documents.some((entry) => entry.generatedDocumentId)).toBe(false);
+      });
+    });
   });
 
   describe('PATCH /envelopes/[id] moving a draft between companies', () => {
@@ -1170,7 +1310,7 @@ describePostgres('e-signing company access (real routes, rbac and database)', ()
   });
 
   describe('a company-A-only creator of a no-company draft', () => {
-    it('keeps read, update and delete on it, and cannot reach the same envelope from company B', async () => {
+    it('keeps read, update and delete on it; a company-B user can read it but not change or delete it', async () => {
       const fx = shared.DRAFT.N2;
       const read = await asActor('aCreator', () =>
         routes.detail.GET(plain(ctx, `/envelopes/${fx.envelopeId}`), { params: Promise.resolve({ id: fx.envelopeId }) })
@@ -1180,7 +1320,18 @@ describePostgres('e-signing company access (real routes, rbac and database)', ()
       const otherCompanyUser = await asActor('bOnly', () =>
         routes.detail.GET(plain(ctx, `/envelopes/${fx.envelopeId}`), { params: Promise.resolve({ id: fx.envelopeId }) })
       );
-      expect(otherCompanyUser.status).toBe(403);
+      expect(otherCompanyUser.status).toBe(200);
+      const rename = await asActor('bOnly', () =>
+        routes.detail.PATCH(json(ctx, `/envelopes/${fx.envelopeId}`, 'PATCH', { title: 'Taken over' }), {
+          params: Promise.resolve({ id: fx.envelopeId }),
+        })
+      );
+      expect(rename.status).toBe(403);
+      const remove = await asActor('bOnly', () =>
+        routes.detail.DELETE(plain(ctx, `/envelopes/${fx.envelopeId}`, 'DELETE'), { params: Promise.resolve({ id: fx.envelopeId }) })
+      );
+      expect(remove.status).toBe(403);
+      expect(await prisma.esigningEnvelope.count({ where: { id: fx.envelopeId, deletedAt: null } })).toBe(1);
     });
 
     it('loses access to their own envelope once their company access is revoked', async () => {
@@ -1192,6 +1343,180 @@ describePostgres('e-signing company access (real routes, rbac and database)', ()
         routes.detail.GET(plain(ctx, `/envelopes/${fx.envelopeId}`), { params: Promise.resolve({ id: fx.envelopeId }) })
       );
       expect(response.status).toBe(403);
+    });
+  });
+
+  describe('tenant isolation of no-company envelopes', () => {
+    let otherTenantId: string;
+    let otherUserId: string;
+    let otherSession: unknown;
+    let otherNoCompanyId: string;
+    let otherNoCompanyDocumentId: string;
+
+    beforeAll(async () => {
+      const suffix = randomUUID();
+      const workspace = await prisma.workspace.create({
+        data: { name: `Other tenant ${suffix}`, slug: `other-tenant-${suffix}` },
+      });
+      otherTenantId = workspace.id;
+      const permissions = await prisma.permission.findMany({
+        where: { resource: 'esigning', action: { in: ['create', 'read', 'update', 'delete'] } },
+      });
+      const role = await prisma.role.create({ data: { tenantId: otherTenantId, name: `Esigning full ${suffix}` } });
+      await prisma.rolePermission.createMany({
+        data: permissions.map((permission) => ({ roleId: role.id, permissionId: permission.id })),
+      });
+      const user = await prisma.user.create({
+        data: {
+          tenantId: otherTenantId,
+          email: `other-${suffix}@example.test`,
+          passwordHash: 'not-used',
+          firstName: 'Other',
+          lastName: 'User',
+        },
+      });
+      otherUserId = user.id;
+      await prisma.userRoleAssignment.create({ data: { userId: user.id, roleId: role.id, companyId: null } });
+      otherSession = {
+        id: user.id,
+        email: user.email,
+        firstName: 'Other',
+        lastName: 'User',
+        tenantId: otherTenantId,
+        workspaceId: otherTenantId,
+        internalRole: 'STAFF',
+        isAdmin: false,
+        isManager: false,
+        isStaff: true,
+        isSuperAdmin: false,
+        isWorkspaceAdmin: false,
+        hasAllCompaniesAccess: true,
+        companyIds: [],
+      };
+      otherNoCompanyId = randomUUID();
+      await prisma.esigningEnvelope.create({
+        data: {
+          id: otherNoCompanyId,
+          tenantId: otherTenantId,
+          createdById: otherUserId,
+          title: `OTHER TENANT no company ${otherNoCompanyId.slice(0, 6)}`,
+          status: 'DRAFT',
+          signingOrder: 'SEQUENTIAL',
+          certificateId: `OAK-ES-${otherNoCompanyId.replace(/-/g, '').slice(0, 14).toUpperCase()}`,
+          companyId: null,
+        },
+      });
+      const storagePath = `${otherTenantId}/esigning/${otherNoCompanyId}/originals/doc.pdf`;
+      memory.files.set(storagePath, documentPdf);
+      otherNoCompanyDocumentId = (
+        await prisma.esigningEnvelopeDocument.create({
+          data: {
+            tenantId: otherTenantId,
+            envelopeId: otherNoCompanyId,
+            fileName: 'other.pdf',
+            originalFileName: 'other.pdf',
+            storagePath,
+            originalHash: 'hash',
+            pageCount: 1,
+            sortOrder: 1,
+            fileSize: documentPdf.byteLength,
+          },
+        })
+      ).id;
+    }, 60_000);
+
+    afterAll(async () => {
+      if (!otherTenantId) return;
+      await prisma.auditLog.deleteMany({ where: { tenantId: otherTenantId } });
+      await prisma.esigningEnvelope.deleteMany({ where: { tenantId: otherTenantId } });
+      await prisma.role.deleteMany({ where: { tenantId: otherTenantId } });
+      await prisma.user.deleteMany({ where: { tenantId: otherTenantId } });
+      await prisma.workspace.delete({ where: { id: otherTenantId } });
+    });
+
+    function asOther<T>(run: () => Promise<T>): Promise<T> {
+      current.session = otherSession;
+      return run();
+    }
+
+    async function listBody(run: () => Promise<Response>) {
+      const response = await run();
+      expect(response.status).toBe(200);
+      return (await response.json()) as {
+        total: number;
+        envelopes: Array<{ id: string }>;
+        statusCounts: Record<string, number>;
+      };
+    }
+
+    it.each(ACTORS)("%s never sees the other tenant's no-company envelope, but sees its own tenant's", async (actor) => {
+      const fixtureTitle = (
+        await prisma.esigningEnvelope.findUniqueOrThrow({ where: { id: shared.DRAFT.N.envelopeId }, select: { title: true } })
+      ).title;
+      const body = await listBody(() =>
+        asActor(actor, () => routes.envelopes.GET(plain(ctx, '/envelopes?limit=100')))
+      );
+      const ids = body.envelopes.map((entry) => entry.id);
+      expect(ids).not.toContain(otherNoCompanyId);
+      const searched = await listBody(() =>
+        asActor(actor, () => routes.envelopes.GET(plain(ctx, `/envelopes?limit=100&query=${encodeURIComponent(fixtureTitle)}`)))
+      );
+      expect(searched.envelopes.map((entry) => entry.id)).toEqual([shared.DRAFT.N.envelopeId]);
+      const inOtherTenant = await prisma.esigningEnvelope.count({
+        where: { id: { in: ids }, tenantId: otherTenantId },
+      });
+      expect(inOtherTenant).toBe(0);
+      expect(Object.values(body.statusCounts).reduce((sum, count) => sum + count, 0)).toBe(body.total);
+    });
+
+    it("the other tenant sees only its own envelope: list, total and counts exclude this tenant's no-company ones", async () => {
+      const body = await listBody(() =>
+        asOther(() => routes.envelopes.GET(plain({ ...ctx, tenantId: otherTenantId }, '/envelopes?limit=100')))
+      );
+      expect(body.envelopes.map((entry) => entry.id)).toEqual([otherNoCompanyId]);
+      expect(body.total).toBe(1);
+      expect(Object.values(body.statusCounts).reduce((sum, count) => sum + count, 0)).toBe(1);
+    });
+
+    it.each(ACTORS)("%s cannot open the other tenant's no-company envelope or its document", async (actor) => {
+      for (const target of [otherTenantId, tenantId]) {
+        const label = `${actor} with tenantId=${target === tenantId ? 'own' : 'other'}`;
+        const detail = await asActor(actor, () =>
+          routes.detail.GET(plain({ ...ctx, tenantId: target }, `/envelopes/${otherNoCompanyId}`), {
+            params: Promise.resolve({ id: otherNoCompanyId }),
+          })
+        );
+        expect(detail.status, `${label} detail`).not.toBe(200);
+        expect(await detail.text()).not.toContain('OTHER TENANT');
+
+        const pdf = await asActor(actor, () =>
+          routes.documentPdf.GET(
+            plain({ ...ctx, tenantId: target }, `/envelopes/${otherNoCompanyId}/documents/${otherNoCompanyDocumentId}/pdf`),
+            { params: Promise.resolve({ id: otherNoCompanyId, docId: otherNoCompanyDocumentId }) }
+          )
+        );
+        expect(pdf.status, `${label} pdf`).not.toBe(200);
+      }
+    });
+
+    it("a user of the other tenant cannot open this tenant's no-company envelope, whichever tenant they name", async () => {
+      const fx = shared.DRAFT.N;
+      for (const target of [tenantId, otherTenantId]) {
+        const label = `tenantId=${target === tenantId ? 'this' : 'own'}`;
+        const detail = await asOther(() =>
+          routes.detail.GET(plain({ ...ctx, tenantId: target }, `/envelopes/${fx.envelopeId}`), {
+            params: Promise.resolve({ id: fx.envelopeId }),
+          })
+        );
+        expect(detail.status, `${label} detail`).not.toBe(200);
+        const pdf = await asOther(() =>
+          routes.documentPdf.GET(
+            plain({ ...ctx, tenantId: target }, `/envelopes/${fx.envelopeId}/documents/${fx.documentId}/pdf`),
+            { params: Promise.resolve({ id: fx.envelopeId, docId: fx.documentId }) }
+          )
+        );
+        expect(pdf.status, `${label} pdf`).not.toBe(200);
+      }
     });
   });
 });

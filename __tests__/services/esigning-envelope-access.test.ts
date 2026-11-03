@@ -42,19 +42,20 @@ const noCompany = { createdById: 'someone-else', companyId: null };
 
 type Row = { name: string; scope: EsigningActorScope; userId: string; results: Record<string, boolean[]> };
 
-// [envelope in A, envelope in B, envelope with no company], per operation.
+// [envelope in A, envelope in B, envelope with no company], per operation. An envelope
+// with no company can be read by every e-signing user; changing it keeps the older rule.
 const rows: Row[] = [
   {
     name: 'company-A-only',
     userId: 'user-a',
     scope: makeEsigningScope({ companies: { A: FULL } }),
-    results: { read: [true, false, false], update: [true, false, false], delete: [true, false, false] },
+    results: { read: [true, false, true], update: [true, false, false], delete: [true, false, false] },
   },
   {
     name: 'company-B-only',
     userId: 'user-b',
     scope: makeEsigningScope({ companies: { B: FULL } }),
-    results: { read: [false, true, false], update: [false, true, false], delete: [false, true, false] },
+    results: { read: [false, true, true], update: [false, true, false], delete: [false, true, false] },
   },
   {
     name: 'tenant-wide',
@@ -72,7 +73,7 @@ const rows: Row[] = [
     name: 'company-A read-only',
     userId: 'user-ro',
     scope: makeEsigningScope({ companies: { A: { read: true } } }),
-    results: { read: [true, false, false], update: [false, false, false], delete: [false, false, false] },
+    results: { read: [true, false, true], update: [false, false, false], delete: [false, false, false] },
   },
   {
     name: 'tenant-wide read + company-A editor',
@@ -117,14 +118,36 @@ describe('esigning envelope access rule', () => {
       expect(canManageEnvelope(scope, session, ownNoCompany)).toBe(true);
     });
 
-    it('still cannot open a no-company envelope someone else created, or one in company B', () => {
-      expect(canReadEnvelope(scope, session, noCompany)).toBe(false);
+    it('can open a no-company envelope someone else created, but not change or delete it, and still not company B', () => {
+      expect(canReadEnvelope(scope, session, noCompany)).toBe(true);
+      expect(canMutateEnvelope(scope, session, noCompany)).toBe(false);
+      expect(canDeleteEnvelope(scope, session, noCompany)).toBe(false);
+      expect(canManageEnvelope(scope, session, noCompany)).toBe(false);
       expect(canReadEnvelope(scope, session, inB)).toBe(false);
     });
 
     it('loses access to their own company-B envelope once company-B access is gone', () => {
       expect(canReadEnvelope(scope, session, { createdById: 'creator', companyId: 'B' })).toBe(false);
       expect(canMutateEnvelope(scope, session, { createdById: 'creator', companyId: 'B' })).toBe(false);
+    });
+  });
+
+  describe('tenant isolation', () => {
+    const otherTenant = { createdById: 'someone-else', companyId: null, tenantId: 'tenant-2' };
+    const sameTenant = { createdById: 'someone-else', companyId: null, tenantId: 'tenant-1' };
+
+    it.each(rows)('$name cannot read, change or delete an envelope of another tenant', ({ userId, scope }) => {
+      const session = sessionFor(userId);
+      expect(canReadEnvelope(scope, session, otherTenant)).toBe(false);
+      expect(canReadEnvelope(scope, session, { ...otherTenant, companyId: 'A' })).toBe(false);
+      expect(canMutateEnvelope(scope, session, otherTenant)).toBe(false);
+      expect(canDeleteEnvelope(scope, session, otherTenant)).toBe(false);
+      expect(canManageEnvelope(scope, session, otherTenant)).toBe(false);
+    });
+
+    it('reads a no-company envelope of its own tenant', () => {
+      const scope = makeEsigningScope({ companies: { A: { read: true } } });
+      expect(canReadEnvelope(scope, sessionFor('user-ro'), sameTenant)).toBe(true);
     });
   });
 
@@ -210,16 +233,26 @@ describe('esigning envelope access rule', () => {
       expect(buildEsigningEnvelopeReadWhere(makeEsigningScope({ admin: true }), sessionFor('admin'))).toEqual({});
     });
 
-    it('limits a company-A-only user to company A plus their own no-company rows', () => {
+    it('limits a company-A-only user to company A plus every no-company row', () => {
       const where = buildEsigningEnvelopeReadWhere(
         makeEsigningScope({ companies: { A: FULL } }),
         sessionFor('user-a', ['A'])
       );
       expect(where).toEqual({
         OR: [
-          { companyId: null, createdById: 'user-a' },
+          { companyId: null },
           { companyId: { in: ['A'] } },
         ],
+      });
+    });
+
+    it('shows no-company rows to a user whose only e-signing right is read in one company', () => {
+      const where = buildEsigningEnvelopeReadWhere(
+        makeEsigningScope({ companies: { A: { read: true } } }),
+        sessionFor('user-ro', ['A'])
+      );
+      expect(where).toEqual({
+        OR: [{ companyId: null }, { companyId: { in: ['A'] } }],
       });
     });
 

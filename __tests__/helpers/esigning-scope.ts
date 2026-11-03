@@ -13,6 +13,8 @@ const NONE: EsigningPermissionFlags = {
 
 /** Build an actor scope for tests that mock `resolveEsigningActorScope`. */
 export function makeEsigningScope(input: {
+  /** Defaults to 'tenant-1'. */
+  tenantId?: string;
   admin?: boolean;
   tenantWide?: Partial<EsigningPermissionFlags>;
   companies?: Record<string, Partial<EsigningPermissionFlags>>;
@@ -27,7 +29,7 @@ export function makeEsigningScope(input: {
   };
   if (input.admin) {
     return {
-      tenantId: 'tenant-1',
+      tenantId: input.tenantId ?? 'tenant-1',
       isAdmin: true,
       tenantWide: everything,
       companies: {},
@@ -46,5 +48,5 @@ export function makeEsigningScope(input: {
     }
   }
 
-  return { tenantId: 'tenant-1', isAdmin: false, tenantWide, companies, any };
+  return { tenantId: input.tenantId ?? 'tenant-1', isAdmin: false, tenantWide, companies, any };
 }

@@ -50,10 +50,15 @@ export interface EsigningActorScope {
   any: EsigningPermissionFlags;
 }
 
-/** The two facts about an envelope that decide access. */
+/** The facts about an envelope that decide access. */
 export interface EsigningEnvelopeAccessRef {
   createdById: string;
   companyId: string | null;
+  /**
+   * When the caller has it, an envelope of another tenant is never accessible. Callers
+   * also filter their queries by tenant; this is the second line.
+   */
+  tenantId?: string;
 }
 
 const ESIGNING_PERMISSION_ACTIONS: readonly EsigningPermissionAction[] = [
@@ -201,9 +206,9 @@ export async function ensureCompanyBelongsToTenant(
  * - Envelope in company C: allowed when the actor holds the action for C, or is the
  *   creator and still holds some e-signing permission for C.
  * - Envelope without a company: allowed when the actor holds the action through a
- *   tenant-wide role, or is the creator.
+ *   tenant-wide role, or is the creator. (Reading is wider: see `canReadEnvelope`.)
  *
- * Admins always pass.
+ * Admins always pass. Nothing is ever allowed across tenants.
  */
 function canActOnEnvelope(
   scope: EsigningActorScope,
@@ -211,6 +216,10 @@ function canActOnEnvelope(
   envelope: EsigningEnvelopeAccessRef,
   action: EsigningPermissionAction
 ): boolean {
+  if (envelope.tenantId !== undefined && envelope.tenantId !== scope.tenantId) {
+    return false;
+  }
+
   if (scope.isAdmin) {
     return true;
   }
@@ -227,11 +236,22 @@ function canActOnEnvelope(
   return envelope.companyId ? hasAnyFlag(flags) : true;
 }
 
+/**
+ * An envelope with no company belongs to nobody in particular, so every e-signing user of
+ * the tenant can read it (an actor scope only exists for users who hold some e-signing
+ * permission). Changing, sending and deleting it still follow `canActOnEnvelope`.
+ */
 export function canReadEnvelope(
   scope: EsigningActorScope,
   session: SessionUser,
   envelope: EsigningEnvelopeAccessRef
 ): boolean {
+  if (envelope.tenantId !== undefined && envelope.tenantId !== scope.tenantId) {
+    return false;
+  }
+  if (!envelope.companyId) {
+    return true;
+  }
   return canActOnEnvelope(scope, session, envelope, 'read');
 }
 
@@ -346,7 +366,8 @@ export function assertCanCreateEnvelopeForCompany(
 /**
  * Prisma `where` limiting envelopes to the ones `canReadEnvelope` allows. The list,
  * the total, the status counts and the company counts all start from this, so a
- * count never includes an envelope the actor cannot open.
+ * count never includes an envelope the actor cannot open. It says nothing about the
+ * tenant: callers must add `tenantId` (the admin case returns an empty filter).
  */
 export function buildEsigningEnvelopeReadWhere(
   scope: EsigningActorScope,
@@ -359,8 +380,8 @@ export function buildEsigningEnvelopeReadWhere(
   const clauses: Prisma.EsigningEnvelopeWhereInput[] = [];
   const own = { createdById: session.id };
 
-  // No company: tenant-wide read, otherwise only the creator.
-  clauses.push(scope.tenantWide.read ? { companyId: null } : { companyId: null, ...own });
+  // No company: every e-signing user of the tenant (the caller's query adds the tenant).
+  clauses.push({ companyId: null });
 
   // Companies with their own assignment (these override the tenant-wide roles).
   const explicitIds = Object.keys(scope.companies);

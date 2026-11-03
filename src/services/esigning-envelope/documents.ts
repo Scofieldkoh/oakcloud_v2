@@ -537,13 +537,47 @@ export async function attachGeneratedDocumentToDraftEnvelope(input: {
   return { envelopeDocumentId };
 }
 
+/** The caps on documents, pages and bytes one envelope may hold. */
+function assertEnvelopeWithinDocumentLimits(
+  documents: Array<{ pageCount: number; fileSize: number }>,
+): void {
+  if (documents.length > ESIGNING_LIMITS.MAX_DOCUMENTS) {
+    throw new Error(`An envelope can contain at most ${ESIGNING_LIMITS.MAX_DOCUMENTS} documents`);
+  }
+  const totalPages = documents.reduce((sum, document) => sum + document.pageCount, 0);
+  if (totalPages > ESIGNING_LIMITS.MAX_TOTAL_PAGES) {
+    throw new Error(`An envelope cannot exceed ${ESIGNING_LIMITS.MAX_TOTAL_PAGES} pages in total`);
+  }
+  const totalSize = documents.reduce((sum, document) => sum + document.fileSize, 0);
+  if (totalSize > ESIGNING_LIMITS.MAX_TOTAL_FILE_SIZE_BYTES) {
+    throw new Error('Envelope documents exceed the maximum total file size');
+  }
+}
+
+/**
+ * Attaches several finalized generated documents to a draft envelope as one unit: either
+ * every document is attached, or nothing changes.
+ *
+ * Order matters. With a `session`, the whole selection and the company the envelope will
+ * end up in (its own, or the one its documents bring) are authorized first, before any PDF
+ * is rendered or uploaded. The rows are then written in a single transaction under the
+ * envelope's row lock, where access is decided again on the committed row. Uploaded objects
+ * are deleted when any step fails.
+ */
 export async function attachGeneratedDocumentsToDraftEnvelope(input: {
   tenantId: string;
   envelopeId: string;
   generatedDocumentIds: string[];
   actorUserId: string;
+  /**
+   * The acting user, when a person (not the task worker) is attaching. Without it no
+   * permission check is made, as for the task worker.
+   */
   session?: SessionUser;
 }): Promise<{ envelopeDocumentIds: string[] }> {
+  const scope = input.session
+    ? await resolveEsigningActorScope(input.session, input.tenantId)
+    : null;
   const envelope = await prisma.esigningEnvelope.findFirst({
     where: {
       id: input.envelopeId,
@@ -551,41 +585,235 @@ export async function attachGeneratedDocumentsToDraftEnvelope(input: {
       deletedAt: null,
     },
     select: {
+      title: true,
       status: true,
+      createdById: true,
+      companyId: true,
       documents: {
         select: {
+          id: true,
           generatedDocumentId: true,
+          pageCount: true,
+          fileSize: true,
         },
       },
     },
   });
   if (!envelope) throw new Error('Envelope not found');
+  if (input.session && scope && !canMutateEnvelope(scope, input.session, envelope)) {
+    throw new Error('Forbidden');
+  }
   if (envelope.status !== 'DRAFT') {
     throw new Error('Generated documents can only be attached while the envelope is a draft');
   }
 
   const generatedDocumentIds = [...new Set(input.generatedDocumentIds)];
-  const existingGeneratedDocumentIds = new Set(
-    envelope.documents.flatMap((document) => document.generatedDocumentId ? [document.generatedDocumentId] : []),
+  const attachedIds = new Map(
+    envelope.documents.flatMap((document) =>
+      document.generatedDocumentId ? [[document.generatedDocumentId, document.id] as const] : [],
+    ),
   );
-  const newDocumentCount = generatedDocumentIds.filter((id) => !existingGeneratedDocumentIds.has(id)).length;
-  if (envelope.documents.length + newDocumentCount > ESIGNING_LIMITS.MAX_DOCUMENTS) {
+  const pendingIds = generatedDocumentIds.filter((id) => !attachedIds.has(id));
+  if (envelope.documents.length + pendingIds.length > ESIGNING_LIMITS.MAX_DOCUMENTS) {
     throw new Error(`An envelope can contain at most ${ESIGNING_LIMITS.MAX_DOCUMENTS} documents`);
   }
 
-  const envelopeDocumentIds: string[] = [];
-  for (const generatedDocumentId of generatedDocumentIds) {
-    const attachment = await attachGeneratedDocumentToDraftEnvelope({
-      tenantId: input.tenantId,
-      envelopeId: input.envelopeId,
-      generatedDocumentId,
-      actorUserId: input.actorUserId,
-      replaceExistingGeneratedDocument: false,
-      session: input.session,
+  const found = pendingIds.length === 0
+    ? []
+    : await prisma.generatedDocument.findMany({
+      where: {
+        id: { in: pendingIds },
+        tenantId: input.tenantId,
+        status: 'FINALIZED',
+        deletedAt: null,
+      },
+      select: { id: true, title: true, companyId: true, revision: true },
     });
-    envelopeDocumentIds.push(attachment.envelopeDocumentId);
+  const pending = pendingIds.map((id) => found.find((document) => document.id === id));
+  const generatedDocuments = pending.flatMap((document) => (document ? [document] : []));
+  if (generatedDocuments.length !== pendingIds.length) {
+    throw new Error('Selected generated document must be finalized and eligible');
   }
-  return { envelopeDocumentIds };
+
+  // The company the envelope ends up in: its own, or else the one its documents share.
+  const targetCompanyId =
+    envelope.companyId ?? generatedDocuments.find((document) => document.companyId)?.companyId ?? null;
+  for (const document of generatedDocuments) {
+    assertGeneratedDocumentCompanyMatchesEnvelope(targetCompanyId, document.companyId);
+  }
+  if (
+    input.session &&
+    scope &&
+    !envelope.companyId &&
+    targetCompanyId &&
+    !canMoveEnvelopeToCompany(scope, input.session, envelope, targetCompanyId)
+  ) {
+    throw new Error('Forbidden');
+  }
+
+  // Everything is allowed. Render every document and check the limits before uploading any.
+  const prepared: Array<{
+    generatedDocument: (typeof generatedDocuments)[number];
+    envelopeDocumentId: string;
+    storagePath: string;
+    pdfBuffer: Buffer;
+    pageCount: number;
+    fileName: string;
+    docxSha256?: string;
+  }> = [];
+  for (const generatedDocument of generatedDocuments) {
+    const exported = await exportToPDF({
+      documentId: generatedDocument.id,
+      tenantId: input.tenantId,
+      userId: input.actorUserId,
+    });
+    assertExportMatchesRevision(exported, generatedDocument.revision);
+    const exportedBytes = new Uint8Array(exported.buffer);
+    const pdf = await PDFDocument.load(exportedBytes);
+    const pageCount = pdf.getPageCount();
+    if (pageCount > ESIGNING_LIMITS.MAX_PAGES_PER_DOCUMENT) {
+      throw new Error(
+        `A single document cannot exceed ${ESIGNING_LIMITS.MAX_PAGES_PER_DOCUMENT} pages`,
+      );
+    }
+    const envelopeDocumentId = randomUUID();
+    prepared.push({
+      generatedDocument,
+      envelopeDocumentId,
+      storagePath: StorageKeys.esigningOriginalDocument(
+        input.tenantId,
+        input.envelopeId,
+        envelopeDocumentId,
+        '.pdf',
+      ),
+      pdfBuffer: Buffer.from(exportedBytes),
+      pageCount,
+      fileName: exported.filename || `${generatedDocument.title}.pdf`,
+      docxSha256: exported.provenance?.docxSha256,
+    });
+    assertEnvelopeWithinDocumentLimits([
+      ...envelope.documents,
+      ...prepared.map((entry) => ({ pageCount: entry.pageCount, fileSize: entry.pdfBuffer.length })),
+    ]);
+  }
+
+  const uploadedPaths: string[] = [];
+  try {
+    for (const entry of prepared) {
+      uploadedPaths.push(entry.storagePath);
+      await storage.upload(entry.storagePath, entry.pdfBuffer, {
+        contentType: 'application/pdf',
+        metadata: {
+          tenantId: input.tenantId,
+          envelopeId: input.envelopeId,
+          documentId: entry.envelopeDocumentId,
+          generatedDocumentId: entry.generatedDocument.id,
+          generatedDocumentRevision: String(entry.generatedDocument.revision),
+          ...(entry.docxSha256 ? { generatedDocxSha256: entry.docxSha256 } : {}),
+          originalFileName: entry.generatedDocument.title,
+          sourceFormat: 'generated-document',
+        },
+      });
+    }
+
+    await prisma.$transaction(async (tx) => {
+      // Decide again on the committed row: the checks above ran on a snapshot taken
+      // before the PDFs were rendered.
+      const locked = input.session && scope
+        ? await lockEnvelopeForAuthorizedChange(tx, {
+          scope,
+          session: input.session,
+          tenantId: input.tenantId,
+          envelopeId: input.envelopeId,
+          check: canMutateEnvelope,
+        })
+        : await lockEsigningEnvelopeForUpdate(tx, input.envelopeId);
+      if (!locked || locked.status !== 'DRAFT' || locked.companyId !== envelope.companyId) {
+        throw new ConflictError('The envelope changed while its PDFs were being prepared. Try again.');
+      }
+      const committed = await tx.esigningEnvelopeDocument.findMany({
+        where: { envelopeId: input.envelopeId },
+        select: { generatedDocumentId: true, pageCount: true, fileSize: true, sortOrder: true },
+      });
+      if (
+        committed.some(
+          (document) => document.generatedDocumentId && pendingIds.includes(document.generatedDocumentId),
+        )
+      ) {
+        throw new ConflictError('The envelope changed while its PDFs were being prepared. Try again.');
+      }
+      assertEnvelopeWithinDocumentLimits([
+        ...committed,
+        ...prepared.map((entry) => ({ pageCount: entry.pageCount, fileSize: entry.pdfBuffer.length })),
+      ]);
+      for (const entry of prepared) {
+        await assertStillFinalizedAtRevision(
+          tx,
+          input.tenantId,
+          entry.generatedDocument.id,
+          entry.generatedDocument.revision,
+        );
+      }
+      const firstSortOrder = Math.max(committed.length, ...committed.map((document) => document.sortOrder + 1));
+      for (const [index, entry] of prepared.entries()) {
+        await tx.esigningEnvelopeDocument.create({
+          data: {
+            id: entry.envelopeDocumentId,
+            tenantId: input.tenantId,
+            envelopeId: input.envelopeId,
+            generatedDocumentId: entry.generatedDocument.id,
+            fileName: entry.fileName,
+            originalFileName: entry.generatedDocument.title,
+            storagePath: entry.storagePath,
+            originalHash: hashBlake3(entry.pdfBuffer),
+            pageCount: entry.pageCount,
+            sortOrder: firstSortOrder + index,
+            fileSize: entry.pdfBuffer.length,
+          },
+        });
+      }
+      if (!envelope.companyId && targetCompanyId) {
+        await tx.esigningEnvelope.updateMany({
+          where: { id: input.envelopeId, tenantId: input.tenantId, companyId: null },
+          data: { companyId: targetCompanyId },
+        });
+      }
+    });
+  } catch (error) {
+    await Promise.all(uploadedPaths.map((path) => storage.delete(path).catch(() => undefined)));
+    throw error;
+  }
+
+  for (const entry of prepared) {
+    await createAuditLog({
+      tenantId: input.tenantId,
+      userId: input.actorUserId,
+      companyId: envelope.companyId ?? undefined,
+      action: 'UPLOAD',
+      entityType: 'EsigningEnvelope',
+      entityId: input.envelopeId,
+      entityName: envelope.title,
+      summary: `Prepared generated document "${entry.generatedDocument.title}" for E-signing`,
+      changeSource: 'SYSTEM',
+      metadata: {
+        envelopeDocumentId: entry.envelopeDocumentId,
+        generatedDocumentId: entry.generatedDocument.id,
+        generatedDocumentRevision: entry.generatedDocument.revision,
+        ...(entry.docxSha256 ? { docxSha256: entry.docxSha256 } : {}),
+        pageCount: entry.pageCount,
+        fileSize: entry.pdfBuffer.length,
+      },
+    });
+  }
+
+  const preparedByGeneratedId = new Map(
+    prepared.map((entry) => [entry.generatedDocument.id, entry.envelopeDocumentId] as const),
+  );
+  return {
+    envelopeDocumentIds: generatedDocumentIds.map(
+      (id) => attachedIds.get(id) ?? preparedByGeneratedId.get(id)!,
+    ),
+  };
 }
 
 export async function attachGeneratedDocumentsToEsigningEnvelope(
@@ -594,28 +822,6 @@ export async function attachGeneratedDocumentsToEsigningEnvelope(
   envelopeId: string,
   generatedDocumentIds: string[],
 ): Promise<EsigningEnvelopeDetailDto> {
-  const scope = await resolveEsigningActorScope(session, tenantId);
-  const envelope = await prisma.esigningEnvelope.findFirst({
-    where: {
-      id: envelopeId,
-      tenantId,
-      deletedAt: null,
-    },
-    select: {
-      status: true,
-      createdById: true,
-      companyId: true,
-    },
-  });
-
-  if (!envelope) throw new Error('Envelope not found');
-  if (!canMutateEnvelope(scope, session, envelope)) {
-    throw new Error('Forbidden');
-  }
-  if (envelope.status !== 'DRAFT') {
-    throw new Error('Generated documents can only be attached while the envelope is a draft');
-  }
-
   await attachGeneratedDocumentsToDraftEnvelope({
     tenantId,
     envelopeId,

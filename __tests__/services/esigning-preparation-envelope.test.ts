@@ -129,7 +129,7 @@ describe('task-prepared E-signing envelopes', () => {
         createdById: envelope.createdById ?? 'user-1',
       }];
     });
-    mocks.resolveScope.mockResolvedValue(makeEsigningScope({ admin: true }));
+    mocks.resolveScope.mockResolvedValue(makeEsigningScope({ tenantId: 'tenant-a', admin: true }));
   });
 
   it('reuses an envelope already owned by the same task stage', async () => {
@@ -304,6 +304,7 @@ describe('task-prepared E-signing envelopes', () => {
     it('refuses a document from a company the actor cannot update, before rendering or writing', async () => {
       // The actor created the no-company draft and can update company A only.
       mocks.resolveScope.mockResolvedValue(makeEsigningScope({
+        tenantId: 'tenant-a',
         companies: { 'company-a': { read: true, update: true } },
       }));
       mocks.envelopeFindFirst.mockResolvedValue(noCompanyDraft);
@@ -327,6 +328,7 @@ describe('task-prepared E-signing envelopes', () => {
 
     it('lets the actor attach a document from a company they can update', async () => {
       mocks.resolveScope.mockResolvedValue(makeEsigningScope({
+        tenantId: 'tenant-a',
         companies: { 'company-a': { read: true, update: true } },
       }));
       mocks.envelopeFindFirst.mockResolvedValue(noCompanyDraft);
@@ -352,6 +354,7 @@ describe('task-prepared E-signing envelopes', () => {
 
     it('writes nothing when the envelope moved company while the PDF was rendering', async () => {
       mocks.resolveScope.mockResolvedValue(makeEsigningScope({
+        tenantId: 'tenant-a',
         companies: { 'company-a': { read: true, update: true } },
       }));
       mocks.envelopeFindFirst.mockResolvedValue({ ...noCompanyDraft, companyId: 'company-a' });
