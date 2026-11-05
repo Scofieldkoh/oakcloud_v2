@@ -78,7 +78,16 @@ export function middleware(request: NextRequest) {
 // Configure which paths the middleware runs on
 export const config = {
   matcher: [
-    // Match all API routes
-    '/api/:path*',
+    // Match all API routes, except the public file-verification upload.
+    //
+    // Next buffers the body of every request that passes through middleware and keeps only the first
+    // 10 MB ("Request body exceeded 10MB ... Only the first 10MB will be available"). The verify upload
+    // accepts files up to 30 MiB (ESIGNING_PAYLOAD_LIMITS.VERIFY_UPLOAD_BYTES), so a genuine 12 MB PDF
+    // reached the route cut short and could not be read. That route runs its own same-origin check and
+    // size cap before it reads the body (src/app/api/esigning/verify/[certificateId]/check/route.ts),
+    // so it does not need the CSRF pass. Raising the limit for all of /api instead would let any
+    // request, including unauthenticated ones, make middleware hold up to 30 MiB in memory.
+    '/api',
+    '/api/((?!esigning/verify/[^/]+/check/?$).*)',
   ],
 };
