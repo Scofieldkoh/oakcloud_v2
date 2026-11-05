@@ -38,7 +38,10 @@ describe('middleware matcher', () => {
   // Next compiles each matcher with path-to-regexp; use the same compiler it ships.
   async function matches(pathname: string) {
     const { config } = await import('@/middleware');
-    const { pathToRegexp } = await import('next/dist/compiled/path-to-regexp');
+    // @ts-expect-error Next ships no type declarations for its compiled path-to-regexp.
+    const { pathToRegexp } = (await import('next/dist/compiled/path-to-regexp')) as {
+      pathToRegexp: (source: string) => unknown;
+    };
     return config.matcher.some((source) => {
       const compiled = pathToRegexp(source) as unknown as RegExp | { regexp: RegExp };
       return (compiled instanceof RegExp ? compiled : compiled.regexp).test(pathname);
