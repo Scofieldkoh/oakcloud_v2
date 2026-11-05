@@ -15,6 +15,7 @@ export const ErrorCodes = {
   CLIENT_SERVICE_WRITE_CONFLICT: 'CLIENT_SERVICE_WRITE_CONFLICT',
   INTERNAL_ERROR: 'INTERNAL_ERROR',
   BAD_REQUEST: 'BAD_REQUEST',
+  PAYLOAD_TOO_LARGE: 'PAYLOAD_TOO_LARGE',
   RATE_LIMIT_EXCEEDED: 'RATE_LIMIT_EXCEEDED',
   SERVICE_UNAVAILABLE: 'SERVICE_UNAVAILABLE',
   VERSION_CONFLICT: 'VERSION_CONFLICT',
@@ -113,6 +114,13 @@ export class BadRequestError extends ApiError {
   constructor(message: string, details?: unknown) {
     super(ErrorCodes.BAD_REQUEST, message, 400, details);
     this.name = 'BadRequestError';
+  }
+}
+
+export class PayloadTooLargeError extends ApiError {
+  constructor(message: string, details?: unknown) {
+    super(ErrorCodes.PAYLOAD_TOO_LARGE, message, 413, details);
+    this.name = 'PayloadTooLargeError';
   }
 }
 

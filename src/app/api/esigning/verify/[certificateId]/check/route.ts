@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createErrorResponse } from '@/lib/api-helpers';
 import { RATE_LIMIT_CONFIGS } from '@/lib/rate-limit';
 import { enforceEsigningRateLimit, requireEsigningSameOrigin } from '@/lib/esigning-public-route';
+import { ESIGNING_PAYLOAD_LIMITS, formatByteLimit } from '@/lib/esigning-payload-limits';
+import { readLimitedFormData } from '@/lib/esigning-request-body';
 import {
   findIssuedArtifactMatch,
   getEsigningVerificationData,
@@ -29,7 +31,9 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
   }
 
   try {
-    const formData = await request.formData();
+    const formData = await readLimitedFormData(request, ESIGNING_PAYLOAD_LIMITS.VERIFY_UPLOAD_BYTES, {
+      tooLargeMessage: `This file is larger than ${formatByteLimit(ESIGNING_PAYLOAD_LIMITS.VERIFY_UPLOAD_BYTES)}, the most that can be checked. If it is a package of several documents, check one document at a time.`,
+    });
     const file = formData.get('file');
 
     if (!(file instanceof File)) {

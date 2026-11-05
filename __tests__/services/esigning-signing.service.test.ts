@@ -3,6 +3,7 @@ import {
   finalizeEsigningEnvelopeCompletion,
   getEsigningSigningSessionStatus,
   loadEsigningSigningSession,
+  completeEsigningSigningSession,
   saveEsigningSigningFieldValues,
 } from '@/services/esigning-signing.service';
 import { getEsigningPostCompletionSummary } from '@/services/esigning-completion.service';
@@ -933,5 +934,38 @@ describe('e-signing field-value save consent enforcement', () => {
         values: [{ fieldDefinitionId: 'field-1', value: 'value' }],
       })
     );
+  });
+
+  it.each([
+    ['bytes that are not an image', `data:image/png;base64,${Buffer.from('plain text, not an image').toString('base64')}`],
+    ['a truncated PNG header', 'data:image/png;base64,iVBORw0KGgo='],
+  ])('rejects a save carrying %s before anything is persisted', async (_name, signatureDataUrl) => {
+    const consentedAt = new Date('2026-08-11T08:00:00.000Z');
+    prismaMocks.findFirstEnvelope.mockResolvedValue(makeContextEnvelope(consentedAt));
+    prismaMocks.fieldValueFindMany.mockResolvedValue([]);
+
+    await expect(
+      saveEsigningSigningFieldValues([
+        { fieldDefinitionId: 'field-1', value: 'fine' },
+        { fieldDefinitionId: 'field-2', signatureDataUrl },
+      ])
+    ).rejects.toThrow(/not a valid PNG/);
+
+    expect(fieldServiceMocks.saveRecipientFieldValues).not.toHaveBeenCalled();
+  });
+
+  it('rejects completion carrying an invalid image before the transaction takes its lock', async () => {
+    const consentedAt = new Date('2026-08-11T08:00:00.000Z');
+    prismaMocks.findFirstEnvelope.mockResolvedValue(makeContextEnvelope(consentedAt));
+    prismaMocks.fieldValueFindMany.mockResolvedValue([]);
+
+    await expect(
+      completeEsigningSigningSession({
+        values: [{ fieldDefinitionId: 'field-1', signatureDataUrl: 'data:image/png;base64,iVBORw0KGgo=' }],
+      })
+    ).rejects.toThrow(/not a valid PNG/);
+
+    expect(prismaMocks.transaction).not.toHaveBeenCalled();
+    expect(fieldServiceMocks.saveRecipientFieldValues).not.toHaveBeenCalled();
   });
 });

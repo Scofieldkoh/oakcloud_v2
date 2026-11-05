@@ -1,5 +1,6 @@
 'use client';
 import { esigningDisplayName } from '@/lib/esigning-branding';
+import { ESIGNING_PAYLOAD_LIMITS, formatByteLimit } from '@/lib/esigning-payload-limits';
 
 import { useEffect, useRef, useState, type DragEvent } from 'react';
 import { useParams } from 'next/navigation';
@@ -181,6 +182,8 @@ interface VerificationMatchResponse {
   } | null;
 }
 
+const VERIFY_UPLOAD_TOO_LARGE_MESSAGE = `This file is larger than ${formatByteLimit(ESIGNING_PAYLOAD_LIMITS.VERIFY_UPLOAD_BYTES)}, the most that can be checked. If it is a package of several documents, check one document at a time.`;
+
 const ARTIFACT_KIND_LABELS = {
   SIGNED_DOCUMENT: 'signed document',
   CERTIFICATE: 'certificate of completion',
@@ -310,6 +313,7 @@ export function EsigningVerifyPage() {
   const [data, setData] = useState<VerificationResponse | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [checkError, setCheckError] = useState<string | null>(null);
   const [matchResult, setMatchResult] = useState<VerificationMatchResponse | null>(null);
   const [isChecking, setIsChecking] = useState(false);
 
@@ -346,6 +350,13 @@ export function EsigningVerifyPage() {
   }, [certificateId]);
 
   async function checkFile(file: File) {
+    setCheckError(null);
+    if (file.size > ESIGNING_PAYLOAD_LIMITS.VERIFY_UPLOAD_BYTES) {
+      setMatchResult(null);
+      setCheckError(VERIFY_UPLOAD_TOO_LARGE_MESSAGE);
+      return;
+    }
+
     try {
       setIsChecking(true);
       setMatchResult(null);
@@ -360,8 +371,8 @@ export function EsigningVerifyPage() {
         throw new Error(result.error || 'Failed to verify file hash');
       }
       setMatchResult(result);
-    } catch (checkError) {
-      setError(checkError instanceof Error ? checkError.message : 'Failed to verify file hash');
+    } catch (checkFailure) {
+      setCheckError(checkFailure instanceof Error ? checkFailure.message : 'Failed to verify file hash');
     } finally {
       setIsChecking(false);
     }
@@ -656,6 +667,8 @@ export function EsigningVerifyPage() {
             <p className="mt-2 text-xs text-text-muted">
               Only files that OakCloud recorded when it issued them can be recognised. A copy issued before
               fingerprints were recorded, or a file that has been edited or re-saved, will not match.
+              Files up to {formatByteLimit(ESIGNING_PAYLOAD_LIMITS.VERIFY_UPLOAD_BYTES)} can be checked; for a package of
+              several documents, check one document at a time.
             </p>
             <div className="mt-4">
               <DropZone isChecking={isChecking} onFile={checkFile} />
@@ -693,9 +706,9 @@ export function EsigningVerifyPage() {
               </div>
             ) : null}
 
-            {error ? (
+            {checkError ? (
               <Alert variant="error" title="Verification error" className="mt-4">
-                {error}
+                {checkError}
               </Alert>
             ) : null}
           </section>

@@ -143,6 +143,41 @@ describe('EsigningVerifyPage', () => {
     expect(container.textContent).toContain('before issued copies were fingerprinted');
   });
 
+  it('refuses a file over 30 MiB in the browser, keeps the certificate on screen and sends nothing', async () => {
+    const fetchMock = mockFetch({ verification: verification() });
+    const { container } = render(createElement(EsigningVerifyPage));
+    await screen.findByText('agreement.pdf');
+
+    const user = userEvent.setup();
+    const input = document.querySelector('input[type="file"]') as HTMLInputElement;
+    const big = new File(['%PDF'], 'package.pdf', { type: 'application/pdf' });
+    Object.defineProperty(big, 'size', { value: 31 * 1024 * 1024 });
+    await user.upload(input, big);
+
+    expect(await screen.findByText(/larger than 30 MiB/)).toBeTruthy();
+    expect(container.textContent).toContain('check one document at a time');
+    expect(screen.getByText('agreement.pdf')).toBeTruthy();
+    expect(fetchMock.mock.calls.some(([url]) => String(url).includes('/check'))).toBe(false);
+  });
+
+  it('shows the server size error under the upload box instead of replacing the certificate', async () => {
+    const fetchMock = vi.fn(async (url: string) => {
+      if (String(url).includes('/check')) {
+        return { ok: false, json: async () => ({ error: 'This file is larger than 30 MiB, the most that can be checked.' }) } as Response;
+      }
+      return { ok: true, json: async () => verification() } as Response;
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    render(createElement(EsigningVerifyPage));
+    await screen.findByText('agreement.pdf');
+
+    await uploadPdf();
+
+    expect(await screen.findByText(/larger than 30 MiB/)).toBeTruthy();
+    expect(screen.queryByText('Certificate unavailable')).toBeNull();
+    expect(screen.getByText('agreement.pdf')).toBeTruthy();
+  });
+
   it('reports a mismatch for a file that was not issued', async () => {
     mockFetch({
       verification: verification(),

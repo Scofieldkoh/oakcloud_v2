@@ -4,6 +4,8 @@ import { createErrorResponse } from '@/lib/api-helpers';
 import { RATE_LIMIT_CONFIGS } from '@/lib/rate-limit';
 import { enforceEsigningRateLimit, requireEsigningSameOrigin } from '@/lib/esigning-public-route';
 import { declineEsigningEnvelopeSchema } from '@/lib/validations/esigning';
+import { ESIGNING_PAYLOAD_LIMITS } from '@/lib/esigning-payload-limits';
+import { readLimitedJson } from '@/lib/esigning-request-body';
 import { declineEsigningSigningSession } from '@/services/esigning-signing.service';
 
 export async function POST(request: NextRequest) {
@@ -23,7 +25,9 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const body = declineEsigningEnvelopeSchema.parse(await request.json());
+    const body = declineEsigningEnvelopeSchema.parse(
+      await readLimitedJson(request, ESIGNING_PAYLOAD_LIMITS.SMALL_BODY_BYTES)
+    );
     await declineEsigningSigningSession({ reason: body.reason });
     return NextResponse.json({ success: true });
   } catch (error) {

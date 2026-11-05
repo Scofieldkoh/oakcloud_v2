@@ -1,3 +1,5 @@
+// @vitest-environment node
+import sharp from 'sharp';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { saveRecipientFieldValues } from '@/services/esigning-field.service';
 
@@ -117,6 +119,75 @@ describe('saveRecipientFieldValues signature clearing', () => {
       }),
     });
     expect(storageMocks.upload).not.toHaveBeenCalled();
+  });
+});
+
+describe('saveRecipientFieldValues signature images', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    prismaMocks.fieldDefinitionFindMany.mockResolvedValue([{ id: 'field-1', type: 'SIGNATURE', required: true }]);
+    storageMocks.esigningSignatureAsset.mockReturnValue('esigning/signature.png');
+    storageMocks.upload.mockResolvedValue(undefined);
+  });
+
+  function transaction() {
+    return {
+      esigningDocumentFieldValue: {
+        findMany: vi.fn().mockResolvedValue([]),
+        update: vi.fn(),
+        create: vi.fn().mockResolvedValue(undefined),
+      },
+    };
+  }
+
+  const baseInput = { tenantId: 'tenant-1', envelopeId: 'envelope-1', recipientId: 'recipient-1' };
+
+  async function pngWithHiddenChunk() {
+    const png = await sharp({ create: { width: 64, height: 32, channels: 4, background: '#123456' } }).png().toBuffer();
+    const body = png.subarray(0, png.length - 12);
+    const iend = png.subarray(png.length - 12);
+    return Buffer.concat([body, iend, Buffer.from('TRAILING-BYTES-THAT-MUST-NOT-BE-STORED')]);
+  }
+
+  it('stores the re-encoded PNG, not the bytes that were sent', async () => {
+    const sent = await pngWithHiddenChunk();
+    const tx = transaction();
+
+    await saveRecipientFieldValues(
+      {
+        ...baseInput,
+        values: [{ fieldDefinitionId: 'field-1', signatureDataUrl: `data:image/png;base64,${sent.toString('base64')}` }],
+      },
+      tx as never
+    );
+
+    expect(storageMocks.upload).toHaveBeenCalledTimes(1);
+    const [path, stored, options] = storageMocks.upload.mock.calls[0];
+    expect(path).toBe('esigning/signature.png');
+    expect(options.contentType).toBe('image/png');
+    expect(Buffer.isBuffer(stored)).toBe(true);
+    expect(stored.equals(sent)).toBe(false);
+    expect(stored.includes('TRAILING-BYTES')).toBe(false);
+    expect(await sharp(stored).metadata()).toMatchObject({ format: 'png', width: 64, height: 32 });
+    expect(tx.esigningDocumentFieldValue.create).toHaveBeenCalledTimes(1);
+  });
+
+  it.each([
+    ['bytes that are not an image', `data:image/png;base64,${Buffer.from('not an image at all, just text').toString('base64')}`],
+    ['the PNG magic bytes alone', 'data:image/png;base64,iVBORw0KGgo='],
+  ])('rejects %s and stores nothing', async (_name, signatureDataUrl) => {
+    const tx = transaction();
+
+    await expect(
+      saveRecipientFieldValues(
+        { ...baseInput, values: [{ fieldDefinitionId: 'field-1', signatureDataUrl }] },
+        tx as never
+      )
+    ).rejects.toThrow(/not a valid PNG/);
+
+    expect(storageMocks.upload).not.toHaveBeenCalled();
+    expect(tx.esigningDocumentFieldValue.create).not.toHaveBeenCalled();
+    expect(tx.esigningDocumentFieldValue.update).not.toHaveBeenCalled();
   });
 });
 
