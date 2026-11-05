@@ -29,6 +29,8 @@ vi.mock('@/lib/prisma', () => ({
 
 vi.mock('@/lib/rbac', () => ({
   hasPermission: rbacMocks.hasPermission,
+  hasTenantWidePermission: (userId: string, resource: string, action: string) =>
+    rbacMocks.hasPermission(userId, resource, action),
 }));
 
 vi.mock('@/lib/logger', () => ({
@@ -180,27 +182,31 @@ describe('e-signing envelope list company filtering', () => {
 
     expect(mocks.count).toHaveBeenCalledWith({
       where: expect.objectContaining({
-        OR: expect.arrayContaining([
-          { title: { contains: 'Tax', mode: 'insensitive' } },
+        AND: expect.arrayContaining([
           {
-            company: {
-              is: {
-                name: { contains: 'Tax', mode: 'insensitive' },
+            OR: expect.arrayContaining([
+              { title: { contains: 'Tax', mode: 'insensitive' } },
+              {
+                company: {
+                  is: {
+                    name: { contains: 'Tax', mode: 'insensitive' },
+                  },
+                },
               },
-            },
-          },
-          {
-            documents: {
-              some: {
-                OR: [
-                  { fileName: { contains: 'Tax', mode: 'insensitive' } },
-                  { originalFileName: { contains: 'Tax', mode: 'insensitive' } },
-                ],
+              {
+                documents: {
+                  some: {
+                    OR: [
+                      { fileName: { contains: 'Tax', mode: 'insensitive' } },
+                      { originalFileName: { contains: 'Tax', mode: 'insensitive' } },
+                    ],
+                  },
+                },
               },
-            },
+              { recipients: { some: { name: { contains: 'Tax', mode: 'insensitive' } } } },
+              { recipients: { some: { email: { contains: 'Tax', mode: 'insensitive' } } } },
+            ]),
           },
-          { recipients: { some: { name: { contains: 'Tax', mode: 'insensitive' } } } },
-          { recipients: { some: { email: { contains: 'Tax', mode: 'insensitive' } } } },
         ]),
       }),
     });

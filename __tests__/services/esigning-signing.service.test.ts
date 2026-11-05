@@ -46,7 +46,11 @@ vi.mock('@/services/service-agreement', () => serviceAgreementMock);
 vi.mock('@/lib/esigning-session', () => sessionMocks);
 vi.mock('@/lib/storage', () => ({ storage: storageMocks }));
 vi.mock('@/lib/audit', () => ({ createAuditLog: vi.fn() }));
-vi.mock('@/lib/rbac', () => ({ hasPermission: rbacMocks.hasPermission }));
+vi.mock('@/lib/rbac', () => ({
+  hasPermission: rbacMocks.hasPermission,
+  hasTenantWidePermission: (userId: string, resource: string, action: string) =>
+    rbacMocks.hasPermission(userId, resource, action),
+}));
 vi.mock('@/services/esigning-field.service', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/services/esigning-field.service')>();
   return {
@@ -655,6 +659,14 @@ describe('e-signing completion retry', () => {
     prismaMocks.transaction.mockImplementation(
       async (callback: (tx: unknown) => Promise<unknown>) => {
         return callback({
+          // The envelope row lock: the committed row matches what the first read saw.
+          $queryRaw: async () => [{
+            id: 'envelope-1',
+            tenantId: 'tenant-1',
+            status: 'COMPLETED',
+            companyId: 'company-1',
+            createdById: 'user-1',
+          }],
           esigningEnvelope: { updateMany: prismaMocks.envelopeUpdateMany },
           esigningEmailDelivery: { updateMany: prismaMocks.deliveryUpdateMany },
         });

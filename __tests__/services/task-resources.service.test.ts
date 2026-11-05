@@ -22,12 +22,17 @@ vi.mock('@/lib/auth', async () => {
   const actual = await vi.importActual<typeof import('@/lib/auth')>('@/lib/auth');
   return { ...actual, canAccessCompany: mocks.canAccessCompany };
 });
-vi.mock('@/services/esigning-envelope.lib', () => ({
-  resolveEsigningActorScope: mocks.resolveEsigningActorScope,
-  canReadEnvelope: mocks.canReadEnvelope,
-}));
+vi.mock('@/services/esigning-envelope.lib', async () => {
+  const actual = await vi.importActual<typeof import('@/services/esigning-envelope.lib')>('@/services/esigning-envelope.lib');
+  return {
+    ...actual,
+    resolveEsigningActorScope: mocks.resolveEsigningActorScope,
+    canReadEnvelope: mocks.canReadEnvelope,
+  };
+});
 
 import { NotFoundError } from '@/lib/errors';
+import { makeEsigningScope } from '../helpers/esigning-scope';
 import { getTaskResources } from '@/services/tasks/resources.service';
 
 const session = {
@@ -158,14 +163,7 @@ describe('getTaskResources', () => {
     mocks.documentGenerationBatchFindFirst.mockResolvedValue(null);
     mocks.hasPermission.mockResolvedValue(true);
     mocks.canAccessCompany.mockResolvedValue(true);
-    mocks.resolveEsigningActorScope.mockResolvedValue({
-      tenantId: 'tenant-a',
-      canCreate: true,
-      canReadAll: true,
-      canUpdateAny: true,
-      canDeleteAny: true,
-      canManage: true,
-    });
+    mocks.resolveEsigningActorScope.mockResolvedValue(makeEsigningScope({ admin: true }));
     mocks.canReadEnvelope.mockReturnValue(true);
     mocks.taskFindFirst.mockResolvedValue(createTask());
   });
@@ -358,14 +356,7 @@ describe('getTaskResources', () => {
   });
 
   it('does not enable signer links from envelope ownership when update permission is absent', async () => {
-    mocks.resolveEsigningActorScope.mockResolvedValue({
-      tenantId: 'tenant-a',
-      canCreate: false,
-      canReadAll: true,
-      canUpdateAny: false,
-      canDeleteAny: false,
-      canManage: false,
-    });
+    mocks.resolveEsigningActorScope.mockResolvedValue(makeEsigningScope({ tenantWide: { read: true } }));
 
     const result = await getTaskResources(session, 'tenant-a', 'task-1');
 

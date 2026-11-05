@@ -3,6 +3,8 @@
 import type { SessionUser } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { hashPassword } from '@/lib/encryption';
+import { ConflictError } from '@/lib/errors';
+import type { Prisma } from '@/generated/prisma';
 import { createAuditLog } from '@/lib/audit';
 import {
   ESIGNING_LIMITS,
@@ -16,7 +18,9 @@ import {
   canMutateEnvelope,
   ensureDuplicateSignerEmails,
   formatUserName,
+  lockEnvelopeForAuthorizedChange,
   resolveEsigningActorScope,
+  type EsigningActorScope,
 } from '@/services/esigning-envelope.lib';
 import { getEsigningEnvelopeDetail } from './lifecycle';
 import {
@@ -25,6 +29,34 @@ import {
   prepareRecipientNotifications,
   deliverPreparedNotifications,
 } from './shared';
+
+/**
+ * Locks the envelope and re-checks, on the committed row, that the actor may still edit
+ * it and that its status is what the caller validated. Runs inside the writing
+ * transaction, so a concurrent company move cannot slip a write past the actor's access.
+ */
+async function lockEnvelopeForRecipientChange(
+  tx: Prisma.TransactionClient,
+  input: {
+    scope: EsigningActorScope;
+    session: SessionUser;
+    tenantId: string;
+    envelopeId: string;
+    expectedStatus: string;
+  },
+) {
+  const locked = await lockEnvelopeForAuthorizedChange(tx, {
+    scope: input.scope,
+    session: input.session,
+    tenantId: input.tenantId,
+    envelopeId: input.envelopeId,
+    check: canMutateEnvelope,
+  });
+  if (locked.status !== input.expectedStatus) {
+    throw new ConflictError('The envelope changed while it was being edited. Try again.');
+  }
+  return locked;
+}
 
 export async function addEsigningEnvelopeRecipient(
   session: SessionUser,
@@ -51,11 +83,11 @@ export async function addEsigningEnvelopeRecipient(
   if (!envelope) {
     throw new Error('Envelope not found');
   }
+  if (!canMutateEnvelope(scope, session, envelope)) {
+    throw new Error('Forbidden');
+  }
   if (envelope.status !== 'DRAFT') {
     throw new Error('Recipients can only be added while the envelope is a draft');
-  }
-  if (!canMutateEnvelope(scope, session, envelope.createdById)) {
-    throw new Error('Forbidden');
   }
   if (envelope.recipients.length >= ESIGNING_LIMITS.MAX_RECIPIENTS) {
     throw new Error(`An envelope can have at most ${ESIGNING_LIMITS.MAX_RECIPIENTS} recipients`);
@@ -95,19 +127,28 @@ export async function addEsigningEnvelopeRecipient(
 
   const signerCount = envelope.recipients.filter((recipient) => recipient.type === 'SIGNER').length;
 
-  await prisma.esigningEnvelopeRecipient.create({
-    data: {
+  await prisma.$transaction(async (tx) => {
+    await lockEnvelopeForRecipientChange(tx, {
+      scope,
+      session,
       tenantId,
       envelopeId,
-      type: input.type,
-      name: input.name,
-      email: input.email ?? null,
-      signingOrder,
-      accessMode: input.accessMode,
-      accessCodeHash: input.accessCode ? hashPassword(input.accessCode) : null,
-      colorTag: input.colorTag ?? getEsigningRecipientColor(signerCount),
-      status: envelope.signingOrder === 'PARALLEL' && input.type === 'SIGNER' ? 'QUEUED' : 'QUEUED',
-    },
+      expectedStatus: 'DRAFT',
+    });
+    await tx.esigningEnvelopeRecipient.create({
+      data: {
+        tenantId,
+        envelopeId,
+        type: input.type,
+        name: input.name,
+        email: input.email ?? null,
+        signingOrder,
+        accessMode: input.accessMode,
+        accessCodeHash: input.accessCode ? hashPassword(input.accessCode) : null,
+        colorTag: input.colorTag ?? getEsigningRecipientColor(signerCount),
+        status: envelope.signingOrder === 'PARALLEL' && input.type === 'SIGNER' ? 'QUEUED' : 'QUEUED',
+      },
+    });
   });
 
   await createAuditLog({
@@ -159,7 +200,7 @@ export async function updateEsigningEnvelopeRecipient(
   if (!envelope) {
     throw new Error('Envelope not found');
   }
-  if (!canMutateEnvelope(scope, session, envelope.createdById)) {
+  if (!canMutateEnvelope(scope, session, envelope)) {
     throw new Error('Forbidden');
   }
 
@@ -249,6 +290,13 @@ export async function updateEsigningEnvelopeRecipient(
   }
 
   await prisma.$transaction(async (tx) => {
+    await lockEnvelopeForRecipientChange(tx, {
+      scope,
+      session,
+      tenantId,
+      envelopeId,
+      expectedStatus: envelope.status,
+    });
     await tx.esigningEnvelopeRecipient.update({
       where: { id: recipientId },
       data: {
@@ -369,11 +417,11 @@ export async function removeEsigningEnvelopeRecipient(
   if (!envelope) {
     throw new Error('Envelope not found');
   }
+  if (!canMutateEnvelope(scope, session, envelope)) {
+    throw new Error('Forbidden');
+  }
   if (envelope.status !== 'DRAFT') {
     throw new Error('Recipients can only be removed while the envelope is a draft');
-  }
-  if (!canMutateEnvelope(scope, session, envelope.createdById)) {
-    throw new Error('Forbidden');
   }
   if (!envelope.recipients.some((recipient) => recipient.id === recipientId)) {
     throw new Error('Recipient not found');
@@ -381,8 +429,17 @@ export async function removeEsigningEnvelopeRecipient(
 
   const recipient = envelope.recipients.find((entry) => entry.id === recipientId)!;
 
-  await prisma.esigningEnvelopeRecipient.delete({
-    where: { id: recipientId },
+  await prisma.$transaction(async (tx) => {
+    await lockEnvelopeForRecipientChange(tx, {
+      scope,
+      session,
+      tenantId,
+      envelopeId,
+      expectedStatus: 'DRAFT',
+    });
+    await tx.esigningEnvelopeRecipient.delete({
+      where: { id: recipientId },
+    });
   });
 
   await createAuditLog({
@@ -435,14 +492,14 @@ export async function reorderEsigningEnvelopeRecipients(
   if (!envelope) {
     throw new Error('Envelope not found');
   }
+  if (!canMutateEnvelope(scope, session, envelope)) {
+    throw new Error('Forbidden');
+  }
   if (envelope.status !== 'DRAFT') {
     throw new Error('Recipients can only be reordered while the envelope is a draft');
   }
   if (envelope.signingOrder === 'PARALLEL') {
     throw new Error('Enable sequential signing before reordering recipients');
-  }
-  if (!canMutateEnvelope(scope, session, envelope.createdById)) {
-    throw new Error('Forbidden');
   }
 
   const signerRecipients = envelope.recipients.filter((recipient) => recipient.type === 'SIGNER');
@@ -484,14 +541,21 @@ export async function reorderEsigningEnvelopeRecipients(
     });
   }
 
-  await prisma.$transaction(
-    signerRecipients.map((recipient) =>
-      prisma.esigningEnvelopeRecipient.update({
+  await prisma.$transaction(async (tx) => {
+    await lockEnvelopeForRecipientChange(tx, {
+      scope,
+      session,
+      tenantId,
+      envelopeId,
+      expectedStatus: 'DRAFT',
+    });
+    for (const recipient of signerRecipients) {
+      await tx.esigningEnvelopeRecipient.update({
         where: { id: recipient.id },
         data: { signingOrder: signingOrderByRecipientId.get(recipient.id) ?? null },
-      })
-    )
-  );
+      });
+    }
+  });
 
   return getEsigningEnvelopeDetail(session, tenantId, envelopeId);
 }

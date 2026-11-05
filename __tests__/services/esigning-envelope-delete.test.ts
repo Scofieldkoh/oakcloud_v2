@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { deleteDraftEsigningEnvelope } from '@/services/esigning-envelope.service';
+import { makeEsigningScope } from '../helpers/esigning-scope';
 
 const mocks = vi.hoisted(() => ({
   findFirst: vi.fn(),
@@ -9,6 +10,7 @@ const mocks = vi.hoisted(() => ({
   reconcileTaskStageIds: vi.fn(),
   createAuditLog: vi.fn(),
   resolveEsigningActorScope: vi.fn(),
+  lockRow: vi.fn(),
 }));
 
 vi.mock('@/lib/prisma', () => ({
@@ -17,6 +19,11 @@ vi.mock('@/lib/prisma', () => ({
       findFirst: mocks.findFirst,
       delete: mocks.delete,
     },
+    $transaction: async (callback: (tx: unknown) => unknown) =>
+      callback({
+        $queryRaw: mocks.lockRow,
+        esigningEnvelope: { delete: mocks.delete },
+      }),
   },
 }));
 
@@ -58,7 +65,7 @@ const session = {
 describe('e-signing envelope deletion', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mocks.resolveEsigningActorScope.mockResolvedValue({ canDeleteAny: true });
+    mocks.resolveEsigningActorScope.mockResolvedValue(makeEsigningScope({ admin: true }));
     mocks.findFirst.mockResolvedValue({
       id: 'envelope-1',
       status: 'COMPLETED',
@@ -66,6 +73,10 @@ describe('e-signing envelope deletion', () => {
       title: 'Signed NDA',
       companyId: null,
     });
+    // The locked row is the committed state; by default it is what the first read saw.
+    mocks.lockRow.mockImplementation(async () => [
+      { tenantId: 'tenant-1', companyId: null, ...(await mocks.findFirst()) },
+    ]);
     mocks.captureTaskStageIds.mockResolvedValue(['stage-1']);
     mocks.delete.mockResolvedValue(undefined);
     mocks.deletePrefix.mockResolvedValue(undefined);
@@ -98,9 +109,25 @@ describe('e-signing envelope deletion', () => {
 
   it.each(['DECLINED', 'VOIDED'])('preserves delete permissions for %s envelopes', async (status) => {
     mocks.findFirst.mockResolvedValue({ id: 'envelope-1', status, createdById: 'user-2' });
-    mocks.resolveEsigningActorScope.mockResolvedValue({ canDeleteAny: false, canDeleteOwn: false });
+    mocks.resolveEsigningActorScope.mockResolvedValue(makeEsigningScope({ tenantWide: { read: true } }));
     await expect(deleteDraftEsigningEnvelope(session, 'tenant-1', 'envelope-1')).rejects.toThrow('Forbidden');
     expect(mocks.delete).not.toHaveBeenCalled();
   });
 
+  it('re-checks access on the locked row and deletes nothing when the envelope moved', async () => {
+    // The actor may delete in company-a; by the time the row is locked it is in company-b.
+    mocks.resolveEsigningActorScope.mockResolvedValue(
+      makeEsigningScope({ companies: { 'company-a': { read: true, delete: true } } })
+    );
+    mocks.findFirst.mockResolvedValue({
+      id: 'envelope-1', status: 'DRAFT', createdById: 'user-2', title: 'Moved', companyId: 'company-a',
+    });
+    mocks.lockRow.mockResolvedValue([
+      { id: 'envelope-1', tenantId: 'tenant-1', status: 'DRAFT', createdById: 'user-2', companyId: 'company-b' },
+    ]);
+
+    await expect(deleteDraftEsigningEnvelope(session, 'tenant-1', 'envelope-1')).rejects.toThrow('Forbidden');
+    expect(mocks.delete).not.toHaveBeenCalled();
+    expect(mocks.deletePrefix).not.toHaveBeenCalled();
+  });
 });

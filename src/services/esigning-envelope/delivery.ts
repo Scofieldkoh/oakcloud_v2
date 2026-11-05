@@ -3,8 +3,8 @@
  * plus the scheduled expiry, reminder, cleanup and signer-queue jobs.
  */
 
+import type { Prisma } from '@/generated/prisma';
 import type { SessionUser } from '@/lib/auth';
-import { canAccessCompany } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { createAuditLog } from '@/lib/audit';
 import { storage, StorageKeys } from '@/lib/storage';
@@ -23,17 +23,19 @@ import {
 } from '@/services/esigning-email-delivery.service';
 import { detectEsigningFieldOverlapWarnings } from '@/services/esigning-field.service';
 import {
+  canManageEnvelope,
   canMutateEnvelope,
   createEnvelopeEvent,
   formatUserName,
   getEnvelopeAggregate,
   getInitialActiveSignerRecipientIds,
+  lockEnvelopeForAuthorizedChange,
   resolveEsigningActorScope,
+  type EsigningActorScope,
   selectNextQueuedSignerRecipients,
   validateEnvelopeSendReadiness,
 } from '@/services/esigning-envelope.lib';
 import { safelyReconcileEsigningEnvelopeTaskOutcomes } from '@/services/tasks/integration.service';
-import { lockEsigningEnvelopeForUpdate } from '@/services/esigning-envelope-lock';
 import { getEsigningEnvelopeDetail } from './lifecycle';
 import {
   log,
@@ -50,6 +52,37 @@ import {
   isExpiryWarningEvent,
 } from './shared';
 
+/**
+ * Locks the envelope and re-checks, on the committed row and inside the writing
+ * transaction, that the actor still has access and that the status still allows the
+ * action. The service decided on a snapshot read earlier; a concurrent company move or
+ * status change must not let the write through. Throws before any write.
+ */
+async function lockEnvelopeForDeliveryChange(
+  tx: Prisma.TransactionClient,
+  input: {
+    scope: EsigningActorScope;
+    session: SessionUser;
+    tenantId: string;
+    envelopeId: string;
+    check: typeof canMutateEnvelope;
+    allowedStatuses: readonly string[];
+    statusMessage: string;
+  },
+) {
+  const locked = await lockEnvelopeForAuthorizedChange(tx, {
+    scope: input.scope,
+    session: input.session,
+    tenantId: input.tenantId,
+    envelopeId: input.envelopeId,
+    check: input.check,
+  });
+  if (!input.allowedStatuses.includes(locked.status)) {
+    throw new Error(input.statusMessage);
+  }
+  return locked;
+}
+
 export async function sendEsigningEnvelope(
   session: SessionUser,
   tenantId: string,
@@ -62,11 +95,11 @@ export async function sendEsigningEnvelope(
   const aggregate = await getEnvelopeAggregate(envelopeId, tenantId);
   const { envelope } = aggregate;
 
+  if (!canMutateEnvelope(scope, session, envelope)) {
+    throw new Error('Forbidden');
+  }
   if (envelope.status !== 'DRAFT') {
     throw new Error('Only draft envelopes can be sent');
-  }
-  if (!canMutateEnvelope(scope, session, envelope.createdById)) {
-    throw new Error('Forbidden');
   }
 
   validateEnvelopeSendReadiness({
@@ -144,6 +177,15 @@ export async function sendEsigningEnvelope(
   );
 
   await prisma.$transaction(async (tx) => {
+    await lockEnvelopeForDeliveryChange(tx, {
+      scope,
+      session,
+      tenantId,
+      envelopeId,
+      check: canMutateEnvelope,
+      allowedStatuses: ['DRAFT'],
+      statusMessage: 'Only draft envelopes can be sent',
+    });
     await tx.esigningEnvelope.update({
       where: { id: envelopeId },
       data: {
@@ -265,14 +307,11 @@ export async function resendEsigningEnvelopeRecipient(
   if (!envelope) {
     throw new Error('Envelope not found');
   }
+  if (!canManageEnvelope(scope, session, envelope)) {
+    throw new Error('Forbidden');
+  }
   if (!['SENT', 'IN_PROGRESS'].includes(envelope.status)) {
     throw new Error('Only sent or in-progress envelopes can be resent');
-  }
-  if (!canMutateEnvelope(scope, session, envelope.createdById) && !scope.canManage) {
-    throw new Error('Forbidden');
-  }
-  if (envelope.companyId && !(await canAccessCompany(session, envelope.companyId))) {
-    throw new Error('Forbidden');
   }
 
   const recipient = envelope.recipients.find((entry) => entry.id === recipientId);
@@ -304,6 +343,15 @@ export async function resendEsigningEnvelopeRecipient(
   }
 
   await prisma.$transaction(async (tx) => {
+    await lockEnvelopeForDeliveryChange(tx, {
+      scope,
+      session,
+      tenantId,
+      envelopeId,
+      check: canManageEnvelope,
+      allowedStatuses: ['SENT', 'IN_PROGRESS'],
+      statusMessage: 'Only sent or in-progress envelopes can be resent',
+    });
     await tx.esigningEnvelopeRecipient.update({
       where: { id: recipientId },
       data: {
@@ -386,14 +434,11 @@ export async function getEsigningEnvelopeRecipientManualLink(
   if (!envelope) {
     throw new Error('Envelope not found');
   }
+  if (!canManageEnvelope(scope, session, envelope)) {
+    throw new Error('Forbidden');
+  }
   if (!['SENT', 'IN_PROGRESS'].includes(envelope.status)) {
     throw new Error('Signer links are available only after the envelope has been sent');
-  }
-  if (!canMutateEnvelope(scope, session, envelope.createdById) && !scope.canManage) {
-    throw new Error('Forbidden');
-  }
-  if (envelope.companyId && !(await canAccessCompany(session, envelope.companyId))) {
-    throw new Error('Forbidden');
   }
 
   const recipient = envelope.recipients.find((entry) => entry.id === recipientId);
@@ -410,10 +455,23 @@ export async function getEsigningEnvelopeRecipientManualLink(
     throw new Error('This signer link will be available once their signing step becomes active');
   }
 
-  const signingToken = await createEsigningAccessLinkToken({
-    recipientId: recipient.id,
-    envelopeId,
-    sessionVersion: recipient.sessionVersion,
+  // Issue the link under the envelope lock so a company move that committed after the
+  // check above cannot hand an actor a signing link for an envelope they cannot reach.
+  const signingToken = await prisma.$transaction(async (tx) => {
+    await lockEnvelopeForDeliveryChange(tx, {
+      scope,
+      session,
+      tenantId,
+      envelopeId,
+      check: canManageEnvelope,
+      allowedStatuses: ['SENT', 'IN_PROGRESS'],
+      statusMessage: 'Signer links are available only after the envelope has been sent',
+    });
+    return createEsigningAccessLinkToken({
+      recipientId: recipient.id,
+      envelopeId,
+      sessionVersion: recipient.sessionVersion,
+    });
   });
 
   await createAuditLog({
@@ -470,11 +528,11 @@ export async function resendEsigningEnvelopeActiveRecipients(
   if (!envelope) {
     throw new Error('Envelope not found');
   }
+  if (!canManageEnvelope(scope, session, envelope)) {
+    throw new Error('Forbidden');
+  }
   if (!['SENT', 'IN_PROGRESS'].includes(envelope.status)) {
     throw new Error('Only sent or in-progress envelopes can be resent');
-  }
-  if (!canMutateEnvelope(scope, session, envelope.createdById) && !scope.canManage) {
-    throw new Error('Forbidden');
   }
 
   const activeRecipients = envelope.recipients.filter(
@@ -496,6 +554,15 @@ export async function resendEsigningEnvelopeActiveRecipients(
   );
 
   await prisma.$transaction(async (tx) => {
+    await lockEnvelopeForDeliveryChange(tx, {
+      scope,
+      session,
+      tenantId,
+      envelopeId,
+      check: canManageEnvelope,
+      allowedStatuses: ['SENT', 'IN_PROGRESS'],
+      statusMessage: 'Only sent or in-progress envelopes can be resent',
+    });
     for (const notification of preparedNotifications.updates) {
       await tx.esigningEnvelopeRecipient.update({
         where: { id: notification.recipientId },
@@ -591,24 +658,28 @@ export async function voidEsigningEnvelope(
   if (!envelope) {
     throw new Error('Envelope not found');
   }
+  if (!canManageEnvelope(scope, session, envelope)) {
+    throw new Error('Forbidden');
+  }
   if (!['SENT', 'IN_PROGRESS'].includes(envelope.status)) {
     throw new Error('Only sent or in-progress envelopes can be voided');
-  }
-  if (!scope.canManage && !canMutateEnvelope(scope, session, envelope.createdById)) {
-    throw new Error('Forbidden');
   }
 
   await prisma.$transaction(async (tx) => {
     // Lock first so a void cannot overwrite a completion/decline that committed
     // after the check above, and a racing signer cannot complete a voided
     // envelope.
-    const lockedEnvelope = await lockEsigningEnvelopeForUpdate(tx, envelopeId);
-    if (!lockedEnvelope) {
-      throw new Error('Envelope not found');
-    }
-    if (!['SENT', 'IN_PROGRESS'].includes(lockedEnvelope.status)) {
-      throw new Error('Only sent or in-progress envelopes can be voided');
-    }
+    // The same lock re-checks access: a company move that committed after the check
+    // above must not let a void through for an actor who cannot reach the new company.
+    await lockEnvelopeForDeliveryChange(tx, {
+      scope,
+      session,
+      tenantId,
+      envelopeId,
+      check: canManageEnvelope,
+      allowedStatuses: ['SENT', 'IN_PROGRESS'],
+      statusMessage: 'Only sent or in-progress envelopes can be voided',
+    });
 
     await tx.esigningEnvelope.update({
       where: { id: envelopeId },
@@ -706,14 +777,23 @@ export async function retryEsigningEnvelopeCompletionProcessing(
   if (!envelope) {
     throw new Error('Envelope not found');
   }
+  if (!canManageEnvelope(scope, session, envelope)) {
+    throw new Error('Forbidden');
+  }
   if (envelope.status !== 'COMPLETED') {
     throw new Error('Only completed envelopes can retry completion processing');
   }
-  if (!scope.canManage && !canMutateEnvelope(scope, session, envelope.createdById)) {
-    throw new Error('Forbidden');
-  }
 
   await prisma.$transaction(async (tx) => {
+    await lockEnvelopeForDeliveryChange(tx, {
+      scope,
+      session,
+      tenantId,
+      envelopeId,
+      check: canManageEnvelope,
+      allowedStatuses: ['COMPLETED'],
+      statusMessage: 'Only completed envelopes can retry completion processing',
+    });
     await tx.esigningEnvelope.updateMany({
       where: {
         id: envelopeId,

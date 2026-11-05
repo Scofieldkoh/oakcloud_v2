@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { voidEsigningEnvelope } from '@/services/esigning-envelope.service';
+import { makeEsigningScope } from '../helpers/esigning-scope';
 
 const mocks = vi.hoisted(() => ({
   findFirst: vi.fn(),
@@ -79,7 +80,7 @@ function recipient(
 describe('voiding an e-signing envelope', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    mocks.resolveEsigningActorScope.mockResolvedValue({ canManage: true });
+    mocks.resolveEsigningActorScope.mockResolvedValue(makeEsigningScope({ admin: true }));
     mocks.transaction.mockResolvedValue(undefined);
     mocks.createAuditLog.mockResolvedValue(undefined);
     mocks.recordDeliveryResults.mockResolvedValue(undefined);

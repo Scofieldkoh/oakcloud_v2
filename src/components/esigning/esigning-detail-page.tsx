@@ -559,7 +559,10 @@ export function EsigningDetailPage({ envelopeId }: Props) {
   }
 
   // ——— Early returns ———
-  if (!can.readEsigning) {
+  // Envelopes with no company are readable by every e-signing user, whichever action they hold.
+  const canOpenEsigning =
+    can.readEsigning || can.createEsigning || can.updateEsigning || can.deleteEsigning || can.manageEsigning;
+  if (!canOpenEsigning) {
     return (
       <div className="p-6">
         <Alert variant="error" title="Access denied">
