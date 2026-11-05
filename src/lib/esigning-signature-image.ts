@@ -64,7 +64,7 @@ export async function sanitizeSignatureImage(dataUrl: string): Promise<Sanitized
     declaredWidth * declaredHeight > LIMITS.IMAGE_MAX_PIXELS
   ) {
     throw invalid(
-      `The signature image is too large in pixels. The limit is ${LIMITS.IMAGE_MAX_WIDTH} x ${LIMITS.IMAGE_MAX_HEIGHT}.`
+      `The signature image has too many pixels. It can be at most ${LIMITS.IMAGE_MAX_WIDTH} x ${LIMITS.IMAGE_MAX_HEIGHT} and ${LIMITS.IMAGE_MAX_PIXELS.toLocaleString('en-US')} pixels in total.`
     );
   }
 

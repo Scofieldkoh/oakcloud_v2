@@ -28,6 +28,7 @@ import { EsigningSignatureProgressHint } from '@/components/esigning/signing/esi
 import { EsigningSignatureModal } from '@/components/esigning/signing/esigning-signature-modal';
 import { EsigningCompletionScreen } from '@/components/esigning/signing/esigning-completion-screen';
 import { EsigningDeclineModal } from '@/components/esigning/signing/esigning-decline-modal';
+import { fitSignatureValuesToLimits } from '@/lib/esigning-signature-raster';
 
 // =============================================================================
 // Types
@@ -1146,13 +1147,15 @@ export function EsigningSignPage() {
     const requestPromise = (async () => {
       setIsSaving(true);
       let attempt = 0;
+      // Scale down any signature image that is over the server's pixel limits (high-density screens).
+      const valuesToSend = await fitSignatureValuesToLimits(serializedValues);
 
       while (attempt < 3) {
         try {
           const response = await fetch('/api/esigning/sign/session/fields', {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ values: serializedValues }),
+            body: JSON.stringify({ values: valuesToSend }),
           });
           const result = (await response.json().catch(() => ({}))) as EsigningSigningSessionDto & {
             error?: string;
@@ -1242,7 +1245,7 @@ export function EsigningSignPage() {
       const response = await fetch('/api/esigning/sign/session/complete', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ values: serializeValues(values) }),
+        body: JSON.stringify({ values: await fitSignatureValuesToLimits(serializeValues(values)) }),
       });
       const result = await response.json().catch(() => ({})) as EsigningSigningSessionDto & { error?: string };
       if (!response.ok) {

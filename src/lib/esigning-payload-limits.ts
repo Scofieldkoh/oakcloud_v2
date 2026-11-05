@@ -24,6 +24,12 @@ export const ESIGNING_PAYLOAD_LIMITS = {
   IMAGE_MAX_HEIGHT: 2048,
   /** Largest pixel count the decoder will accept (guards against decompression bombs). */
   IMAGE_MAX_PIXELS: 4096 * 1024,
+  /**
+   * Highest canvas pixel ratio the e-signing drawing pad uses. The pad canvas is CSS size x ratio, so
+   * without a bound a high-density screen or zoom level can export more pixels than the limits above.
+   * `fitSignatureDataUrlToLimits` is the backstop for images that still do not fit.
+   */
+  SIGNATURE_PAD_MAX_PIXEL_RATIO: 2,
   /** Multipart upload of `verify/[certificateId]/check`: one 25 MiB document plus its certificate. */
   VERIFY_UPLOAD_BYTES: 30 * MIB,
 } as const;

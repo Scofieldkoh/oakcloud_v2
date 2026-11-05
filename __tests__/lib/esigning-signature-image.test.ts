@@ -67,8 +67,9 @@ describe('sanitizeSignatureImage', () => {
     expect(metadata).toMatchObject({ format: 'png', width: 640, height: 180 });
   });
 
-  it('accepts the largest canvas the signing pad can produce', async () => {
-    // A 3x device pixel ratio pad of 1000 x 300 CSS pixels.
+  it('accepts a large drawn signature', async () => {
+    // What the pad exports is bounded by SIGNATURE_PAD_MAX_PIXEL_RATIO and fitSignatureDataUrlToLimits;
+    // the browser test esigning-signature-pad-dpr measures it. This only checks the decoder takes a big one.
     const result = await sanitizeSignatureImage(toDataUrl(await solidPng(3000, 900)));
     expect(result.width).toBe(3000);
     expect(result.height).toBe(900);

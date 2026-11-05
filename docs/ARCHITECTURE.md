@@ -70,6 +70,21 @@ Core design principles:
 | In-memory rate limiter | Public endpoint throttling |
 | In-memory view counter buffer | Batches form view count writes every 30 seconds |
 
+### Public E-signing Request Limits
+
+The unauthenticated signing and verification routes cap what they accept (constants in `src/lib/esigning-payload-limits.ts`):
+
+| Input | Limit |
+|-------|-------|
+| JSON body of `sign/session/fields` and `complete` | 5 MiB (413 above) |
+| JSON body of `sign/session/consent`, `decline`, `verify` | 16 KiB (413 above) |
+| Signature or initials image | PNG only; data URL up to 1,400,000 characters; 1 MiB decoded; at most 4096 x 2048 and 4,194,304 pixels; 3 MiB of images per request |
+| Verify upload (`verify/[certificateId]/check`) | 30 MiB (413 above); larger packages are checked one document at a time |
+
+Bodies are read through `src/lib/esigning-request-body.ts`, which refuses on `Content-Length` and otherwise counts bytes while streaming. Images are decoded and re-encoded with `sharp` (`src/lib/esigning-signature-image.ts`) before they are stored, and invalid ones are refused before the signing transaction starts. The drawing pad caps its canvas pixel ratio at 2 and `src/lib/esigning-signature-raster.ts` scales any larger image down before it is sent, so high-density screens and browser zoom stay within the pixel limits.
+
+`src/middleware.ts` (the CSRF origin check) does not run for `/api/esigning/verify/<id>/check`. Next truncates the body of every request that passes through middleware to 10 MB, which would cut off verify uploads between 10 and 30 MiB. That route runs its own same-origin check before it reads the body.
+
 ## High-Level Layout
 
 ```text

@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Modal, ModalBody, ModalFooter } from '@/components/ui/modal';
 import { Button } from '@/components/ui/button';
 import { SignaturePad } from '@/components/forms/signature-pad';
+import { ESIGNING_PAYLOAD_LIMITS } from '@/lib/esigning-payload-limits';
 
 interface EsigningSignatureModalProps {
   isOpen: boolean;
@@ -321,6 +322,7 @@ export function EsigningSignatureModal({
               onChange={(url) => setDrawDataUrl(url)}
               onVectorChange={setDrawVectorDataUrl}
               ariaLabel={`${fieldLabel} draw pad`}
+              maxPixelRatio={ESIGNING_PAYLOAD_LIMITS.SIGNATURE_PAD_MAX_PIXEL_RATIO}
             />
           </div>
         ) : activeTab === 'type' ? (
