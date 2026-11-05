@@ -3,10 +3,8 @@ import type { Prisma } from '@/generated/prisma';
 import { prisma } from '@/lib/prisma';
 import { storage, StorageKeys } from '@/lib/storage';
 import { createLogger } from '@/lib/logger';
-import {
-  getUnsupportedEsigningPdfTextMessage,
-  normalizeEsigningPdfText,
-} from '@/lib/esigning-pdf-text';
+import { sanitizeSignatureImage } from '@/lib/esigning-signature-image';
+import { getUnsupportedEsigningPdfTextMessage, normalizeEsigningPdfText } from '@/lib/esigning-pdf-text';
 import type { EsigningFieldType } from '@/generated/prisma';
 import type {
   EsigningFieldDefinitionInput,
@@ -366,12 +364,8 @@ async function persistSignatureAsset(input: {
   fieldType: 'SIGNATURE' | 'INITIALS';
   dataUrl: string;
 }): Promise<{ storagePath: string }> {
-  const [, base64Payload] = input.dataUrl.split(',');
-  if (!base64Payload) {
-    throw new Error('Invalid signature image payload');
-  }
-
-  const buffer = Buffer.from(base64Payload, 'base64');
+  // Decode and re-encode: only a verified, metadata-free PNG of bounded size ever reaches storage.
+  const { png: buffer } = await sanitizeSignatureImage(input.dataUrl);
   const kind = input.fieldType === 'SIGNATURE' ? 'signature' : 'initials';
   const storagePath = StorageKeys.esigningSignatureAsset(
     input.tenantId,

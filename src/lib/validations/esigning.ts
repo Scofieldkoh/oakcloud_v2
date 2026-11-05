@@ -1,5 +1,11 @@
 import { z } from 'zod';
 import {
+  ESIGNING_IMAGE_LIMIT_ISSUE_CODE,
+  ESIGNING_PAYLOAD_LIMITS,
+  estimateDataUrlDecodedBytes,
+  formatByteLimit,
+} from '@/lib/esigning-payload-limits';
+import {
   UNSUPPORTED_PDF_CHARACTERS_ISSUE_CODE,
   findUnsupportedEsigningPdfCharacters,
   formatUnsupportedEsigningPdfCharactersMessage,
@@ -120,7 +126,19 @@ function refineEsigningPdfText(subject: string) {
 
 const dataUrlSchema = z
   .string()
-  .regex(/^data:image\/png;base64,[A-Za-z0-9+/=]+$/, 'Expected a PNG data URL');
+  .regex(/^data:image\/png;base64,[A-Za-z0-9+/]+={0,2}$/, 'Expected a PNG data URL')
+  .superRefine((value, ctx) => {
+    if (
+      value.length > ESIGNING_PAYLOAD_LIMITS.IMAGE_DATA_URL_MAX_LENGTH ||
+      estimateDataUrlDecodedBytes(value) > ESIGNING_PAYLOAD_LIMITS.IMAGE_MAX_BYTES
+    ) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `The signature image is too large. The limit is ${formatByteLimit(ESIGNING_PAYLOAD_LIMITS.IMAGE_MAX_BYTES)}.`,
+        params: { code: ESIGNING_IMAGE_LIMIT_ISSUE_CODE },
+      });
+    }
+  });
 
 const hexColorSchema = z
   .string()
@@ -376,7 +394,19 @@ export const saveEsigningFieldValuesSchema = z.object({
       ).optional(),
       signatureDataUrl: dataUrlSchema.optional().nullable(),
     })
-  ).min(1).max(ESIGNING_LIMITS.MAX_FIELD_COUNT),
+  ).min(1).max(ESIGNING_LIMITS.MAX_FIELD_COUNT).superRefine((values, ctx) => {
+    const totalImageBytes = values.reduce(
+      (sum, entry) => sum + (entry.signatureDataUrl ? estimateDataUrlDecodedBytes(entry.signatureDataUrl) : 0),
+      0
+    );
+    if (totalImageBytes > ESIGNING_PAYLOAD_LIMITS.IMAGES_TOTAL_MAX_BYTES) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `The signature images are too large together. The limit is ${formatByteLimit(ESIGNING_PAYLOAD_LIMITS.IMAGES_TOTAL_MAX_BYTES)} per save.`,
+        params: { code: ESIGNING_IMAGE_LIMIT_ISSUE_CODE },
+      });
+    }
+  }),
 });
 
 export const recordEsigningConsentSchema = z.object({

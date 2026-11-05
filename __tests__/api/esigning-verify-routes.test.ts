@@ -185,6 +185,62 @@ describe('POST /api/esigning/verify/[certificateId]/check', () => {
     expect(mocks.getEsigningVerificationData).not.toHaveBeenCalled();
   });
 
+  describe('upload size cap', () => {
+    const MIB = 1024 * 1024;
+
+    async function uploadOf(sizeBytes: number, headers: Record<string, string> = {}): Promise<NextRequest> {
+      const form = new FormData();
+      form.set('file', new File([new Uint8Array(sizeBytes)], 'big.pdf', { type: 'application/pdf' }));
+      // Serialise the multipart body so the request carries plain bytes; a Request built straight from
+      // FormData streams through undici, which logs an unhandled rejection when the reader cancels.
+      const serialised = new Response(form);
+      return new Request(`http://localhost/api/esigning/verify/${CERTIFICATE_ID}/check`, {
+        method: 'POST',
+        headers: {
+          'x-forwarded-for': IP,
+          'content-type': serialised.headers.get('content-type') as string,
+          ...headers,
+        },
+        body: new Uint8Array(await serialised.arrayBuffer()),
+      }) as NextRequest;
+    }
+
+    async function post(request: NextRequest) {
+      const { POST } = await import('@/app/api/esigning/verify/[certificateId]/check/route');
+      return POST(request, params);
+    }
+
+    it('answers 413 for an upload over 30 MiB without buffering it or looking anything up', async () => {
+      const response = await post(await uploadOf(31 * MIB));
+
+      expect(response.status).toBe(413);
+      const body = await response.json();
+      expect(body.code).toBe('PAYLOAD_TOO_LARGE');
+      expect(body.error).toContain('30 MiB');
+      expect(body.error).toContain('one document at a time');
+      expect(mocks.getEsigningVerificationData).not.toHaveBeenCalled();
+      expect(mocks.findIssuedArtifactMatch).not.toHaveBeenCalled();
+    });
+
+    it('refuses on the declared Content-Length before reading a byte of the body', async () => {
+      const request = await uploadOf(1024, { 'content-length': String(40 * MIB) });
+      const getReader = vi.spyOn(request.body as ReadableStream, 'getReader');
+
+      const response = await post(request);
+
+      expect(response.status).toBe(413);
+      expect(getReader).not.toHaveBeenCalled();
+    });
+
+    it('still accepts an upload just under the cap', async () => {
+      const response = await post(await uploadOf(29 * MIB));
+
+      expect(response.status).toBe(200);
+      expect(mocks.findIssuedArtifactMatch).toHaveBeenCalledTimes(1);
+      expect(mocks.findIssuedArtifactMatch.mock.calls[0][1].length).toBe(29 * MIB);
+    });
+  });
+
   it('hides an internal lookup error behind a generic 500', async () => {
     mocks.getEsigningVerificationData.mockRejectedValue(new TypeError('secret column "hash" missing'));
     const response = await check(pdf());

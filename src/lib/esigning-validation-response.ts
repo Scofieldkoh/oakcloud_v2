@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import type { z } from 'zod';
 import { UNSUPPORTED_PDF_CHARACTERS_ISSUE_CODE } from '@/lib/esigning-pdf-text';
+import { ESIGNING_IMAGE_LIMIT_ISSUE_CODE } from '@/lib/esigning-payload-limits';
 
 /**
  * 400 response for a Zod failure on an e-signing payload.
@@ -21,6 +22,23 @@ export function esigningValidationErrorResponse(error: z.ZodError): NextResponse
       {
         error: unsupportedTextIssue.message,
         code: UNSUPPORTED_PDF_CHARACTERS_ISSUE_CODE,
+        details: error.errors,
+      },
+      { status: 400 }
+    );
+  }
+
+  const imageLimitIssue = error.issues.find(
+    (issue) =>
+      issue.code === 'custom' &&
+      (issue.params as { code?: string } | undefined)?.code === ESIGNING_IMAGE_LIMIT_ISSUE_CODE
+  );
+
+  if (imageLimitIssue) {
+    return NextResponse.json(
+      {
+        error: imageLimitIssue.message,
+        code: ESIGNING_IMAGE_LIMIT_ISSUE_CODE,
         details: error.errors,
       },
       { status: 400 }

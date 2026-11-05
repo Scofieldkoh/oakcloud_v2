@@ -31,6 +31,7 @@ import {
   isEsigningDocumentVisibleToRecipient,
 } from '@/lib/esigning-document-visibility';
 import { createLogger } from '@/lib/logger';
+import { assertSignatureImagesValid } from '@/lib/esigning-signature-image';
 import { sendEsigningDeclinedEmailToSender } from '@/services/esigning-notification.service';
 import { activateNextQueuedEsigningRecipients } from '@/services/esigning-envelope.service';
 import {
@@ -1070,6 +1071,9 @@ export async function saveEsigningSigningFieldValues(
     throw new Error('This signing session is already complete');
   }
 
+  // Reject a bad image before anything is written.
+  await assertSignatureImagesValid(values);
+
   await saveRecipientFieldValues({
     tenantId: context.envelope.tenantId,
     envelopeId: context.envelope.id,
@@ -1097,6 +1101,10 @@ export async function completeEsigningSigningSession(input: {
   if (!context.recipient.consentedAt) {
     throw new Error('Consent is required before signing');
   }
+
+  // Validate and decode every submitted image up front, so an invalid or oversized one is refused
+  // before the transaction takes the envelope lock, stores a file or finalizes any field.
+  await assertSignatureImagesValid(input.values);
 
   const completionInputs = buildCompletionInputs({
     context,

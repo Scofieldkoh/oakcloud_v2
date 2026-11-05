@@ -12,6 +12,12 @@ interface SignaturePadProps {
   onChange: (dataUrl: string) => void;
   onVectorChange?: (dataUrl: string | null) => void;
   ariaLabel?: string;
+  /**
+   * Upper bound for the canvas pixel ratio (default: the device's devicePixelRatio). A high-density
+   * screen or browser zoom otherwise multiplies the exported PNG's size, which matters where the image
+   * is size-limited, such as e-signing signatures.
+   */
+  maxPixelRatio?: number;
 }
 
 async function drawImageOnCanvas(
@@ -40,6 +46,7 @@ export function SignaturePad({
   onChange,
   onVectorChange,
   ariaLabel = 'Signature field',
+  maxPixelRatio,
 }: SignaturePadProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const signaturePadRef = useRef<SignaturePadEngineInstance | null>(null);
@@ -65,7 +72,7 @@ export function SignaturePad({
     }
 
     const rect = canvas.getBoundingClientRect();
-    const ratio = Math.max(window.devicePixelRatio || 1, 1);
+    const ratio = Math.min(Math.max(window.devicePixelRatio || 1, 1), maxPixelRatio ?? Number.POSITIVE_INFINITY);
     canvas.width = Math.max(1, Math.round(rect.width * ratio));
     canvas.height = Math.max(1, Math.round(rect.height * ratio));
 
@@ -79,7 +86,7 @@ export function SignaturePad({
     context.lineCap = 'round';
     context.lineJoin = 'round';
     return { canvas, rect };
-  }, []);
+  }, [maxPixelRatio]);
 
   const restorePadState = useCallback(
     async (signaturePad: SignaturePadEngineInstance, canvas: HTMLCanvasElement) => {

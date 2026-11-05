@@ -10,6 +10,8 @@ import {
 } from '@/lib/rate-limit';
 import { enforceEsigningRateLimit, requireEsigningSameOrigin } from '@/lib/esigning-public-route';
 import { verifyEsigningAccessCodeSchema } from '@/lib/validations/esigning';
+import { ESIGNING_PAYLOAD_LIMITS } from '@/lib/esigning-payload-limits';
+import { readLimitedJson } from '@/lib/esigning-request-body';
 import { verifyEsigningAccessCode } from '@/services/esigning-signing.service';
 
 export async function POST(request: NextRequest) {
@@ -33,7 +35,9 @@ export async function POST(request: NextRequest) {
   const rateLimitKey = getRateLimitKey('esigning_sign_verify', `${rateLimit.ip}:${identifier}`);
 
   try {
-    const body = verifyEsigningAccessCodeSchema.parse(await request.json());
+    const body = verifyEsigningAccessCodeSchema.parse(
+      await readLimitedJson(request, ESIGNING_PAYLOAD_LIMITS.SMALL_BODY_BYTES)
+    );
     await verifyEsigningAccessCode(body.accessCode);
     recordSuccess(rateLimitKey);
     return NextResponse.json({ success: true });
